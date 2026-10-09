@@ -101,8 +101,9 @@ private fun AuroraApp() {
     var error by remember { mutableStateOf<String?>(null) }
     var current by remember { mutableStateOf<Channel?>(null) }
     var editPlaylist by remember { mutableStateOf(true) }
+    var playlistRefreshKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(playlistRefreshKey) {
         val preferences = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
         val savedUrl = preferences.getString("playlist_url", "").orEmpty()
         if (savedUrl.isNotBlank()) {
@@ -216,6 +217,7 @@ private fun AuroraApp() {
                                                 context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
                                                     .edit().putString("playlist_url", playlistUrl.trim()).apply()
                                                 saveCachedChannels(context, loaded)
+                                                playlistRefreshKey++
                                             }
                                             activeGroup = "Todos"
                                             activeType = "Todos"
