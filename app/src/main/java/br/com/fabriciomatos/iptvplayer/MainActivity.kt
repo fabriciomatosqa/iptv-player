@@ -43,12 +43,14 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
-private val Bg = Color(0xFF080B12)
-private val Panel = Color(0xFF131A27)
-private val Panel2 = Color(0xFF1B2535)
-private val Accent = Color(0xFF7C5CFF)
-private val Muted = Color(0xFF9AA7BB)
-private val Txt = Color(0xFFF5F7FB)
+private val Bg = Color(0xFF050B12)
+private val Panel = Color(0xFF101B26)
+private val Panel2 = Color(0xFF182A38)
+private val Accent = Color(0xFF45E6C4)
+private val AuroraCyan = Color(0xFF53C8FF)
+private val AuroraViolet = Color(0xFF9B7BFF)
+private val Muted = Color(0xFF9AAFC0)
+private val Txt = Color(0xFFF2FBFF)
 
 data class Channel(val name: String, val url: String, val group: String = "Canais") {
     val contentType: String get() = classifyContentType(name, group)
@@ -70,15 +72,16 @@ private fun classifyContentType(name: String, group: String): String {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = android.graphics.Color.rgb(8, 11, 18)
-        window.navigationBarColor = android.graphics.Color.rgb(8, 11, 18)
-        setContent { OrbitApp() }
+        window.statusBarColor = android.graphics.Color.rgb(5, 11, 18)
+        window.navigationBarColor = android.graphics.Color.rgb(5, 11, 18)
+        setContent { AuroraApp() }
     }
 }
 
 @Composable
-private fun OrbitApp() {
+private fun AuroraApp() {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     var playlistUrl by remember { mutableStateOf("") }
     var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var search by remember { mutableStateOf("") }
@@ -88,6 +91,28 @@ private fun OrbitApp() {
     var error by remember { mutableStateOf<String?>(null) }
     var current by remember { mutableStateOf<Channel?>(null) }
     var editPlaylist by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val preferences = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+        val savedUrl = preferences.getString("playlist_url", "").orEmpty()
+        if (savedUrl.isNotBlank()) {
+            playlistUrl = savedUrl
+            loading = true
+            try {
+                val savedChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
+                channels = savedChannels
+                activeGroup = "Todos"
+                activeType = "Todos"
+                editPlaylist = false
+                if (savedChannels.isEmpty()) error = "A playlist salva não contém canais válidos. Confira o link em Editar lista."
+            } catch (e: Exception) {
+                error = "Não consegui abrir a playlist salva. Toque em Editar lista para conferir o link."
+                editPlaylist = true
+            } finally {
+                loading = false
+            }
+        }
+    }
 
     val groups = remember(channels) { listOf("Todos") + channels.map { it.group }.distinct().filter { it.isNotBlank() }.sorted() }
     val typeFilters = listOf("Todos", "Ao vivo", "Filmes", "Séries")
@@ -100,31 +125,31 @@ private fun OrbitApp() {
     MaterialTheme(colorScheme = darkColorScheme(primary = Accent, background = Bg, surface = Panel, onBackground = Txt, onSurface = Txt)) {
         Column(Modifier.fillMaxSize().background(Bg)) {
             Row(
-                Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF171B32), Color(0xFF0D1723)))).padding(horizontal = 20.dp, vertical = 18.dp),
+                Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF102C35), Color(0xFF101426), Color(0xFF201735)))).padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(Accent, Color(0xFF35D6C5)))), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.LiveTv, null, tint = Color.White, modifier = Modifier.size(27.dp))
+                Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(AuroraCyan, Accent, AuroraViolet))), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.LiveTv, null, tint = Color(0xFF061019), modifier = Modifier.size(27.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("ORBIT", fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = Txt)
-                    Text("IPTV PLAYER", fontSize = 10.sp, letterSpacing = 2.2.sp, color = Muted)
+                    Text("AURORA", fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = Txt)
+                    Text("IPTV", fontSize = 10.sp, letterSpacing = 3.sp, color = Accent, fontWeight = FontWeight.Bold)
                 }
-                Text("BETA", color = Color(0xFF35D6C5), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("BOREAL", color = AuroraCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
 
             Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(18.dp))
                 Text("Sua TV. Do seu jeito.", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Txt)
                 Spacer(Modifier.height(5.dp))
-                Text("Adicione sua playlist para começar a assistir.", color = Muted, fontSize = 13.sp)
+                Text("Sua diversão sob as cores da aurora.", color = Muted, fontSize = 13.sp)
                 Spacer(Modifier.height(16.dp))
 
                 if (channels.isEmpty() || editPlaylist) {
                     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
-                            Text("SUA PLAYLIST M3U", color = Color(0xFFB9ADFF), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+                            Text("SUA PLAYLIST M3U", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
                             Spacer(Modifier.height(10.dp))
                             OutlinedTextField(
                                 value = playlistUrl, onValueChange = { playlistUrl = it },
@@ -143,6 +168,10 @@ private fun OrbitApp() {
                                         try {
                                             val loaded = withContext(Dispatchers.IO) { loadM3u(playlistUrl.trim()) }
                                             channels = loaded
+                                            if (loaded.isNotEmpty()) {
+                                                context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+                                                    .edit().putString("playlist_url", playlistUrl.trim()).apply()
+                                            }
                                             activeGroup = "Todos"
                                             activeType = "Todos"
                                             editPlaylist = false
@@ -177,9 +206,9 @@ private fun OrbitApp() {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("${channels.size} itens disponíveis", color = Txt, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                            Text("Playlist carregada", color = Color(0xFF35D6C5), fontSize = 12.sp)
+                            Text("Playlist salva neste aparelho", color = Accent, fontSize = 12.sp)
                         }
-                        TextButton(onClick = { editPlaylist = true }) { Text("Trocar lista", color = Color(0xFFB9ADFF)) }
+                        TextButton(onClick = { editPlaylist = true }) { Text("Editar lista", color = AuroraCyan) }
                     }
                 }
 
@@ -199,7 +228,7 @@ private fun OrbitApp() {
                                 selected = activeType == type,
                                 onClick = { activeType = type; activeGroup = "Todos" },
                                 label = { Text(type, maxLines = 1) },
-                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Accent, selectedLabelColor = Txt, containerColor = Panel, labelColor = Muted)
+                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Accent, selectedLabelColor = Color(0xFF061019), containerColor = Panel, labelColor = Muted)
                             )
                         }
                     }
@@ -236,7 +265,7 @@ private fun OrbitApp() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Panel2), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.LiveTv, null, tint = Color(0xFFB9ADFF), modifier = Modifier.size(23.dp))
+                                    Icon(Icons.Default.LiveTv, null, tint = AuroraCyan, modifier = Modifier.size(23.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
@@ -260,7 +289,7 @@ private fun loadM3u(source: String): List<Channel> {
     val connection = (URL(source).openConnection() as HttpURLConnection).apply {
         connectTimeout = 15000
         readTimeout = 25000
-        setRequestProperty("User-Agent", "OrbitIPTV/1.0 Android")
+        setRequestProperty("User-Agent", "AuroraIPTV/1.0 Android")
         instanceFollowRedirects = true
     }
     try {
