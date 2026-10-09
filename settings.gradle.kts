@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "OrbitIPTV"
+rootProject.name = "AuroraIPTV"
 include(":app")
