@@ -101,59 +101,60 @@ private fun AuroraApp() {
     var error by remember { mutableStateOf<String?>(null) }
     var current by remember { mutableStateOf<Channel?>(null) }
     var editPlaylist by remember { mutableStateOf(true) }
-    var playlistRefreshKey by remember { mutableIntStateOf(0) }
+    var activePlaylistUrl by remember { mutableStateOf("") }
 
-    LaunchedEffect(playlistRefreshKey) {
+    // Show the local copy immediately. A server refresh must never block the cached list.
+    LaunchedEffect(Unit) {
         val preferences = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
         val savedUrl = preferences.getString("playlist_url", "").orEmpty()
         if (savedUrl.isNotBlank()) {
             playlistUrl = savedUrl
-            val cachedChannels = readCachedChannels(context)
+            activePlaylistUrl = savedUrl
+            val cachedChannels = withContext(Dispatchers.IO) { readCachedChannels(context) }
             if (cachedChannels.isNotEmpty()) {
                 channels = cachedChannels
                 editPlaylist = false
-                loading = false
             } else {
                 loading = true
             }
-
-            // Refresh quietly; cached channels stay visible and playable.
             try {
                 val freshChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
                 if (freshChannels.isNotEmpty()) {
                     channels = freshChannels
-                    saveCachedChannels(context, freshChannels)
-                    activeGroup = "Todos"
-                    activeType = "Todos"
+                    withContext(Dispatchers.IO) { saveCachedChannels(context, freshChannels) }
                     editPlaylist = false
                 } else if (cachedChannels.isEmpty()) {
-                    error = "A playlist não contém canais válidos. Confira o link em Editar lista."
+                    error = "A lista não trouxe canais válidos. Confira o endereço em Editar lista."
                     editPlaylist = true
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 if (cachedChannels.isEmpty()) {
-                    error = "Não consegui abrir a playlist. Confira o link em Editar lista."
+                    error = "Não consegui atualizar a lista. Confira sua conexão ou o link em Editar lista."
                     editPlaylist = true
                 }
             } finally {
                 loading = false
             }
+        }
+    }
 
-            // Check for changes every 15 minutes while the app remains open.
+    // Periodic background refresh, separate from startup and manual loading.
+    LaunchedEffect(activePlaylistUrl) {
+        if (activePlaylistUrl.isNotBlank()) {
             while (true) {
                 delay(15 * 60 * 1000L)
                 try {
-                    val freshChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
+                    val freshChannels = withContext(Dispatchers.IO) { loadM3u(activePlaylistUrl) }
                     if (freshChannels.isNotEmpty()) {
+                        withContext(Dispatchers.IO) { saveCachedChannels(context, freshChannels) }
                         channels = freshChannels
-                        saveCachedChannels(context, freshChannels)
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    // Silent failure: never interrupt playback.
+                    // Keep the existing list and playback unchanged on refresh errors.
                 }
             }
         }
@@ -211,20 +212,25 @@ private fun AuroraApp() {
                                     loading = true
                                     scope.launch {
                                         try {
-                                            val loaded = withContext(Dispatchers.IO) { loadM3u(playlistUrl.trim()) }
-                                            channels = loaded
-                                            if (loaded.isNotEmpty()) {
+                                            val enteredUrl = playlistUrl.trim()
+                                            val loaded = withContext(Dispatchers.IO) { loadM3u(enteredUrl) }
+                                            if (loaded.isEmpty()) {
+                                                error = "O endereço respondeu, mas não encontrei canais válidos na M3U."
+                                            } else {
+                                                channels = loaded
+                                                withContext(Dispatchers.IO) { saveCachedChannels(context, loaded) }
                                                 context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-                                                    .edit().putString("playlist_url", playlistUrl.trim()).apply()
-                                                saveCachedChannels(context, loaded)
-                                                playlistRefreshKey++
+                                                    .edit().putString("playlist_url", enteredUrl).apply()
+                                                activePlaylistUrl = enteredUrl
+                                                activeGroup = "Todos"
+                                                activeType = "Todos"
+                                                editPlaylist = false
+                                                error = null
                                             }
-                                            activeGroup = "Todos"
-                                            activeType = "Todos"
-                                            editPlaylist = false
-                                            if (loaded.isEmpty()) error = "A lista abriu, mas não encontrei canais válidos."
+                                        } catch (e: CancellationException) {
+                                            throw e
                                         } catch (e: Exception) {
-                                            error = "Não consegui carregar. Confira o link e tente novamente."
+                                            error = e.message?.takeIf { it.isNotBlank() } ?: "Não consegui carregar. Confira o link e tente novamente."
                                         } finally { loading = false }
                                     }
                                 },
@@ -336,14 +342,16 @@ private fun saveCachedChannels(context: android.content.Context, channels: List<
     channels.forEach { channel ->
         array.put(JSONObject().put("name", channel.name).put("url", channel.url).put("group", channel.group))
     }
-    context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-        .edit().putString("playlist_cache", array.toString()).apply()
+    context.openFileOutput("aurora_playlist_cache.json", android.content.Context.MODE_PRIVATE).bufferedWriter(Charsets.UTF_8).use {
+        it.write(array.toString())
+    }
 }
 
 private fun readCachedChannels(context: android.content.Context): List<Channel> {
     return try {
-        val raw = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-            .getString("playlist_cache", null) ?: return emptyList()
+        val file = java.io.File(context.filesDir, "aurora_playlist_cache.json")
+        if (!file.exists() || file.length() <= 0L || file.length() > 50L * 1024L * 1024L) return emptyList()
+        val raw = file.bufferedReader(Charsets.UTF_8).use { it.readText() }
         val array = JSONArray(raw)
         (0 until array.length()).mapNotNull { index ->
             val item = array.optJSONObject(index) ?: return@mapNotNull null
@@ -357,24 +365,41 @@ private fun readCachedChannels(context: android.content.Context): List<Channel> 
 }
 
 private fun loadM3u(source: String): List<Channel> {
-    require(source.startsWith("http://", true) || source.startsWith("https://", true)) { "Use um link HTTP ou HTTPS." }
+    require(source.startsWith("http://", true) || source.startsWith("https://", true)) {
+        "Informe um endereço M3U válido começando com http:// ou https://."
+    }
     val connection = (URL(source).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 15000
-        readTimeout = 25000
+        connectTimeout = 12000
+        readTimeout = 12000
         setRequestProperty("User-Agent", "AuroraIPTV/1.0 Android")
+        setRequestProperty("Accept", "*/*")
         instanceFollowRedirects = true
+        useCaches = false
     }
     try {
+        val responseCode = connection.responseCode
+        if (responseCode !in 200..299) {
+            throw IllegalStateException("O servidor respondeu HTTP $responseCode. Confira o link da playlist.")
+        }
+        val result = mutableListOf<Channel>()
+        var name = "Canal"
+        var group = "Canais"
+        var pending = false
+        var linesRead = 0
+        val startedAt = System.nanoTime()
         connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-            val result = mutableListOf<Channel>()
-            var name = "Canal"
-            var group = "Canais"
-            var pending = false
-            reader.forEachLine { raw ->
+            while (true) {
+                val raw = reader.readLine() ?: break
+                linesRead++
+                if (linesRead > 500000) throw IllegalStateException("A playlist é grande demais (mais de 500 mil linhas).")
+                if (System.nanoTime() - startedAt > 45_000_000_000L) {
+                    throw java.net.SocketTimeoutException("A leitura da playlist passou de 45 segundos. Tente novamente.")
+                }
                 val line = raw.trim()
                 when {
                     line.startsWith("#EXTINF", true) -> {
-                        name = line.substringAfterLast(",").trim().ifBlank { "Canal" }
+                        val comma = line.indexOf(',')
+                        name = if (comma >= 0) line.substring(comma + 1).trim().ifBlank { "Canal" } else "Canal"
                         group = Regex("""group-title=["']([^"']*)["']""", RegexOption.IGNORE_CASE)
                             .find(line)?.groupValues?.getOrNull(1)?.trim().orEmpty().ifBlank { "Canais" }
                         pending = true
@@ -382,13 +407,16 @@ private fun loadM3u(source: String): List<Channel> {
                     line.isNotEmpty() && !line.startsWith("#") && pending &&
                         (line.startsWith("http://", true) || line.startsWith("https://", true)) -> {
                         result.add(Channel(name, line, group))
+                        if (result.size > 100000) throw IllegalStateException("A playlist tem mais de 100 mil itens; limite para evitar travamentos.")
                         pending = false
                     }
                 }
             }
-            return result
         }
-    } finally { connection.disconnect() }
+        return result
+    } finally {
+        connection.disconnect()
+    }
 }
 
 @Composable
