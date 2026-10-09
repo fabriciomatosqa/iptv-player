@@ -92,40 +92,40 @@ private fun classifyContentType(name: String, group: String, url: String): Strin
         "cinema", "lancamentos", "catalogo de filmes", "film"
     )
     val liveGroups = listOf(
-        "ao vivo", "canais", "canal", "live", "iptv", "tv aberta", "tv fechada",
+        "ao vivo", "live", "iptv", "tv aberta", "tv fechada",
         "televisao", "esportes", "esporte", "sports", "sport", "noticias", "news",
         "radio", "radios"
     )
 
-    // Group labels are the most reliable signal and avoid matching a movie title
-    // just because it contains a word such as "TV" or "live".
+    // Specific series/movie groups are the strongest metadata signal.
     if (containsAny(normalizedGroup, seriesGroups)) return "Séries"
     if (containsAny(normalizedGroup, movieGroups)) return "Filmes"
-    if (normalizedGroup == "tv" || normalizedGroup.startsWith("tv ")) return "Ao vivo"
-    if (containsAny(normalizedGroup, liveGroups)) return "Ao vivo"
 
-    // Episode markers commonly used in M3U names: Show S02E04, Show 2x04,
-    // "Temporada 2", "Episódio 4", etc.
-    if (Regex("""\\b s\\d{1,2}\\s*e\\d{1,3}\\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
-        Regex("""\\b\\d{1,2}\\s*x\\s*\\d{1,3}\\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
+    // Episode markers commonly used in playlist names.
+    if (Regex("""\bs\d{1,2}\s*e\d{1,3}\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
+        Regex("""\b\d{1,2}\s*x\s*\d{1,3}\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
         containsAny(normalizedName, listOf("temporada", "episodio", "episodios", "capitulo", "capitulos", "serie completa"))) {
         return "Séries"
     }
 
-    // Xtream-style paths explicitly distinguish /series/ and /movie/ from /live/.
+    // Xtream-style URL paths can override a generic group like "Canais".
     if (Regex("""/series/|/episode/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Séries"
     if (Regex("""/movie/|/movies/|/vod/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Filmes"
     if (Regex("""/live/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Ao vivo"
 
-    // File-like VOD links are a useful secondary signal; .ts is intentionally
-    // excluded because it is widely used for live IPTV streams.
-    if (Regex("""\\.(mp4|mkv|avi|mov|m4v|wmv|webm)(\\?|#|$)""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
+    // Direct VOD file links; .ts is excluded because it is common for live TV.
+    if (Regex("""\.(mp4|mkv|avi|mov|m4v|wmv|webm)(\?|#|$)""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
         return "Filmes"
     }
 
-    // Last-resort title clues, after group and URL metadata.
+    // Useful title clues when providers omit group-title metadata.
     if (containsAny(normalizedName, listOf("filme", "movie", "cinema", "documentario"))) return "Filmes"
     if (containsAny(normalizedName, listOf("anime episodio", "episodio", "temporada", "novela capitulo"))) return "Séries"
+
+    // Generic live groups are a fallback, not a reason to override explicit VOD clues.
+    if (normalizedGroup == "tv" || normalizedGroup.startsWith("tv ") ||
+        containsAny(normalizedGroup, liveGroups) ||
+        normalizedGroup == "canais" || normalizedGroup == "canal") return "Ao vivo"
 
     return "Outros"
 }
