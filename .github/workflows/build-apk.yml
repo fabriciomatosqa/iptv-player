@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build AURORA IPTV APK
 
 on:
   workflow_dispatch:
