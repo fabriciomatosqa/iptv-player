@@ -82,7 +82,6 @@ private fun containsAny(value: String, terms: List<String>): Boolean =
 private fun classifyContentType(name: String, group: String, url: String): String {
     val normalizedName = normalizeForClassification(name)
     val normalizedGroup = normalizeForClassification(group)
-    val normalizedUrl = normalizeForClassification(url.substringBefore('?').substringBefore('#'))
 
     val seriesGroups = listOf(
         "series", "serie", "seriados", "tv shows", "tv show", "shows", "temporadas",
