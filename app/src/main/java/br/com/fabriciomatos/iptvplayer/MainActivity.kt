@@ -355,6 +355,7 @@ private fun PlayerDialog(channel: Channel, onDismiss: () -> Unit) {
                     setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
                     resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                 } },
+                update = { view -> view.player = player },
                 modifier = if (isLandscape) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth().aspectRatio(16f / 9f)
             )
             if (!isLandscape) {
