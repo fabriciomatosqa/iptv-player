@@ -8,6 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -31,6 +34,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import android.app.Activity
+import org.json.JSONArray
+import org.json.JSONObject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -97,19 +107,53 @@ private fun AuroraApp() {
         val savedUrl = preferences.getString("playlist_url", "").orEmpty()
         if (savedUrl.isNotBlank()) {
             playlistUrl = savedUrl
-            loading = true
-            try {
-                val savedChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
-                channels = savedChannels
-                activeGroup = "Todos"
-                activeType = "Todos"
+            val cachedChannels = readCachedChannels(context)
+            if (cachedChannels.isNotEmpty()) {
+                channels = cachedChannels
                 editPlaylist = false
-                if (savedChannels.isEmpty()) error = "A playlist salva não contém canais válidos. Confira o link em Editar lista."
-            } catch (e: Exception) {
-                error = "Não consegui abrir a playlist salva. Toque em Editar lista para conferir o link."
-                editPlaylist = true
+                loading = false
+            } else {
+                loading = true
+            }
+
+            // Refresh quietly; cached channels stay visible and playable.
+            try {
+                val freshChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
+                if (freshChannels.isNotEmpty()) {
+                    channels = freshChannels
+                    saveCachedChannels(context, freshChannels)
+                    activeGroup = "Todos"
+                    activeType = "Todos"
+                    editPlaylist = false
+                } else if (cachedChannels.isEmpty()) {
+                    error = "A playlist não contém canais válidos. Confira o link em Editar lista."
+                    editPlaylist = true
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                if (cachedChannels.isEmpty()) {
+                    error = "Não consegui abrir a playlist. Confira o link em Editar lista."
+                    editPlaylist = true
+                }
             } finally {
                 loading = false
+            }
+
+            // Check for changes every 15 minutes while the app remains open.
+            while (true) {
+                delay(15 * 60 * 1000L)
+                try {
+                    val freshChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
+                    if (freshChannels.isNotEmpty()) {
+                        channels = freshChannels
+                        saveCachedChannels(context, freshChannels)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Silent failure: never interrupt playback.
+                }
             }
         }
     }
@@ -123,7 +167,7 @@ private fun AuroraApp() {
     }
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Accent, background = Bg, surface = Panel, onBackground = Txt, onSurface = Txt)) {
-        Column(Modifier.fillMaxSize().background(Bg)) {
+        Column(Modifier.fillMaxSize().background(Bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
             Row(
                 Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF102C35), Color(0xFF101426), Color(0xFF201735)))).padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -171,6 +215,7 @@ private fun AuroraApp() {
                                             if (loaded.isNotEmpty()) {
                                                 context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
                                                     .edit().putString("playlist_url", playlistUrl.trim()).apply()
+                                                saveCachedChannels(context, loaded)
                                             }
                                             activeGroup = "Todos"
                                             activeType = "Todos"
@@ -258,7 +303,7 @@ private fun AuroraApp() {
                     }
                 } else {
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(visible, key = { it.url }) { channel ->
+                        items(visible) { channel ->
                             Row(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(Panel)
                                     .clickable { current = channel }.padding(13.dp),
@@ -281,6 +326,31 @@ private fun AuroraApp() {
             }
         }
         current?.let { channel -> PlayerDialog(channel) { current = null } }
+    }
+}
+
+private fun saveCachedChannels(context: android.content.Context, channels: List<Channel>) {
+    val array = JSONArray()
+    channels.forEach { channel ->
+        array.put(JSONObject().put("name", channel.name).put("url", channel.url).put("group", channel.group))
+    }
+    context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+        .edit().putString("playlist_cache", array.toString()).apply()
+}
+
+private fun readCachedChannels(context: android.content.Context): List<Channel> {
+    return try {
+        val raw = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+            .getString("playlist_cache", null) ?: return emptyList()
+        val array = JSONArray(raw)
+        (0 until array.length()).mapNotNull { index ->
+            val item = array.optJSONObject(index) ?: return@mapNotNull null
+            val name = item.optString("name")
+            val url = item.optString("url")
+            if (name.isBlank() || url.isBlank()) null else Channel(name, url, item.optString("group", "Canais"))
+        }
+    } catch (_: Exception) {
+        emptyList()
     }
 }
 
@@ -324,6 +394,13 @@ private fun PlayerDialog(channel: Channel, onDismiss: () -> Unit) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val context = androidx.compose.ui.platform.LocalContext.current
+    DisposableEffect(isLandscape) {
+        val window = (context as? Activity)?.window
+        val controller = window?.let { WindowInsetsControllerCompat(it, it.decorView) }
+        if (isLandscape) controller?.hide(WindowInsetsCompat.Type.systemBars())
+        else controller?.show(WindowInsetsCompat.Type.systemBars())
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
     val player = remember(channel.url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(channel.url)))
@@ -339,14 +416,16 @@ private fun PlayerDialog(channel: Channel, onDismiss: () -> Unit) {
                 .clip(RoundedCornerShape(if (isLandscape) 0.dp else 20.dp))
                 .background(Color(0xFF0B1019))
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (isLandscape) 2.dp else 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.LiveTv, null, tint = Accent)
-                Spacer(Modifier.width(9.dp))
-                Text(channel.name, color = Txt, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
-                IconButton(onClick = onDismiss) { Icon(Icons.Default.ArrowBack, "Fechar", tint = Txt) }
+            if (!isLandscape) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.LiveTv, null, tint = Accent)
+                    Spacer(Modifier.width(9.dp))
+                    Text(channel.name, color = Txt, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.ArrowBack, "Fechar", tint = Txt) }
+                }
             }
             AndroidView(
                 factory = { viewContext -> PlayerView(viewContext).apply {
@@ -356,7 +435,7 @@ private fun PlayerDialog(channel: Channel, onDismiss: () -> Unit) {
                     resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                 } },
                 update = { view -> view.player = player },
-                modifier = if (isLandscape) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                modifier = if (isLandscape) Modifier.fillMaxSize() else Modifier.fillMaxWidth().aspectRatio(16f / 9f)
             )
             if (!isLandscape) {
                 Text(channel.group, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(14.dp))
