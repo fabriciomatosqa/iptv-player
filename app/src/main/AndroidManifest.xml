@@ -4,6 +4,8 @@
         android:allowBackup="true"
         android:largeHeap="true"
         android:label="AURORA IPTV"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="true">
         <activity
