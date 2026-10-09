@@ -22,11 +22,14 @@ import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -67,7 +70,8 @@ data class Channel(
     val url: String,
     val group: String = "Canais",
     // Calculate once when the playlist is parsed (on an IO thread), not on every UI filter.
-    val contentType: String = classifyContentType(name, group, url)
+    val contentType: String = classifyContentType(name, group, url),
+    val imageUrl: String = ""
 )
 
 /**
@@ -157,6 +161,12 @@ private fun AuroraApp() {
     var current by remember { mutableStateOf<Channel?>(null) }
     var editPlaylist by remember { mutableStateOf(true) }
     var activePlaylistUrl by remember { mutableStateOf("") }
+    var favorites by remember {
+        mutableStateOf(
+            context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+                .getStringSet("favorite_urls", emptySet()).orEmpty().toSet()
+        )
+    }
 
     // Show the local copy immediately. A server refresh must never block the cached list.
     LaunchedEffect(Unit) {
@@ -235,7 +245,9 @@ private fun AuroraApp() {
     LaunchedEffect(channels, search, activeGroup, activeType) {
         visible = withContext(Dispatchers.Default) {
             channels.filter { channel ->
-                (activeType == "Todos" || channel.contentType == activeType) &&
+                (activeType == "Favoritos" && channel.url in favorites ||
+                    activeType == "Todos" ||
+                    (activeType != "Favoritos" && channel.contentType == activeType)) &&
                     (activeGroup == "Todos" || channel.group == activeGroup) &&
                     (search.isBlank() || channel.name.contains(search, true) || channel.group.contains(search, true))
             }
@@ -285,16 +297,20 @@ private fun AuroraApp() {
                             verticalArrangement = Arrangement.Center
                         ) {
                             Icon(
-                                imageVector = if (type == "Ao vivo") Icons.Default.LiveTv else Icons.Default.PlayArrow,
+                                imageVector = when (type) {
+                                    "Ao vivo" -> Icons.Default.LiveTv
+                                    "Favoritos" -> Icons.Default.Star
+                                    else -> Icons.Default.PlayArrow
+                                },
                                 contentDescription = null,
-                                tint = if (selected) Color(0xFF061019) else if (type == "Filmes") AuroraViolet else AuroraCyan,
+                                tint = if (selected) Color(0xFF061019) else if (type == "Filmes") AuroraViolet else if (type == "Favoritos") Color(0xFFFFD166) else AuroraCyan,
                                 modifier = Modifier.size(28.dp)
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 text = type,
                                 color = if (selected) Color(0xFF061019) else Txt,
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
@@ -409,22 +425,43 @@ private fun AuroraApp() {
                     }
                 } else {
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(visible) { channel ->
+                        items(visible, key = { it.url }) { channel ->
                             Row(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(Panel)
-                                    .clickable { current = channel }.padding(13.dp),
+                                    .clickable { current = channel }.padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Panel2), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.LiveTv, null, tint = AuroraCyan, modifier = Modifier.size(23.dp))
+                                if (channel.imageUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = channel.imageUrl,
+                                        contentDescription = "Imagem do conteúdo",
+                                        modifier = Modifier.size(width = 68.dp, height = 88.dp)
+                                            .clip(RoundedCornerShape(10.dp)).background(Panel2)
+                                    )
+                                } else {
+                                    Box(Modifier.size(68.dp, 88.dp).clip(RoundedCornerShape(10.dp)).background(Panel2), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.LiveTv, null, tint = AuroraCyan, modifier = Modifier.size(27.dp))
+                                    }
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(channel.name, color = Txt, fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 14.sp)
-                                    Spacer(Modifier.height(3.dp))
-                                    Text(channel.group, color = Muted, fontSize = 11.sp, maxLines = 1)
+                                    Text(channel.name, color = Txt, fontWeight = FontWeight.SemiBold, maxLines = 2, fontSize = 14.sp)
+                                    Spacer(Modifier.height(5.dp))
+                                    Text(channel.group, color = Muted, fontSize = 11.sp, maxLines = 2)
                                 }
-                                Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(28.dp))
+                                IconButton(onClick = {
+                                    val updated = if (channel.url in favorites) favorites - channel.url else favorites + channel.url
+                                    favorites = updated
+                                    context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+                                        .edit().putStringSet("favorite_urls", updated).apply()
+                                }) {
+                                    Icon(
+                                        imageVector = if (channel.url in favorites) Icons.Default.Star else Icons.Default.StarBorder,
+                                        contentDescription = if (channel.url in favorites) "Remover dos favoritos" else "Adicionar aos favoritos",
+                                        tint = if (channel.url in favorites) Color(0xFFFFD166) else Muted
+                                    )
+                                }
+                                Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(26.dp))
                             }
                         }
                     }
@@ -446,6 +483,7 @@ private fun saveCachedChannels(context: android.content.Context, channels: List<
                     .put("name", channel.name)
                     .put("url", channel.url)
                     .put("group", channel.group)
+                    .put("imageUrl", channel.imageUrl)
                     .toString())
                 writer.newLine()
             }
@@ -482,7 +520,7 @@ private fun readCachedChannels(context: android.content.Context): List<Channel> 
                             val name = item.optString("name")
                             val url = item.optString("url")
                             if (name.isNotBlank() && url.isNotBlank()) {
-                                result.add(Channel(name, url, item.optString("group", "Canais")))
+                                result.add(Channel(name, url, item.optString("group", "Canais"), imageUrl = item.optString("imageUrl", "")))
                             }
                         } catch (_: Exception) {
                             // Ignore a malformed cache line and continue with the remaining entries.
@@ -508,7 +546,7 @@ private fun readCachedChannels(context: android.content.Context): List<Channel> 
                 val name = item.optString("name")
                 val url = item.optString("url")
                 if (name.isNotBlank() && url.isNotBlank()) {
-                    result.add(Channel(name, url, item.optString("group", "Canais")))
+                    result.add(Channel(name, url, item.optString("group", "Canais"), imageUrl = item.optString("imageUrl", "")))
                 }
             }
             result
@@ -535,6 +573,7 @@ private fun loadM3u(source: String): List<Channel> {
             val result = mutableListOf<Channel>()
             var name = "Canal"
             var group = "Canais"
+            var imageUrl = ""
             var pending = false
             reader.forEachLine { raw ->
                 val line = raw.trim()
@@ -544,11 +583,13 @@ private fun loadM3u(source: String): List<Channel> {
                         name = line.substringAfterLast(",").trim().ifBlank { "Canal" }
                         group = Regex("""group-title=["']([^"']*)["']""", RegexOption.IGNORE_CASE)
                             .find(line)?.groupValues?.getOrNull(1)?.trim().orEmpty().ifBlank { "Canais" }
+                        imageUrl = Regex("""(?:tvg-logo|logo|poster|cover|tvg-logo-url)=["']([^"']*)["']""", RegexOption.IGNORE_CASE)
+                            .find(line)?.groupValues?.getOrNull(1)?.trim().orEmpty()
                         pending = true
                     }
                     line.isNotEmpty() && !line.startsWith("#") && pending &&
                         (line.startsWith("http://", true) || line.startsWith("https://", true)) -> {
-                        result.add(Channel(name, line, group))
+                        result.add(Channel(name, line, group, imageUrl = imageUrl))
                         pending = false
                     }
                 }
