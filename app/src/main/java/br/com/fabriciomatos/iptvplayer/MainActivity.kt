@@ -62,9 +62,13 @@ private val AuroraViolet = Color(0xFF9B7BFF)
 private val Muted = Color(0xFF9AAFC0)
 private val Txt = Color(0xFFF2FBFF)
 
-data class Channel(val name: String, val url: String, val group: String = "Canais") {
-    val contentType: String get() = classifyContentType(name, group, url)
-}
+data class Channel(
+    val name: String,
+    val url: String,
+    val group: String = "Canais",
+    // Calculate once when the playlist is parsed (on an IO thread), not on every UI filter.
+    val contentType: String = classifyContentType(name, group, url)
+)
 
 /**
  * Classifies using the playlist's group metadata first, then episode/title and URL
@@ -211,12 +215,32 @@ private fun AuroraApp() {
         }
     }
 
-    val groups = remember(channels) { listOf("Todos") + channels.map { it.group }.distinct().filter { it.isNotBlank() }.sorted() }
+    var groups by remember { mutableStateOf(listOf("Todos")) }
+    var visible by remember { mutableStateOf<List<Channel>>(emptyList()) }
     val typeFilters = listOf("Todos", "Ao vivo", "Filmes", "Séries", "Outros")
-    val visible = remember(channels, search, activeGroup, activeType) {
-        channels.filter { (activeType == "Todos" || it.contentType == activeType) &&
-            (activeGroup == "Todos" || it.group == activeGroup) &&
-            (search.isBlank() || it.name.contains(search, true) || it.group.contains(search, true)) }
+
+    // Large playlists can contain tens of thousands of entries. Build group filters
+    // away from the main thread so loading a playlist does not freeze the interface.
+    LaunchedEffect(channels) {
+        groups = withContext(Dispatchers.Default) {
+            listOf("Todos") + channels.asSequence()
+                .map { it.group }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sorted()
+                .toList()
+        }
+    }
+
+    // Filtering and text search are also CPU work; never run them on the UI thread.
+    LaunchedEffect(channels, search, activeGroup, activeType) {
+        visible = withContext(Dispatchers.Default) {
+            channels.filter { channel ->
+                (activeType == "Todos" || channel.contentType == activeType) &&
+                    (activeGroup == "Todos" || channel.group == activeGroup) &&
+                    (search.isBlank() || channel.name.contains(search, true) || channel.group.contains(search, true))
+            }
+        }
     }
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Accent, background = Bg, surface = Panel, onBackground = Txt, onSurface = Txt)) {
