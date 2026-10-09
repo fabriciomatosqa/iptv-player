@@ -12,8 +12,23 @@ android {
         applicationId = "br.com.fabriciomatos.iptvplayer"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.0.5"
+        versionCode = 7
+        versionName = "1.0.6"
+    }
+
+    signingConfigs {
+        create("persistentTest") {
+            storeFile = rootProject.file(".signing/aurora-debug.keystore")
+            storePassword = "auroraTestKey123"
+            keyAlias = "aurora"
+            keyPassword = "auroraTestKey123"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("persistentTest")
+        }
     }
 
     buildFeatures { compose = true }
