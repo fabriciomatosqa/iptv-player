@@ -29,6 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -242,7 +243,7 @@ private fun AuroraApp() {
     }
 
     // Filtering and text search are also CPU work; never run them on the UI thread.
-    LaunchedEffect(channels, search, activeGroup, activeType) {
+    LaunchedEffect(channels, search, activeGroup, activeType, favorites) {
         visible = withContext(Dispatchers.Default) {
             channels.filter { channel ->
                 (activeType == "Favoritos" && channel.url in favorites ||
@@ -435,6 +436,7 @@ private fun AuroraApp() {
                                     AsyncImage(
                                         model = channel.imageUrl,
                                         contentDescription = "Imagem do conteúdo",
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier.size(width = 68.dp, height = 88.dp)
                                             .clip(RoundedCornerShape(10.dp)).background(Panel2)
                                     )
