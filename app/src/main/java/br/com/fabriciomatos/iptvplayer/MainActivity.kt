@@ -277,7 +277,7 @@ private fun AuroraApp() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    listOf("Ao vivo", "Filmes", "Séries").forEach { type ->
+                    listOf("Ao vivo", "Filmes", "Séries", "Favoritos").forEach { type ->
                         val selected = activeType == type
                         Column(
                             modifier = Modifier
