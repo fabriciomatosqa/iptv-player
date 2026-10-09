@@ -338,29 +338,84 @@ private fun AuroraApp() {
 }
 
 private fun saveCachedChannels(context: android.content.Context, channels: List<Channel>) {
-    val array = JSONArray()
-    channels.forEach { channel ->
-        array.put(JSONObject().put("name", channel.name).put("url", channel.url).put("group", channel.group))
+    // Store one JSON object per line. Never build one enormous JSON string in memory.
+    val target = java.io.File(context.filesDir, "aurora_playlist_cache.jsonl")
+    val temp = java.io.File(context.filesDir, "aurora_playlist_cache.tmp")
+    try {
+        temp.bufferedWriter(Charsets.UTF_8).use { writer ->
+            channels.forEach { channel ->
+                writer.append(JSONObject()
+                    .put("name", channel.name)
+                    .put("url", channel.url)
+                    .put("group", channel.group)
+                    .toString())
+                writer.newLine()
+            }
+        }
+        if (target.exists() && !target.delete()) {
+            throw java.io.IOException("Não foi possível substituir o cache antigo.")
+        }
+        if (!temp.renameTo(target)) {
+            // Same-directory copy fallback for devices/filesystems where rename fails.
+            temp.inputStream().use { input ->
+                target.outputStream().buffered().use { output -> input.copyTo(output) }
+            }
+            temp.delete()
+        }
+        // Remove the old giant SharedPreferences value after a successful file save.
+        context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+            .edit().remove("playlist_cache").apply()
+    } catch (_: Exception) {
+        temp.delete()
+        // A cache failure must not prevent playback of the freshly loaded playlist.
     }
-    context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-        .edit().putString("playlist_cache", array.toString()).apply()
 }
 
 private fun readCachedChannels(context: android.content.Context): List<Channel> {
-    return try {
-        val raw = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-            .getString("playlist_cache", null) ?: run {
-                // Migrate a cache created by the temporary file-based build, if one exists.
-                val file = java.io.File(context.filesDir, "aurora_playlist_cache.json")
-                if (!file.exists() || file.length() <= 0L || file.length() > 100L * 1024L * 1024L) return emptyList()
-                file.bufferedReader(Charsets.UTF_8).use { it.readText() }
+    val file = java.io.File(context.filesDir, "aurora_playlist_cache.jsonl")
+    if (file.exists() && file.length() > 0L) {
+        return try {
+            val result = ArrayList<Channel>()
+            file.bufferedReader(Charsets.UTF_8).useLines { lines ->
+                lines.forEach { line ->
+                    if (line.isNotBlank()) {
+                        try {
+                            val item = JSONObject(line)
+                            val name = item.optString("name")
+                            val url = item.optString("url")
+                            if (name.isNotBlank() && url.isNotBlank()) {
+                                result.add(Channel(name, url, item.optString("group", "Canais")))
+                            }
+                        } catch (_: Exception) {
+                            // Ignore a malformed cache line and continue with the remaining entries.
+                        }
+                    }
+                }
             }
-        val array = JSONArray(raw)
-        (0 until array.length()).mapNotNull { index ->
-            val item = array.optJSONObject(index) ?: return@mapNotNull null
-            val name = item.optString("name")
-            val url = item.optString("url")
-            if (name.isBlank() || url.isBlank()) null else Channel(name, url, item.optString("group", "Canais"))
+            result
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    // Compatibility with older releases: only parse a legacy cache of manageable size.
+    return try {
+        val preferences = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+        val raw = preferences.getString("playlist_cache", null)
+        if (!raw.isNullOrBlank() && raw.length <= 8 * 1024 * 1024) {
+            val array = JSONArray(raw)
+            val result = ArrayList<Channel>(array.length())
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val name = item.optString("name")
+                val url = item.optString("url")
+                if (name.isNotBlank() && url.isNotBlank()) {
+                    result.add(Channel(name, url, item.optString("group", "Canais")))
+                }
+            }
+            result
+        } else {
+            emptyList()
         }
     } catch (_: Exception) {
         emptyList()
