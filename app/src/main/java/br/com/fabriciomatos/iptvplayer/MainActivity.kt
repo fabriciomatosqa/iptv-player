@@ -63,20 +63,72 @@ private val Muted = Color(0xFF9AAFC0)
 private val Txt = Color(0xFFF2FBFF)
 
 data class Channel(val name: String, val url: String, val group: String = "Canais") {
-    val contentType: String get() = classifyContentType(name, group)
+    val contentType: String get() = classifyContentType(name, group, url)
 }
 
-private fun classifyContentType(name: String, group: String): String {
-    val text = "$group $name".lowercase()
-    val seriesTerms = listOf("série", "series", "seriados", "temporada", "episódio", "episodio", "novela", "anime", "desenho")
-    val movieTerms = listOf("filme", "filmes", "movie", "movies", "cinema", "vod", "lançamento", "lancamento", "film")
-    val liveTerms = listOf("ao vivo", "canais", "canal", "live", "iptv", "tv ", "televis", "esporte", "sport", "notícia", "noticia", "news", "rádio", "radio")
-    return when {
-        seriesTerms.any { it in text } -> "Séries"
-        movieTerms.any { it in text } -> "Filmes"
-        liveTerms.any { it in text } -> "Ao vivo"
-        else -> "Ao vivo"
+/**
+ * Classifies using the playlist's group metadata first, then episode/title and URL
+ * patterns. Unknown entries stay in "Outros" instead of being incorrectly labeled live.
+ */
+private fun normalizeForClassification(value: String): String =
+    java.text.Normalizer.normalize(value.lowercase(), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{Mn}+"), "")
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
+
+private fun containsAny(value: String, terms: List<String>): Boolean =
+    terms.any { term -> value.contains(term) }
+
+private fun classifyContentType(name: String, group: String, url: String): String {
+    val normalizedName = normalizeForClassification(name)
+    val normalizedGroup = normalizeForClassification(group)
+    val normalizedUrl = normalizeForClassification(url.substringBefore('?').substringBefore('#'))
+
+    val seriesGroups = listOf(
+        "series", "serie", "seriados", "tv shows", "tv show", "shows", "temporadas",
+        "novelas", "anime", "animes", "desenhos", "cartoons", "episodios"
+    )
+    val movieGroups = listOf(
+        "filmes", "filme", "movies", "movie", "vod filmes", "vod movies",
+        "cinema", "lancamentos", "catalogo de filmes", "film"
+    )
+    val liveGroups = listOf(
+        "ao vivo", "canais", "canal", "live", "iptv", "tv aberta", "tv fechada",
+        "televisao", "esportes", "esporte", "sports", "sport", "noticias", "news",
+        "radio", "radios"
+    )
+
+    // Group labels are the most reliable signal and avoid matching a movie title
+    // just because it contains a word such as "TV" or "live".
+    if (containsAny(normalizedGroup, seriesGroups)) return "Séries"
+    if (containsAny(normalizedGroup, movieGroups)) return "Filmes"
+    if (normalizedGroup == "tv" || normalizedGroup.startsWith("tv ")) return "Ao vivo"
+    if (containsAny(normalizedGroup, liveGroups)) return "Ao vivo"
+
+    // Episode markers commonly used in M3U names: Show S02E04, Show 2x04,
+    // "Temporada 2", "Episódio 4", etc.
+    if (Regex("""\\b s\\d{1,2}\\s*e\\d{1,3}\\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
+        Regex("""\\b\\d{1,2}\\s*x\\s*\\d{1,3}\\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
+        containsAny(normalizedName, listOf("temporada", "episodio", "episodios", "capitulo", "capitulos", "serie completa"))) {
+        return "Séries"
     }
+
+    // Xtream-style paths explicitly distinguish /series/ and /movie/ from /live/.
+    if (Regex("""/series/|/episode/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Séries"
+    if (Regex("""/movie/|/movies/|/vod/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Filmes"
+    if (Regex("""/live/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Ao vivo"
+
+    // File-like VOD links are a useful secondary signal; .ts is intentionally
+    // excluded because it is widely used for live IPTV streams.
+    if (Regex("""\\.(mp4|mkv|avi|mov|m4v|wmv|webm)(\\?|#|$)""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
+        return "Filmes"
+    }
+
+    // Last-resort title clues, after group and URL metadata.
+    if (containsAny(normalizedName, listOf("filme", "movie", "cinema", "documentario"))) return "Filmes"
+    if (containsAny(normalizedName, listOf("anime episodio", "episodio", "temporada", "novela capitulo"))) return "Séries"
+
+    return "Outros"
 }
 
 class MainActivity : ComponentActivity() {
@@ -161,7 +213,7 @@ private fun AuroraApp() {
     }
 
     val groups = remember(channels) { listOf("Todos") + channels.map { it.group }.distinct().filter { it.isNotBlank() }.sorted() }
-    val typeFilters = listOf("Todos", "Ao vivo", "Filmes", "Séries")
+    val typeFilters = listOf("Todos", "Ao vivo", "Filmes", "Séries", "Outros")
     val visible = remember(channels, search, activeGroup, activeType) {
         channels.filter { (activeType == "Todos" || it.contentType == activeType) &&
             (activeGroup == "Todos" || it.group == activeGroup) &&
