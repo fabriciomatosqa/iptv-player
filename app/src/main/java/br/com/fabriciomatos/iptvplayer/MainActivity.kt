@@ -342,16 +342,19 @@ private fun saveCachedChannels(context: android.content.Context, channels: List<
     channels.forEach { channel ->
         array.put(JSONObject().put("name", channel.name).put("url", channel.url).put("group", channel.group))
     }
-    context.openFileOutput("aurora_playlist_cache.json", android.content.Context.MODE_PRIVATE).bufferedWriter(Charsets.UTF_8).use {
-        it.write(array.toString())
-    }
+    context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+        .edit().putString("playlist_cache", array.toString()).apply()
 }
 
 private fun readCachedChannels(context: android.content.Context): List<Channel> {
     return try {
-        val file = java.io.File(context.filesDir, "aurora_playlist_cache.json")
-        if (!file.exists() || file.length() <= 0L || file.length() > 50L * 1024L * 1024L) return emptyList()
-        val raw = file.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val raw = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
+            .getString("playlist_cache", null) ?: run {
+                // Migrate a cache created by the temporary file-based build, if one exists.
+                val file = java.io.File(context.filesDir, "aurora_playlist_cache.json")
+                if (!file.exists() || file.length() <= 0L || file.length() > 100L * 1024L * 1024L) return emptyList()
+                file.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            }
         val array = JSONArray(raw)
         (0 until array.length()).mapNotNull { index ->
             val item = array.optJSONObject(index) ?: return@mapNotNull null
@@ -366,40 +369,26 @@ private fun readCachedChannels(context: android.content.Context): List<Channel> 
 
 private fun loadM3u(source: String): List<Channel> {
     require(source.startsWith("http://", true) || source.startsWith("https://", true)) {
-        "Informe um endereço M3U válido começando com http:// ou https://."
+        "Use um link HTTP ou HTTPS."
     }
     val connection = (URL(source).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 12000
-        readTimeout = 12000
+        connectTimeout = 15000
+        readTimeout = 25000
         setRequestProperty("User-Agent", "AuroraIPTV/1.0 Android")
-        setRequestProperty("Accept", "*/*")
         instanceFollowRedirects = true
-        useCaches = false
     }
     try {
-        val responseCode = connection.responseCode
-        if (responseCode !in 200..299) {
-            throw IllegalStateException("O servidor respondeu HTTP $responseCode. Confira o link da playlist.")
-        }
-        val result = mutableListOf<Channel>()
-        var name = "Canal"
-        var group = "Canais"
-        var pending = false
-        var linesRead = 0
-        val startedAt = System.nanoTime()
         connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-            while (true) {
-                val raw = reader.readLine() ?: break
-                linesRead++
-                if (linesRead > 500000) throw IllegalStateException("A playlist é grande demais (mais de 500 mil linhas).")
-                if (System.nanoTime() - startedAt > 45_000_000_000L) {
-                    throw java.net.SocketTimeoutException("A leitura da playlist passou de 45 segundos. Tente novamente.")
-                }
+            val result = mutableListOf<Channel>()
+            var name = "Canal"
+            var group = "Canais"
+            var pending = false
+            reader.forEachLine { raw ->
                 val line = raw.trim()
                 when {
                     line.startsWith("#EXTINF", true) -> {
-                        val comma = line.indexOf(',')
-                        name = if (comma >= 0) line.substring(comma + 1).trim().ifBlank { "Canal" } else "Canal"
+                        // Keep the original parser behavior from the previously working version.
+                        name = line.substringAfterLast(",").trim().ifBlank { "Canal" }
                         group = Regex("""group-title=["']([^"']*)["']""", RegexOption.IGNORE_CASE)
                             .find(line)?.groupValues?.getOrNull(1)?.trim().orEmpty().ifBlank { "Canais" }
                         pending = true
@@ -407,13 +396,12 @@ private fun loadM3u(source: String): List<Channel> {
                     line.isNotEmpty() && !line.startsWith("#") && pending &&
                         (line.startsWith("http://", true) || line.startsWith("https://", true)) -> {
                         result.add(Channel(name, line, group))
-                        if (result.size > 100000) throw IllegalStateException("A playlist tem mais de 100 mil itens; limite para evitar travamentos.")
                         pending = false
                     }
                 }
             }
+            return result
         }
-        return result
     } finally {
         connection.disconnect()
     }
