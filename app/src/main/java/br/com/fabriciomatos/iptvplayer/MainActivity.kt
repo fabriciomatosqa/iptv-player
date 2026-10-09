@@ -277,7 +277,7 @@ private fun PlayerDialog(channel: Channel, onDismiss: () -> Unit) {
             }
             AndroidView(
                 factory = { viewContext -> PlayerView(viewContext).apply {
-                    player = player
+                    this.player = player
                     useController = true
                     setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
                 } },
