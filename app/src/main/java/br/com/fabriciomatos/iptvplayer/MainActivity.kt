@@ -217,7 +217,6 @@ private fun AuroraApp() {
 
     var groups by remember { mutableStateOf(listOf("Todos")) }
     var visible by remember { mutableStateOf<List<Channel>>(emptyList()) }
-    val typeFilters = listOf("Todos", "Ao vivo", "Filmes", "Séries", "Outros")
 
     // Large playlists can contain tens of thousands of entries. Build group filters
     // away from the main thread so loading a playlist does not freeze the interface.
@@ -262,9 +261,46 @@ private fun AuroraApp() {
 
             Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 Spacer(Modifier.height(18.dp))
-                Text("Sua TV. Do seu jeito.", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Txt)
-                Spacer(Modifier.height(5.dp))
-                Text("Sua diversão sob as cores da aurora.", color = Muted, fontSize = 13.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    listOf("Ao vivo", "Filmes", "Séries").forEach { type ->
+                        val selected = activeType == type
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    if (selected) Brush.linearGradient(listOf(Accent, AuroraCyan))
+                                    else Brush.linearGradient(listOf(Panel2, Panel))
+                                )
+                                .clickable {
+                                    activeType = type
+                                    activeGroup = "Todos"
+                                }
+                                .padding(horizontal = 4.dp, vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = if (type == "Ao vivo") Icons.Default.LiveTv else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                tint = if (selected) Color(0xFF061019) else if (type == "Filmes") AuroraViolet else AuroraCyan,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = type,
+                                color = if (selected) Color(0xFF061019) else Txt,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
 
                 if (channels.isEmpty() || editPlaylist) {
@@ -348,19 +384,6 @@ private fun AuroraApp() {
                     singleLine = true, shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Accent, unfocusedBorderColor = Color(0xFF273246), focusedTextColor = Txt, unfocusedTextColor = Txt)
                 )
-                if (channels.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(typeFilters) { type ->
-                            FilterChip(
-                                selected = activeType == type,
-                                onClick = { activeType = type; activeGroup = "Todos" },
-                                label = { Text(type, maxLines = 1) },
-                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Accent, selectedLabelColor = Color(0xFF061019), containerColor = Panel, labelColor = Muted)
-                            )
-                        }
-                    }
-                }
                 if (groups.size > 1) {
                     Spacer(Modifier.height(10.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
