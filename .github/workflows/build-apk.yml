@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# Avoid two builds generating different signing keys at the same time.
+concurrency:
+  group: aurora-iptv-apk-build
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,19 +24,45 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Restore persistent Android debug signing key
-        uses: actions/cache@v4
+
+      # Keep the test signing key in a repository-scoped Actions cache.
+      # The file is generated once and then restored for every later build.
+      - name: Restore persistent test signing key
+        uses: actions/cache/restore@v4
         with:
-          path: ~/.android/debug.keystore
-          key: aurora-android-debug-signing-key-v1
+          path: .signing/aurora-debug.keystore
+          key: aurora-test-signing-key-v2
+
+      - name: Create test signing key if missing
+        run: |
+          mkdir -p .signing
+          if [ ! -f .signing/aurora-debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore .signing/aurora-debug.keystore \
+              -storepass auroraTestKey123 \
+              -alias aurora \
+              -keypass auroraTestKey123 \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=AURORA IPTV Test, OU=Development, O=AURORA IPTV, L=Divinopolis, ST=MG, C=BR"
+          fi
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+
+      - name: Save persistent test signing key
+        uses: actions/cache/save@v4
+        with:
+          path: .signing/aurora-debug.keystore
+          key: aurora-test-signing-key-v2
+
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/aurora-iptv.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
