@@ -100,4 +100,11 @@ class PlaylistTest {
             fail("Cancellation must stop parsing")
         } catch (_: InterruptedException) { assertEquals(3, checks) }
     }
+
+    @Test fun xmltvConvertsTimezonesAndRejectsInvalidDates() {
+        assertEquals(xmltvTime("20261011200000 -0300"), xmltvTime("20261011230000 +0000"))
+        assertTrue(xmltvTime("20261011230000 +0000") > 0)
+        assertEquals(0L, xmltvTime("not-a-date"))
+        assertEquals(0L, xmltvTime("20269911230000 +0000"))
+    }
 }

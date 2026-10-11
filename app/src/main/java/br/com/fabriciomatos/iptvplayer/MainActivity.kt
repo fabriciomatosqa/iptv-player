@@ -404,6 +404,7 @@ private fun GuideHeading() {
 
 @Composable
 private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
+    val now = guideClock()
     val scroll = rememberLazyListState()
     LaunchedEffect(model.selectedKind, model.favoritesOnly, model.group, model.search) { scroll.scrollToItem(0) }
     if (model.visible.isEmpty()) {
@@ -423,13 +424,13 @@ private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: B
     LazyColumn(modifier, state = scroll, contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         // Parser/cache de-duplicate URLs, so lazy keys are stable even for repeated provider entries.
         items(model.visible, key = { it.url }, contentType = { it.kind }) { channel ->
-            ChannelRow(channel, model, guideMode)
+            ChannelRow(channel, model, guideMode, now)
         }
     }
 }
 
 @Composable
-private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Boolean) {
+private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Boolean, now: Long) {
     val selected = channel.url == model.current?.url
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) Mint.copy(alpha = 0.12f) else Panel)
         .clickable { model.play(channel) }.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -445,7 +446,6 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
             if (!guideMode) Text(channel.group, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (guideMode) {
-            val now = System.currentTimeMillis()
             val shows = model.guide.forChannel(channel)
             val present = shows.firstOrNull { it.start <= now && it.end > now }
             val next = shows.firstOrNull { it.start > now }
@@ -471,7 +471,7 @@ private fun ProgrammeCell(programme: Programme?, modifier: Modifier, color: Colo
 @Composable
 private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
     val channel = model.current ?: return
-    val now = System.currentTimeMillis()
+    val now = guideClock()
     val show = model.guide.forChannel(channel).firstOrNull { it.start <= now && it.end > now }
     LazyColumn(modifier.clip(RoundedCornerShape(12.dp)).background(Panel), contentPadding = PaddingValues(10.dp)) {
         item { Text(channel.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2) }
@@ -481,6 +481,13 @@ private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
 }
 
 private fun time(value: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(value))
+
+@Composable
+private fun guideClock(): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(60000); now = System.currentTimeMillis() } }
+    return now
+}
 
 @Composable
 private fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: Boolean = false) {
