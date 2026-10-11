@@ -67,6 +67,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        @Suppress("DEPRECATION")
+        window.statusBarColor = android.graphics.Color.rgb(8, 13, 25)
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = android.graphics.Color.rgb(8, 13, 25)
         WindowInsetsControllerCompat(window, window.decorView).apply { isAppearanceLightStatusBars = false; isAppearanceLightNavigationBars = false }
         model = ViewModelProvider(this)[AuroraViewModel::class.java]
         setContent { AuroraApp(model) }
@@ -319,7 +323,7 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
         if (!compact) IconButton(onClick = { model.page = Page.HOME }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar ao início") }
         Column(Modifier.weight(1f)) {
             Text(if (model.favoritesOnly) "Favoritos" else model.selectedKind?.title ?: "Todos os conteúdos", fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 19.sp)
-            Text("${model.visible.size} itens", color = Muted, fontSize = 10.sp)
+            Text(if (model.visible.size == 1) "1 item" else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
         }
         IconButton(onClick = { model.refresh() }) { Icon(Icons.Default.Refresh, "Atualizar lista", tint = Cyan, modifier = Modifier.size(22.dp)) }
         if (!compact) IconButton(onClick = { model.settingsOpen = true }) { Icon(Icons.Default.Settings, "Minha playlist", tint = Muted) }

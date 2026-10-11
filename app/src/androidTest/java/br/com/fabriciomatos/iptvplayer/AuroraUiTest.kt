@@ -134,6 +134,10 @@ class AuroraUiTest {
         // Gradle uninstalls the target after tests, deleting its external-files directory.
         // Shell-owned captures in Download survive that cleanup for visual verification.
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        device.waitForIdle(3000)
+        // Android's window/surface rotation happens outside Compose's test clock.
+        android.os.SystemClock.sleep(600)
         val target = "/sdcard/Download/aurora-ui/$name.png"
         device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
         device.executeShellCommand("screencap -p $target")
