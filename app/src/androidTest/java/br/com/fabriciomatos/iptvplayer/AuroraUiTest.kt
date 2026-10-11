@@ -131,8 +131,12 @@ class AuroraUiTest {
     }
 
     private fun screenshot(name: String) {
-        val target = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "ui-checks")
-        target.mkdirs()
-        assertTrue(UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(File(target, "$name.png")))
+        // Gradle uninstalls the target after tests, deleting its external-files directory.
+        // Shell-owned captures in Download survive that cleanup for visual verification.
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        val target = "/sdcard/Download/aurora-ui/$name.png"
+        device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
+        device.executeShellCommand("screencap -p $target")
+        assertTrue(device.executeShellCommand("ls $target").contains("$name.png"))
     }
 }

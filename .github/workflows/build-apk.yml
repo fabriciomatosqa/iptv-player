@@ -87,7 +87,7 @@ jobs:
           disable-animations: true
           script: |
             gradle --no-daemon connectedDebugAndroidTest
-            adb pull /sdcard/Android/data/br.com.fabriciomatos.iptvplayer/files/ui-checks app/build/aurora-ui
+            adb pull /sdcard/Download/aurora-ui app/build/aurora-ui
 
       - name: Upload UI verification
         if: always() && github.event_name == 'pull_request'
@@ -97,6 +97,7 @@ jobs:
           path: |
             app/build/aurora-ui
             app/build/reports/androidTests
+            app/build/outputs/androidTest-results
             app/build/reports/tests
             app/build/reports/lint-results-debug.html
           retention-days: 14
