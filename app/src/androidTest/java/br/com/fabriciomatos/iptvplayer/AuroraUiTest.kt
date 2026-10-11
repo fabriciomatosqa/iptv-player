@@ -24,6 +24,7 @@ import kotlin.concurrent.thread
 
 /** Real HTTP video playback; no provider credentials or external network dependency. */
 @RunWith(AndroidJUnit4::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AuroraUiTest {
     @get:Rule val compose = createEmptyComposeRule()
 

@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 
 enum class Page { HOME, LIBRARY }
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AuroraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PlaylistRepository(application)
     var catalog by mutableStateOf(Catalog()); private set

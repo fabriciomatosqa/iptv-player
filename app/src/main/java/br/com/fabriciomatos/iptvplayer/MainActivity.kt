@@ -490,6 +490,7 @@ private fun guideClock(): Long {
 }
 
 @Composable
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: Boolean = false) {
     val player = model.player
     Box(modifier.clip(RoundedCornerShape(if (fullscreen) 0.dp else 12.dp)).background(Color.Black)) {
