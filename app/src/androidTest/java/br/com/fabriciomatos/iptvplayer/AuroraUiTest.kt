@@ -81,7 +81,8 @@ class AuroraUiTest {
             compose.waitUntil(15000) { model.initialized }
             compose.onNodeWithContentDescription("Configurações").performClick()
             compose.onNodeWithText("Endereço M3U / M3U8").performTextInput("$base/list.m3u")
-            compose.onNodeWithText("Salvar playlist").performClick()
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.onNodeWithText("Salvar playlist").performScrollTo().performClick()
             compose.waitUntil(15000) { model.catalog.channels.size == 3 && !model.loading }
             assertEquals("$base/list.m3u", context.getSharedPreferences("aurora_iptv_preferences", 0).getString("playlist_url", ""))
             screenshot("portrait-home")
@@ -117,11 +118,19 @@ class AuroraUiTest {
             }
             assertEquals(3, PlaylistRepository(context).readCache("$base/list.m3u").channels.size)
             assertTrue(PlaylistRepository(context).favorites().contains("$base/live/clip.mp4"))
+            scenario.close()
+            ActivityScenario.launch(MainActivity::class.java).use { reopened ->
+                lateinit var next: AuroraViewModel
+                reopened.onActivity { next = ViewModelProvider(it)[AuroraViewModel::class.java] }
+                compose.waitUntil(15000) { next.initialized && next.catalog.channels.size == 3 }
+                assertEquals("$base/list.m3u", next.playlistUrl)
+                assertTrue(next.favorites.contains("$base/live/clip.mp4"))
+            }
         } finally { scenario.close(); server.close() }
     }
 
     private fun screenshot(name: String) {
-        val target = File("/sdcard/Download/aurora-ui")
+        val target = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "ui-checks")
         target.mkdirs()
         assertTrue(UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(File(target, "$name.png")))
     }

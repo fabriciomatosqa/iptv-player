@@ -172,7 +172,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun play(channel: Channel) {
-        if (current?.url == channel.url && playbackError == null) { page = Page.LIBRARY; return }
+        if (current?.url == channel.url && playbackError == null && playerInstance?.playbackState != Player.STATE_ENDED && playerInstance?.playbackState != Player.STATE_IDLE) {
+            page = Page.LIBRARY; return
+        }
         playbackError = null; buffering = true; current = channel; recent = channel; page = Page.LIBRARY
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         try {
@@ -200,7 +202,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         .build().apply {
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) { buffering = state == Player.STATE_BUFFERING }
-                override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+                override fun onIsPlayingChanged(playing: Boolean) { this@AuroraViewModel.isPlaying = playing }
                 override fun onPlayerError(error: PlaybackException) {
                     buffering = false
                     playbackError = when (error.errorCode) {
