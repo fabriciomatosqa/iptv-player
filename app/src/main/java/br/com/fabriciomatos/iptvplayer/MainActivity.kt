@@ -1,658 +1,570 @@
 package br.com.fabriciomatos.iptvplayer
 
-import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.LiveTv
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import android.app.Activity
-import org.json.JSONArray
-import org.json.JSONObject
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.lifecycle.ViewModelProvider
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
+import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-private val Bg = Color(0xFF050B12)
-private val Panel = Color(0xFF101B26)
-private val Panel2 = Color(0xFF182A38)
-private val Accent = Color(0xFF45E6C4)
-private val AuroraCyan = Color(0xFF53C8FF)
-private val AuroraViolet = Color(0xFF9B7BFF)
-private val Muted = Color(0xFF9AAFC0)
-private val Txt = Color(0xFFF2FBFF)
-
-data class Channel(
-    val name: String,
-    val url: String,
-    val group: String = "Canais",
-    // Calculate once when the playlist is parsed (on an IO thread), not on every UI filter.
-    val contentType: String = classifyContentType(name, group, url),
-    val imageUrl: String = ""
-)
-
-/**
- * Classifies using the playlist's group metadata first, then episode/title and URL
- * patterns. Unknown entries stay in "Outros" instead of being incorrectly labeled live.
- */
-private fun normalizeForClassification(value: String): String =
-    java.text.Normalizer.normalize(value.lowercase(), java.text.Normalizer.Form.NFD)
-        .replace(Regex("\\p{Mn}+"), "")
-        .replace(Regex("[^a-z0-9]+"), " ")
-        .trim()
-
-private fun containsAny(value: String, terms: List<String>): Boolean =
-    terms.any { term -> value.contains(term) }
-
-private fun classifyContentType(name: String, group: String, url: String): String {
-    val normalizedName = normalizeForClassification(name)
-    val normalizedGroup = normalizeForClassification(group)
-
-    val seriesGroups = listOf(
-        "series", "serie", "seriados", "tv shows", "tv show", "shows", "temporadas",
-        "novelas", "anime", "animes", "desenhos", "cartoons", "episodios"
-    )
-    val movieGroups = listOf(
-        "filmes", "filme", "movies", "movie", "vod filmes", "vod movies",
-        "cinema", "lancamentos", "catalogo de filmes", "film"
-    )
-    val liveGroups = listOf(
-        "ao vivo", "live", "iptv", "tv aberta", "tv fechada",
-        "televisao", "esportes", "esporte", "sports", "sport", "noticias", "news",
-        "radio", "radios"
-    )
-
-    // Specific series/movie groups are the strongest metadata signal.
-    if (containsAny(normalizedGroup, seriesGroups)) return "Séries"
-    if (containsAny(normalizedGroup, movieGroups)) return "Filmes"
-
-    // Episode markers commonly used in playlist names.
-    if (Regex("""\bs\d{1,2}\s*e\d{1,3}\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
-        Regex("""\b\d{1,2}\s*x\s*\d{1,3}\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalizedName) ||
-        containsAny(normalizedName, listOf("temporada", "episodio", "episodios", "capitulo", "capitulos", "serie completa"))) {
-        return "Séries"
-    }
-
-    // Xtream-style URL paths can override a generic group like "Canais".
-    if (Regex("""/series/|/episode/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Séries"
-    if (Regex("""/movie/|/movies/|/vod/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Filmes"
-    if (Regex("""/live/""", RegexOption.IGNORE_CASE).containsMatchIn(url)) return "Ao vivo"
-
-    // Direct VOD file links; .ts is excluded because it is common for live TV.
-    if (Regex("""\.(mp4|mkv|avi|mov|m4v|wmv|webm)(\?|#|$)""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
-        return "Filmes"
-    }
-
-    // Useful title clues when providers omit group-title metadata.
-    if (containsAny(normalizedName, listOf("filme", "movie", "cinema", "documentario"))) return "Filmes"
-    if (containsAny(normalizedName, listOf("anime episodio", "episodio", "temporada", "novela capitulo"))) return "Séries"
-
-    // Generic live groups are a fallback, not a reason to override explicit VOD clues.
-    if (normalizedGroup == "tv" || normalizedGroup.startsWith("tv ") ||
-        containsAny(normalizedGroup, liveGroups) ||
-        normalizedGroup == "canais" || normalizedGroup == "canal") return "Ao vivo"
-
-    return "Outros"
-}
+internal val Bg = Color(0xFF080D19)
+private val Panel = Color(0xFF131D2D)
+private val Elevated = Color(0xFF1B293E)
+private val Cyan = Color(0xFF56D8F9)
+private val Mint = Color(0xFF51E5BE)
+private val Violet = Color(0xFFA28AFF)
+private val Txt = Color(0xFFF1F6FE)
+private val Muted = Color(0xFF99ACC6)
+private val Gold = Color(0xFFFFD378)
+private val Shape = RoundedCornerShape(20.dp)
 
 class MainActivity : ComponentActivity() {
+    private lateinit var model: AuroraViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = android.graphics.Color.rgb(5, 11, 18)
-        window.navigationBarColor = android.graphics.Color.rgb(5, 11, 18)
-        setContent { AuroraApp() }
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        @Suppress("DEPRECATION")
+        window.statusBarColor = android.graphics.Color.rgb(8, 13, 25)
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = android.graphics.Color.rgb(8, 13, 25)
+        WindowInsetsControllerCompat(window, window.decorView).apply { isAppearanceLightStatusBars = false; isAppearanceLightNavigationBars = false }
+        model = ViewModelProvider(this)[AuroraViewModel::class.java]
+        setContent { AuroraApp(model) }
     }
+    override fun onStart() { super.onStart(); if (::model.isInitialized) model.foreground(true) }
+    override fun onStop() { if (::model.isInitialized && !isChangingConfigurations) model.foreground(false); super.onStop() }
 }
 
 @Composable
-private fun AuroraApp() {
-    val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var playlistUrl by remember { mutableStateOf("") }
-    var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
-    var search by remember { mutableStateOf("") }
-    var activeGroup by remember { mutableStateOf("Todos") }
-    var activeType by remember { mutableStateOf("Todos") }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var current by remember { mutableStateOf<Channel?>(null) }
-    var editPlaylist by remember { mutableStateOf(true) }
-    var activePlaylistUrl by remember { mutableStateOf("") }
-    var favorites by remember {
-        mutableStateOf(
-            context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-                .getStringSet("favorite_urls", emptySet()).orEmpty().toSet()
-        )
-    }
-
-    // Show the local copy immediately. A server refresh must never block the cached list.
-    LaunchedEffect(Unit) {
-        val preferences = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-        val savedUrl = preferences.getString("playlist_url", "").orEmpty()
-        if (savedUrl.isNotBlank()) {
-            playlistUrl = savedUrl
-            activePlaylistUrl = savedUrl
-            val cachedChannels = withContext(Dispatchers.IO) { readCachedChannels(context) }
-            if (cachedChannels.isNotEmpty()) {
-                channels = cachedChannels
-                editPlaylist = false
-            } else {
-                loading = true
-            }
-            try {
-                val freshChannels = withContext(Dispatchers.IO) { loadM3u(savedUrl) }
-                if (freshChannels.isNotEmpty()) {
-                    channels = freshChannels
-                    withContext(Dispatchers.IO) { saveCachedChannels(context, freshChannels) }
-                    editPlaylist = false
-                } else if (cachedChannels.isEmpty()) {
-                    error = "A lista não trouxe canais válidos. Confira o endereço em Editar lista."
-                    editPlaylist = true
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                if (cachedChannels.isEmpty()) {
-                    error = "Não consegui atualizar a lista. Confira sua conexão ou o link em Editar lista."
-                    editPlaylist = true
-                }
-            } finally {
-                loading = false
-            }
-        }
-    }
-
-    // Periodic background refresh, separate from startup and manual loading.
-    LaunchedEffect(activePlaylistUrl) {
-        if (activePlaylistUrl.isNotBlank()) {
-            while (true) {
-                delay(15 * 60 * 1000L)
-                try {
-                    val freshChannels = withContext(Dispatchers.IO) { loadM3u(activePlaylistUrl) }
-                    if (freshChannels.isNotEmpty()) {
-                        withContext(Dispatchers.IO) { saveCachedChannels(context, freshChannels) }
-                        channels = freshChannels
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // Keep the existing list and playback unchanged on refresh errors.
-                }
-            }
-        }
-    }
-
-    var groups by remember { mutableStateOf(listOf("Todos")) }
-    var visible by remember { mutableStateOf<List<Channel>>(emptyList()) }
-
-    // Large playlists can contain tens of thousands of entries. Build group filters
-    // away from the main thread so loading a playlist does not freeze the interface.
-    LaunchedEffect(channels) {
-        groups = withContext(Dispatchers.Default) {
-            listOf("Todos") + channels.asSequence()
-                .map { it.group }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .sorted()
-                .toList()
-        }
-    }
-
-    // Filtering and text search are also CPU work; never run them on the UI thread.
-    LaunchedEffect(channels, search, activeGroup, activeType, favorites) {
-        visible = withContext(Dispatchers.Default) {
-            channels.filter { channel ->
-                (activeType == "Favoritos" && channel.url in favorites ||
-                    activeType == "Todos" ||
-                    (activeType != "Favoritos" && channel.contentType == activeType)) &&
-                    (activeGroup == "Todos" || channel.group == activeGroup) &&
-                    (search.isBlank() || channel.name.contains(search, true) || channel.group.contains(search, true))
-            }
-        }
-    }
-
-    MaterialTheme(colorScheme = darkColorScheme(primary = Accent, background = Bg, surface = Panel, onBackground = Txt, onSurface = Txt)) {
-        Column(Modifier.fillMaxSize().background(Bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
-            Row(
-                Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF102C35), Color(0xFF101426), Color(0xFF201735)))).padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(AuroraCyan, Accent, AuroraViolet))), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.LiveTv, null, tint = Color(0xFF061019), modifier = Modifier.size(27.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("AURORA", fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = Txt)
-                    Text("IPTV", fontSize = 10.sp, letterSpacing = 3.sp, color = Accent, fontWeight = FontWeight.Bold)
-                }
-                Text("BOREAL", color = AuroraCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
-
-            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                Spacer(Modifier.height(18.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    listOf("Ao vivo", "Filmes", "Séries", "Favoritos").forEach { type ->
-                        val selected = activeType == type
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(
-                                    if (selected) Brush.linearGradient(listOf(Accent, AuroraCyan))
-                                    else Brush.linearGradient(listOf(Panel2, Panel))
-                                )
-                                .clickable {
-                                    activeType = type
-                                    activeGroup = "Todos"
-                                }
-                                .padding(horizontal = 4.dp, vertical = 10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = when (type) {
-                                    "Ao vivo" -> Icons.Default.LiveTv
-                                    "Favoritos" -> Icons.Default.Star
-                                    else -> Icons.Default.PlayArrow
-                                },
-                                contentDescription = null,
-                                tint = if (selected) Color(0xFF061019) else if (type == "Filmes") AuroraViolet else if (type == "Favoritos") Color(0xFFFFD166) else AuroraCyan,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = type,
-                                color = if (selected) Color(0xFF061019) else Txt,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-
-                if (channels.isEmpty() || editPlaylist) {
-                    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("SUA PLAYLIST M3U", color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
-                            Spacer(Modifier.height(10.dp))
-                            OutlinedTextField(
-                                value = playlistUrl, onValueChange = { playlistUrl = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("https://servidor.com/lista.m3u", color = Muted, fontSize = 13.sp) },
-                                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                                shape = RoundedCornerShape(13.dp),
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Accent, unfocusedBorderColor = Color(0xFF303B4E), focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Accent)
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            Button(
-                                onClick = {
-                                    error = null
-                                    loading = true
-                                    scope.launch {
-                                        try {
-                                            val enteredUrl = playlistUrl.trim()
-                                            val loaded = withContext(Dispatchers.IO) { loadM3u(enteredUrl) }
-                                            if (loaded.isEmpty()) {
-                                                error = "O endereço respondeu, mas não encontrei canais válidos na M3U."
-                                            } else {
-                                                channels = loaded
-                                                withContext(Dispatchers.IO) { saveCachedChannels(context, loaded) }
-                                                context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-                                                    .edit().putString("playlist_url", enteredUrl).apply()
-                                                activePlaylistUrl = enteredUrl
-                                                activeGroup = "Todos"
-                                                activeType = "Todos"
-                                                editPlaylist = false
-                                                error = null
-                                            }
-                                        } catch (e: CancellationException) {
-                                            throw e
-                                        } catch (e: Exception) {
-                                            error = e.message?.takeIf { it.isNotBlank() } ?: "Não consegui carregar. Confira o link e tente novamente."
-                                        } finally { loading = false }
-                                    }
-                                },
-                                enabled = !loading && playlistUrl.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth().height(49.dp),
-                                shape = RoundedCornerShape(13.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Accent)
-                            ) {
-                                if (loading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Txt)
-                                    Spacer(Modifier.width(9.dp))
-                                    Text("Carregando…")
-                                } else {
-                                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Carregar playlist", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            if (error != null) {
-                                Spacer(Modifier.height(8.dp))
-                                Text(error!!, color = Color(0xFFFF8585), fontSize = 12.sp)
-                            }
-                        }
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("${channels.size} itens disponíveis", color = Txt, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                            Text("Playlist salva neste aparelho", color = Accent, fontSize = 12.sp)
-                        }
-                        TextButton(onClick = { editPlaylist = true }) { Text("Editar lista", color = AuroraCyan) }
-                    }
-                }
-
-                Spacer(Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Buscar canal…", color = Muted) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Muted) },
-                    singleLine = true, shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Accent, unfocusedBorderColor = Color(0xFF273246), focusedTextColor = Txt, unfocusedTextColor = Txt)
-                )
-                if (groups.size > 1) {
-                    Spacer(Modifier.height(10.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(groups) { group ->
-                            FilterChip(
-                                selected = activeGroup == group,
-                                onClick = { activeGroup = group },
-                                label = { Text(group, maxLines = 1) },
-                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Accent, selectedLabelColor = Txt, containerColor = Panel, labelColor = Muted)
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                if (channels.isEmpty() && error == null && !loading) {
-                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.LiveTv, null, tint = Color(0xFF38465F), modifier = Modifier.size(62.dp))
-                            Spacer(Modifier.height(12.dp))
-                            Text("Sua lista vai aparecer aqui", color = Muted, fontWeight = FontWeight.Medium)
-                            Text("Use um link M3U válido para carregar os canais.", color = Color(0xFF65738A), fontSize = 12.sp)
-                        }
-                    }
-                } else {
-                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(visible, key = { it.url }) { channel ->
-                            Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(Panel)
-                                    .clickable { current = channel }.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (channel.imageUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = channel.imageUrl,
-                                        contentDescription = "Imagem do conteúdo",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.size(width = 68.dp, height = 88.dp)
-                                            .clip(RoundedCornerShape(10.dp)).background(Panel2)
-                                    )
-                                } else {
-                                    Box(Modifier.size(68.dp, 88.dp).clip(RoundedCornerShape(10.dp)).background(Panel2), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.LiveTv, null, tint = AuroraCyan, modifier = Modifier.size(27.dp))
-                                    }
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(channel.name, color = Txt, fontWeight = FontWeight.SemiBold, maxLines = 2, fontSize = 14.sp)
-                                    Spacer(Modifier.height(5.dp))
-                                    Text(channel.group, color = Muted, fontSize = 11.sp, maxLines = 2)
-                                }
-                                IconButton(onClick = {
-                                    val updated = if (channel.url in favorites) favorites - channel.url else favorites + channel.url
-                                    favorites = updated
-                                    context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-                                        .edit().putStringSet("favorite_urls", updated).apply()
-                                }) {
-                                    Icon(
-                                        imageVector = if (channel.url in favorites) Icons.Default.Star else Icons.Default.StarBorder,
-                                        contentDescription = if (channel.url in favorites) "Remover dos favoritos" else "Adicionar aos favoritos",
-                                        tint = if (channel.url in favorites) Color(0xFFFFD166) else Muted
-                                    )
-                                }
-                                Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(26.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        current?.let { channel -> PlayerDialog(channel) { current = null } }
-    }
-}
-
-private fun saveCachedChannels(context: android.content.Context, channels: List<Channel>) {
-    // Store one JSON object per line. Never build one enormous JSON string in memory.
-    val target = java.io.File(context.filesDir, "aurora_playlist_cache.jsonl")
-    val temp = java.io.File(context.filesDir, "aurora_playlist_cache.tmp")
-    try {
-        temp.bufferedWriter(Charsets.UTF_8).use { writer ->
-            channels.forEach { channel ->
-                writer.append(JSONObject()
-                    .put("name", channel.name)
-                    .put("url", channel.url)
-                    .put("group", channel.group)
-                    .put("imageUrl", channel.imageUrl)
-                    .toString())
-                writer.newLine()
-            }
-        }
-        if (target.exists() && !target.delete()) {
-            throw java.io.IOException("Não foi possível substituir o cache antigo.")
-        }
-        if (!temp.renameTo(target)) {
-            // Same-directory copy fallback for devices/filesystems where rename fails.
-            temp.inputStream().use { input ->
-                target.outputStream().buffered().use { output -> input.copyTo(output) }
-            }
-            temp.delete()
-        }
-        // Remove the old giant SharedPreferences value after a successful file save.
-        context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-            .edit().remove("playlist_cache").apply()
-    } catch (_: Exception) {
-        temp.delete()
-        // A cache failure must not prevent playback of the freshly loaded playlist.
-    }
-}
-
-private fun readCachedChannels(context: android.content.Context): List<Channel> {
-    val file = java.io.File(context.filesDir, "aurora_playlist_cache.jsonl")
-    if (file.exists() && file.length() > 0L) {
-        return try {
-            val result = ArrayList<Channel>()
-            file.bufferedReader(Charsets.UTF_8).useLines { lines ->
-                lines.forEach { line ->
-                    if (line.isNotBlank()) {
-                        try {
-                            val item = JSONObject(line)
-                            val name = item.optString("name")
-                            val url = item.optString("url")
-                            if (name.isNotBlank() && url.isNotBlank()) {
-                                result.add(Channel(name, url, item.optString("group", "Canais"), imageUrl = item.optString("imageUrl", "")))
-                            }
-                        } catch (_: Exception) {
-                            // Ignore a malformed cache line and continue with the remaining entries.
-                        }
-                    }
-                }
-            }
-            result
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    // Compatibility with older releases: only parse a legacy cache of manageable size.
-    return try {
-        val preferences = context.getSharedPreferences("aurora_iptv_preferences", android.content.Context.MODE_PRIVATE)
-        val raw = preferences.getString("playlist_cache", null)
-        if (!raw.isNullOrBlank() && raw.length <= 8 * 1024 * 1024) {
-            val array = JSONArray(raw)
-            val result = ArrayList<Channel>(array.length())
-            for (index in 0 until array.length()) {
-                val item = array.optJSONObject(index) ?: continue
-                val name = item.optString("name")
-                val url = item.optString("url")
-                if (name.isNotBlank() && url.isNotBlank()) {
-                    result.add(Channel(name, url, item.optString("group", "Canais"), imageUrl = item.optString("imageUrl", "")))
-                }
-            }
-            result
-        } else {
-            emptyList()
-        }
-    } catch (_: Exception) {
-        emptyList()
-    }
-}
-
-private fun loadM3u(source: String): List<Channel> {
-    require(source.startsWith("http://", true) || source.startsWith("https://", true)) {
-        "Use um link HTTP ou HTTPS."
-    }
-    val connection = (URL(source).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 15000
-        readTimeout = 25000
-        setRequestProperty("User-Agent", "AuroraIPTV/1.0 Android")
-        instanceFollowRedirects = true
-    }
-    try {
-        connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-            val result = mutableListOf<Channel>()
-            var name = "Canal"
-            var group = "Canais"
-            var imageUrl = ""
-            var pending = false
-            reader.forEachLine { raw ->
-                val line = raw.trim()
-                when {
-                    line.startsWith("#EXTINF", true) -> {
-                        // Keep the original parser behavior from the previously working version.
-                        name = line.substringAfterLast(",").trim().ifBlank { "Canal" }
-                        group = Regex("""group-title=["']([^"']*)["']""", RegexOption.IGNORE_CASE)
-                            .find(line)?.groupValues?.getOrNull(1)?.trim().orEmpty().ifBlank { "Canais" }
-                        imageUrl = Regex("""(?:tvg-logo|logo|poster|cover|tvg-logo-url)=["']([^"']*)["']""", RegexOption.IGNORE_CASE)
-                            .find(line)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-                        pending = true
-                    }
-                    line.isNotEmpty() && !line.startsWith("#") && pending &&
-                        (line.startsWith("http://", true) || line.startsWith("https://", true)) -> {
-                        result.add(Channel(name, line, group, imageUrl = imageUrl))
-                        pending = false
-                    }
-                }
-            }
-            return result
-        }
-    } finally {
-        connection.disconnect()
-    }
-}
-
-@Composable
-private fun PlayerDialog(channel: Channel, onDismiss: () -> Unit) {
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val context = androidx.compose.ui.platform.LocalContext.current
-    DisposableEffect(isLandscape) {
-        val window = (context as? Activity)?.window
+internal fun AuroraApp(model: AuroraViewModel) {
+    val context = LocalContext.current
+    DisposableEffect(model.fullscreen) {
+        val window = (context as? ComponentActivity)?.window
         val controller = window?.let { WindowInsetsControllerCompat(it, it.decorView) }
-        if (isLandscape) controller?.hide(WindowInsetsCompat.Type.systemBars())
-        else controller?.show(WindowInsetsCompat.Type.systemBars())
+        if (model.fullscreen) {
+            controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller?.hide(WindowInsetsCompat.Type.systemBars())
+        } else controller?.show(WindowInsetsCompat.Type.systemBars())
         onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
     }
-    val player = remember(channel.url) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.parse(channel.url)))
-            prepare()
-            playWhenReady = true
-        }
+    BackHandler(enabled = model.settingsOpen || model.fullscreen || model.page != Page.HOME || model.current != null) {
+        when { model.settingsOpen -> model.settingsOpen = false
+            model.fullscreen -> model.fullscreen = false
+            model.page != Page.HOME -> model.page = Page.HOME
+            else -> model.stop() }
     }
-    DisposableEffect(player) { onDispose { player.release() } }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(
-            Modifier.fillMaxSize()
-                .padding(if (isLandscape) 0.dp else 12.dp)
-                .clip(RoundedCornerShape(if (isLandscape) 0.dp else 20.dp))
-                .background(Color(0xFF0B1019))
-        ) {
-            if (!isLandscape) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.LiveTv, null, tint = Accent)
-                    Spacer(Modifier.width(9.dp))
-                    Text(channel.name, color = Txt, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.ArrowBack, "Fechar", tint = Txt) }
+    MaterialTheme(colorScheme = darkColorScheme(primary = Mint, secondary = Cyan, tertiary = Violet,
+        background = Bg, surface = Panel, onPrimary = Bg, onBackground = Txt, onSurface = Txt, outline = Elevated)) {
+        Surface(Modifier.fillMaxSize(), color = Bg) {
+            if (model.fullscreen && model.current != null) {
+                Box(Modifier.fillMaxSize()) {
+                    VideoPane(model, Modifier.fillMaxSize(), fullscreen = true)
+                }
+            } else {
+                BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                    val wide = maxWidth >= 600.dp && maxWidth > maxHeight
+                    if (model.page == Page.HOME) Home(model, wide) else Library(model, wide)
                 }
             }
-            AndroidView(
-                factory = { viewContext -> PlayerView(viewContext).apply {
-                    this.player = player
-                    useController = true
-                    setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
-                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                } },
-                update = { view -> view.player = player },
-                modifier = if (isLandscape) Modifier.fillMaxSize() else Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-            )
-            if (!isLandscape) {
-                Text(channel.group, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(14.dp))
+            if (model.settingsOpen) PlaylistSettings(model)
+        }
+    }
+}
+
+@Composable
+private fun Logo(modifier: Modifier = Modifier) {
+    Image(painterResource(R.mipmap.aurora_launcher), "Logo do AURORA IPTV", modifier.clip(RoundedCornerShape(16.dp)))
+}
+
+@Composable
+private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(60000) } }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = if (wide) 8.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Logo(Modifier.size(if (wide) 50.dp else 54.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text("AURORA IPTV", fontWeight = FontWeight.Black, fontSize = if (wide) 19.sp else 21.sp, letterSpacing = 1.sp)
+            Text(if (model.loading) "Atualizando sua lista…" else if (model.playlistUrl.isBlank()) "Seu conteúdo, do seu jeito" else model.playlistName,
+                color = if (model.loading) Mint else Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (wide) {
+            Column(horizontalAlignment = Alignment.End) {
+                Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(now)), fontSize = 24.sp, fontWeight = FontWeight.Light)
+                Text(SimpleDateFormat("EEE, dd MMM", Locale("pt", "BR")).format(Date(now)), fontSize = 11.sp, color = Muted)
+            }
+        } else IconButton(onClick = { model.settingsOpen = true }) { Icon(Icons.Default.Settings, "Configurações", tint = Muted) }
+    }
+}
+
+@Composable
+private fun Home(model: AuroraViewModel, wide: Boolean) {
+    Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF102A35), Bg, Color(0xFF19142E))))) {
+        BrandHeader(model, wide)
+        if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = Mint, trackColor = Panel)
+        if (wide) {
+            Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CategoryCard(MediaKind.LIVE.title, "Assista aos seus canais", Icons.Default.LiveTv, listOf(Cyan, Mint),
+                    model.catalog.byKind[MediaKind.LIVE].orEmpty().size, Modifier.weight(0.9f).fillMaxHeight(), large = true) { model.browse(MediaKind.LIVE) }
+                Column(Modifier.weight(1.45f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)),
+                        model.catalog.byKind[MediaKind.MOVIES].orEmpty().size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.MOVIES) }
+                    CategoryCard("Séries", "Escolha o próximo episódio", Icons.Default.VideoLibrary, listOf(Mint, Cyan),
+                        model.catalog.byKind[MediaKind.SERIES].orEmpty().size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.SERIES) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SmallAction("Favoritos", Icons.Default.Star, Modifier.weight(1f)) { model.browse(null, true) }
+                        SmallAction("Minha playlist", Icons.AutoMirrored.Filled.List, Modifier.weight(1f)) { model.settingsOpen = true }
+                    }
+                }
+                RecentCard(model, Modifier.weight(1f).fillMaxHeight())
+            }
+            model.message?.let { Text(it, color = Gold, fontSize = 11.sp, maxLines = 2, modifier = Modifier.padding(horizontal = 20.dp)) }
+        } else {
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                item {
+                    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Logo(Modifier.size(90.dp))
+                        Spacer(Modifier.height(12.dp))
+                        Text("O que vamos assistir?", fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                        Text(if (model.catalog.channels.isEmpty()) "Cadastre sua playlist para começar" else "${model.catalog.channels.size} conteúdos disponíveis",
+                            fontSize = 13.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+                item { CategoryCard("Ao vivo", "Canais em tempo real", Icons.Default.LiveTv, listOf(Cyan, Mint), model.catalog.byKind[MediaKind.LIVE].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.LIVE) } }
+                item { CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)), model.catalog.byKind[MediaKind.MOVIES].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.MOVIES) } }
+                item { CategoryCard("Séries", "Escolha o próximo episódio", Icons.Default.VideoLibrary, listOf(Mint, Cyan), model.catalog.byKind[MediaKind.SERIES].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.SERIES) } }
+                item { PlaylistSummary(model) }
+                if (model.current != null || model.recent != null) item { RecentCard(model, Modifier.fillMaxWidth().height(130.dp)) }
+                model.message?.let { message -> item { Text(message, fontSize = 12.sp, color = Gold) } }
+            }
+        }
+        HomeNavigation(model)
+    }
+}
+
+@Composable
+private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, colors: List<Color>, count: Int, modifier: Modifier, large: Boolean = false, onClick: () -> Unit) {
+    val card = modifier.clip(Shape).background(Brush.linearGradient(colors.map { it.copy(alpha = 0.23f) }))
+        .border(1.dp, colors.first().copy(alpha = 0.32f), Shape).clickable(onClick = onClick).padding(18.dp)
+    if (large) Column(card, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Icon(icon, null, tint = colors.first(), modifier = Modifier.size(60.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 25.sp)
+        Text(subtitle, fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
+        Text(if (count == 1) "1 canal" else "$count canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+    } else Row(card, verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(colors.first().copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = colors.first(), modifier = Modifier.size(28.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text(subtitle, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Icon(Icons.Default.ChevronRight, null, tint = colors.first())
+    }
+}
+
+@Composable
+private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp)).background(Panel).clickable(onClick = onClick).padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        Icon(icon, null, tint = Cyan, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(title, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun PlaylistSummary(model: AuroraViewModel) {
+    Row(Modifier.fillMaxWidth().clip(Shape).background(Panel).clickable { model.settingsOpen = true }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.AutoMirrored.Filled.List, null, tint = Mint)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Minha playlist", fontWeight = FontWeight.SemiBold)
+            Text(if (model.playlistUrl.isBlank()) "Cadastrar endereço M3U" else "Endereço salvo neste aparelho", color = Muted, fontSize = 12.sp)
+        }
+        Icon(Icons.Default.ChevronRight, null, tint = Muted)
+    }
+}
+
+@Composable
+private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
+    val channel = model.current ?: model.recent ?: model.catalog.byKind[MediaKind.MOVIES]?.firstOrNull() ?: model.catalog.channels.firstOrNull()
+    val saved = model.playlistUrl.isNotBlank()
+    Box(modifier.clip(Shape).background(Panel).clickable {
+        when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.settingsOpen = true }
+    }) {
+        if (channel?.imageUrl?.isNotBlank() == true) AsyncImage(channel.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Bg.copy(alpha = 0.98f)))))
+        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+            Icon(if (channel == null) Icons.Default.PlayCircle else Icons.Default.PlayArrow, null, tint = Mint, modifier = Modifier.size(30.dp))
+            Text(when { channel == null -> "Minha playlist"; model.current != null -> "Em reprodução"; model.recent != null -> "Último conteúdo"; else -> "Em destaque" }, fontSize = 11.sp, color = Mint)
+            Text(channel?.name ?: if (saved) "Carregar lista salva" else "Adicione sua M3U", fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 16.sp)
+            Text(channel?.group ?: if (saved) "Seu endereço já está salvo" else "Sua lista fica salva aqui", fontSize = 11.sp, color = Muted, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun HomeNavigation(model: AuroraViewModel) {
+    Row(Modifier.fillMaxWidth().background(Bg.copy(alpha = 0.7f)).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+        NavigationItem("Início", Icons.Default.Home, true) { model.page = Page.HOME }
+        NavigationItem("Buscar", Icons.Default.Search) { model.browse(null) }
+        NavigationItem("Favoritos", Icons.Default.Star) { model.browse(null, true) }
+        NavigationItem("Atualizar", Icons.Default.Refresh) { model.refresh() }
+        NavigationItem("Playlist", Icons.AutoMirrored.Filled.List) { model.settingsOpen = true }
+    }
+}
+
+@Composable
+private fun NavigationItem(title: String, icon: ImageVector, selected: Boolean = false, onClick: () -> Unit) {
+    Column(Modifier.widthIn(min = 48.dp).heightIn(min = 52.dp).clickable(onClick = onClick).padding(vertical = 7.dp, horizontal = 3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Icon(icon, title, tint = if (selected) Mint else Muted, modifier = Modifier.size(20.dp))
+        Text(title, fontSize = 10.sp, color = if (selected) Mint else Muted)
+    }
+}
+
+@Composable
+private fun Library(model: AuroraViewModel, wide: Boolean) {
+    if (wide) {
+        Row(Modifier.fillMaxSize()) {
+            NavigationRail(model, Modifier.width(102.dp).fillMaxHeight())
+            VerticalDivider(color = Elevated)
+            GroupPanel(model, Modifier.widthIn(min = 135.dp, max = 190.dp).weight(0.7f).fillMaxHeight())
+            VerticalDivider(color = Elevated)
+            Column(Modifier.weight(2.4f).fillMaxHeight().padding(horizontal = 12.dp)) {
+                LibraryToolbar(model, compact = true)
+                if (model.current != null) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 100.dp).weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        VideoPane(model, Modifier.weight(1.7f).fillMaxHeight())
+                        CurrentProgramme(model, Modifier.weight(1f).fillMaxHeight())
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    GuideHeading()
+                    ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = true)
+                } else {
+                    SearchBox(model)
+                    if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
+                    ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = true)
+                }
+            }
+        }
+    } else {
+        Column(Modifier.fillMaxSize()) {
+            LibraryToolbar(model)
+            if (model.current != null) {
+                VideoPane(model, Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(model.current!!.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    IconButton(onClick = { model.stop() }, Modifier.size(48.dp)) { Icon(Icons.Default.Close, "Fechar vídeo", tint = Muted) }
+                }
+            }
+            SearchBox(model, Modifier.padding(horizontal = 16.dp))
+            TypeChips(model)
+            val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
+            if (groups.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { GroupChip("Todos", model.group == null) { model.selectGroup(null) } }
+                items(groups, key = { it }) { group -> GroupChip(group, model.group == group) { model.selectGroup(group) } }
+            }
+            if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = Mint)
+            ChannelList(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), guideMode = model.current != null)
+        }
+    }
+}
+
+@Composable
+private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = if (compact) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (!compact) IconButton(onClick = { model.page = Page.HOME }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar ao início") }
+        Column(Modifier.weight(1f)) {
+            Text(if (model.favoritesOnly) "Favoritos" else model.selectedKind?.title ?: "Todos os conteúdos", fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 19.sp)
+            Text(if (model.visible.size == 1) "1 item" else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
+        }
+        IconButton(onClick = { model.refresh() }) { Icon(Icons.Default.Refresh, "Atualizar lista", tint = Cyan, modifier = Modifier.size(22.dp)) }
+        if (!compact) IconButton(onClick = { model.settingsOpen = true }) { Icon(Icons.Default.Settings, "Minha playlist", tint = Muted) }
+    }
+}
+
+@Composable
+private fun NavigationRail(model: AuroraViewModel, modifier: Modifier) {
+    LazyColumn(modifier.background(Panel.copy(alpha = 0.5f)), contentPadding = PaddingValues(vertical = 8.dp)) {
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Logo(Modifier.size(48.dp)) } }
+        item { RailItem("Início", Icons.Default.Home, false) { model.page = Page.HOME } }
+        item { RailItem("Buscar", Icons.Default.Search, model.selectedKind == null && !model.favoritesOnly) { model.browse(null) } }
+        item { RailItem("Ao vivo", Icons.Default.LiveTv, model.selectedKind == MediaKind.LIVE && !model.favoritesOnly) { model.browse(MediaKind.LIVE) } }
+        item { RailItem("Filmes", Icons.Default.Movie, model.selectedKind == MediaKind.MOVIES && !model.favoritesOnly) { model.browse(MediaKind.MOVIES) } }
+        item { RailItem("Séries", Icons.Default.VideoLibrary, model.selectedKind == MediaKind.SERIES && !model.favoritesOnly) { model.browse(MediaKind.SERIES) } }
+        item { RailItem("Favoritos", Icons.Default.Star, model.favoritesOnly) { model.browse(null, true) } }
+        item { RailItem("Playlist", Icons.Default.Settings, false) { model.settingsOpen = true } }
+    }
+}
+
+@Composable
+private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent)
+        .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = if (selected) Mint else Muted, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(title, color = if (selected) Txt else Muted, fontSize = 11.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
+    val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
+    LazyColumn(modifier, contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        item { Text("CATEGORIAS", color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
+        item { GroupRow("Todos", model.group == null) { model.selectGroup(null) } }
+        items(groups, key = { it }) { category -> GroupRow(category, model.group == category) { model.selectGroup(category) } }
+    }
+}
+
+@Composable
+private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
+    Text(title, color = if (selected) Mint else Txt, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
+            .background(if (selected) Elevated else Color.Transparent).clickable(onClick = onClick).padding(10.dp))
+}
+
+@Composable
+private fun SearchBox(model: AuroraViewModel, modifier: Modifier = Modifier) {
+    OutlinedTextField(value = model.search, onValueChange = model::search, modifier = modifier.fillMaxWidth(),
+        placeholder = { Text("Buscar canal, filme ou série", fontSize = 13.sp, color = Muted) },
+        leadingIcon = { Icon(Icons.Default.Search, "Buscar", tint = Muted) },
+        trailingIcon = { if (model.search.isNotEmpty()) IconButton(onClick = { model.search("") }) { Icon(Icons.Default.Close, "Limpar busca") } },
+        singleLine = true, shape = RoundedCornerShape(14.dp), textStyle = LocalTextStyle.current.copy(fontSize = 14.sp))
+}
+
+@Composable
+private fun TypeChips(model: AuroraViewModel) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { GroupChip("Todos", model.selectedKind == null && !model.favoritesOnly) { model.browse(null) } }
+        items(listOf(MediaKind.LIVE, MediaKind.MOVIES, MediaKind.SERIES)) { kind ->
+            GroupChip(kind.title, model.selectedKind == kind && !model.favoritesOnly) { model.browse(kind) }
+        }
+        item { GroupChip("★ Favoritos", model.favoritesOnly) { model.browse(null, true) } }
+    }
+}
+
+@Composable
+private fun GroupChip(title: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(selected, onClick, label = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp) },
+        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Mint.copy(alpha = 0.18f), selectedLabelColor = Mint, labelColor = Muted))
+}
+
+@Composable
+private fun GuideHeading() {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("CANAIS", fontSize = 9.sp, color = Muted, modifier = Modifier.weight(1.2f))
+        Text("AGORA", fontSize = 9.sp, color = Mint, modifier = Modifier.weight(1f))
+        Text("A SEGUIR", fontSize = 9.sp, color = Muted, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
+    val now = guideClock()
+    val scroll = rememberLazyListState()
+    LaunchedEffect(model.selectedKind, model.favoritesOnly, model.group, model.search) { scroll.scrollToItem(0) }
+    if (model.visible.isEmpty()) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(if (model.favoritesOnly) Icons.Default.StarBorder else Icons.Default.LiveTv, null, tint = Muted, modifier = Modifier.size(36.dp))
+                Text(when { !model.initialized || model.loading -> "Preparando sua lista…"
+                    model.catalog.channels.isEmpty() -> "Cadastre sua playlist M3U"
+                    model.favoritesOnly -> "Marque seus conteúdos com a estrela"
+                    else -> "Nenhum conteúdo encontrado" }, modifier = Modifier.padding(top = 8.dp), fontSize = 14.sp)
+                if (model.catalog.channels.isEmpty() && model.initialized) TextButton(onClick = { model.settingsOpen = true }) { Text("Minha playlist") }
+                model.message?.let { Text(it, fontSize = 11.sp, color = Gold) }
+            }
+        }
+        return
+    }
+    LazyColumn(modifier, state = scroll, contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        // Parser/cache de-duplicate URLs, so lazy keys are stable even for repeated provider entries.
+        items(model.visible, key = { it.url }, contentType = { it.kind }) { channel ->
+            ChannelRow(channel, model, guideMode, now)
+        }
+    }
+}
+
+@Composable
+private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Boolean, now: Long) {
+    val selected = channel.url == model.current?.url
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) Mint.copy(alpha = 0.12f) else Panel)
+        .clickable { model.play(channel) }.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        val isLive = channel.kind == MediaKind.LIVE
+        Box(Modifier.size(if (guideMode || isLive) 38.dp else 52.dp, if (guideMode || isLive) 38.dp else 68.dp)
+            .clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {
+            Icon(if (isLive) Icons.Default.LiveTv else Icons.Default.Movie, null, tint = Cyan, modifier = Modifier.size(20.dp))
+            if (channel.imageUrl.isNotBlank()) AsyncImage(channel.imageUrl, null, Modifier.fillMaxSize(), contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop)
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(if (guideMode) 1.2f else 1f)) {
+            Text(channel.name, fontSize = if (guideMode) 11.sp else 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = if (selected) Mint else Txt)
+            if (!guideMode) Text(channel.group, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (guideMode) {
+            val shows = model.guide.forChannel(channel)
+            val present = shows.firstOrNull { it.start <= now && it.end > now }
+            val next = shows.firstOrNull { it.start > now }
+            ProgrammeCell(present, Modifier.weight(1f), if (selected) Mint else Txt)
+            ProgrammeCell(next, Modifier.weight(1f), Muted)
+        }
+        IconButton(onClick = { model.toggleFavorite(channel) }, modifier = Modifier.size(48.dp)) {
+            Icon(if (channel.url in model.favorites) Icons.Default.Star else Icons.Default.StarBorder,
+                if (channel.url in model.favorites) "Remover dos favoritos" else "Adicionar aos favoritos",
+                tint = if (channel.url in model.favorites) Gold else Muted, modifier = Modifier.size(19.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProgrammeCell(programme: Programme?, modifier: Modifier, color: Color) {
+    Column(modifier.padding(horizontal = 5.dp)) {
+        Text(programme?.title ?: "Sem programação", fontSize = 10.sp, color = if (programme == null) Muted else color, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (programme != null) Text(time(programme.start), fontSize = 9.sp, color = Muted)
+    }
+}
+
+@Composable
+private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
+    val channel = model.current ?: return
+    val now = guideClock()
+    val show = model.guide.forChannel(channel).firstOrNull { it.start <= now && it.end > now }
+    LazyColumn(modifier.clip(RoundedCornerShape(12.dp)).background(Panel), contentPadding = PaddingValues(10.dp)) {
+        item { Text(channel.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2) }
+        item { Text(show?.let { "${time(it.start)} – ${time(it.end)}" } ?: channel.group, color = Mint, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp)) }
+        item { Text(show?.title ?: "Programação não informada pela lista", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp)) }
+    }
+}
+
+private fun time(value: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(value))
+
+@Composable
+private fun guideClock(): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(60000); now = System.currentTimeMillis() } }
+    return now
+}
+
+@Composable
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+private fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: Boolean = false) {
+    val player = model.player
+    Box(modifier.clip(RoundedCornerShape(if (fullscreen) 0.dp else 12.dp)).background(Color.Black)) {
+        if (player != null) AndroidView(
+            factory = { context -> PlayerView(context).apply {
+                this.player = player
+                keepScreenOn = true
+                useController = true
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                controllerShowTimeoutMs = 3500
+            } },
+            update = { view -> view.player = player },
+            onRelease = { view -> view.player = null; view.keepScreenOn = false },
+            modifier = Modifier.fillMaxSize()
+        )
+        if (model.buffering && model.playbackError == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = Mint, strokeWidth = 2.dp)
+        model.playbackError?.let { error ->
+            Column(Modifier.align(Alignment.Center).background(Bg.copy(alpha = 0.88f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(error, fontSize = 12.sp, maxLines = 3)
+                TextButton(onClick = model::retry) { Text("Tentar novamente", color = Mint) }
+            }
+        }
+        IconButton(onClick = { model.fullscreen = !model.fullscreen }, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(12.dp))) {
+            Icon(if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen, if (fullscreen) "Sair da tela cheia" else "Tela cheia", tint = Txt)
+        }
+        if (fullscreen) IconButton(onClick = { model.fullscreen = false }, modifier = Modifier.align(Alignment.TopStart).padding(4.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(12.dp))) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar", tint = Txt)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaylistSettings(model: AuroraViewModel) {
+    var url by rememberSaveable(model.playlistUrl) { mutableStateOf(model.playlistUrl) }
+    var name by rememberSaveable(model.playlistName) { mutableStateOf(model.playlistName) }
+    var reveal by remember { mutableStateOf(false) }
+    var invalid by remember { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = { model.settingsOpen = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Panel, contentColor = Txt) {
+        LazyColumn(Modifier.fillMaxWidth().imePadding(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Logo(Modifier.size(48.dp)); Spacer(Modifier.width(12.dp))
+                    Column { Text("Minha playlist", fontWeight = FontWeight.Bold, fontSize = 23.sp); Text("Cadastre uma vez. Assista quando quiser.", color = Muted, fontSize = 12.sp) }
+                }
+            }
+            item { OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Nome da lista") }, singleLine = true, shape = RoundedCornerShape(14.dp)) }
+            item {
+                OutlinedTextField(url, { url = it; invalid = false }, Modifier.fillMaxWidth(), label = { Text("Endereço M3U / M3U8") },
+                    placeholder = { Text("https://servidor.com/lista.m3u") }, singleLine = true, isError = invalid,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), shape = RoundedCornerShape(14.dp),
+                    visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = { IconButton(onClick = { reveal = !reveal }) { Icon(if (reveal) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (reveal) "Ocultar endereço" else "Mostrar endereço") } },
+                    supportingText = { Text(if (invalid) "Informe um endereço HTTP ou HTTPS válido." else "O endereço e a lista ficam salvos neste aparelho.", color = if (invalid) Gold else Muted) })
+            }
+            item {
+                Button(onClick = {
+                    invalid = !PlaylistRepository.validUrl(url.trim())
+                    if (!invalid) model.savePlaylist(url, name)
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp), enabled = url.isNotBlank()) {
+                    Icon(Icons.Default.Save, null, Modifier.size(20.dp)); Spacer(Modifier.width(9.dp)); Text("Salvar playlist", fontWeight = FontWeight.Bold)
+                }
+            }
+            if (model.playlistUrl.isNotBlank()) item {
+                Text("${model.catalog.channels.size} conteúdos salvos" + if (model.updated > 0) " • Atualização: ${SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(model.updated))}" else "",
+                    color = Muted, fontSize = 12.sp)
+                OutlinedButton(onClick = { model.settingsOpen = false; model.refresh(force = true) }, enabled = !model.loading, modifier = Modifier.fillMaxWidth()) { Text("Atualizar lista agora") }
             }
         }
     }
