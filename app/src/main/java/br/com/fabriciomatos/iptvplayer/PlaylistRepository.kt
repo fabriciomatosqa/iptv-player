@@ -25,6 +25,9 @@ class PlaylistRepository(context: Context) {
     fun lastUrl() = prefs.getString("last_channel_url", "").orEmpty()
     fun saveLast(channel: Channel) { prefs.edit().putString("last_channel_url", channel.url).apply() }
     fun lastUpdated() = prefs.getLong("playlist_updated", 0L)
+    fun recordValidation(download: Download) {
+        prefs.edit().putString("etag", download.etag).putString("last_modified", download.modified).apply()
+    }
 
     fun saveSource(url: String, name: String) {
         // Bind the legacy cache before replacing the address, so it cannot appear under a new list.

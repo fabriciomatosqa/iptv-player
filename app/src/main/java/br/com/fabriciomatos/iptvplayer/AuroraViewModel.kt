@@ -55,6 +55,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private var filterJob: Job? = null
     private var guideJob: Job? = null
     private var epgUrl = ""
+    private var cacheDirty = false
     private var foreground = false
     private var resumePlayback = false
     private var playerInstance: ExoPlayer? = null
@@ -105,6 +106,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 guideJob?.cancelAndJoin()
                 filterJob?.cancel()
                 catalog = Catalog(); guide = Guide(); epgUrl = ""; visible = emptyList(); updated = 0
+                cacheDirty = true
                 group = null
             }
             refresh(force = changed)
@@ -120,12 +122,23 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val downloaded = withContext(Dispatchers.IO) { repository.download(source, !force && catalog.channels.isNotEmpty()) }
                 if (downloaded != null && playlistUrl == source) {
-                    // Publish before persistence: a slow filesystem never holds up browsing.
-                    installCatalog(downloaded.playlist)
-                    try {
-                        withContext(Dispatchers.IO) { repository.saveCache(source, downloaded) }
-                        updated = System.currentTimeMillis()
-                    } catch (_: java.io.IOException) { message = "Lista carregada. Não consegui salvar o cache; verifique o espaço disponível." }
+                    val changed = withContext(Dispatchers.Default) {
+                        downloaded.playlist.channels != catalog.channels || downloaded.playlist.epgUrl != epgUrl
+                    }
+                    if (changed) {
+                        cacheDirty = true
+                        // Publish before persistence: a slow filesystem never holds up browsing.
+                        installCatalog(downloaded.playlist)
+                    }
+                    if (cacheDirty) {
+                        try {
+                            withContext(Dispatchers.IO) { repository.saveCache(source, downloaded) }
+                            cacheDirty = false; updated = System.currentTimeMillis()
+                        } catch (_: java.io.IOException) { message = "Lista carregada. Não consegui salvar o cache; verifique o espaço disponível." }
+                    } else {
+                        withContext(Dispatchers.IO) { repository.recordValidation(downloaded) }
+                        refreshGuide()
+                    }
                 } else if (downloaded == null) {
                     refreshGuide()
                 }
