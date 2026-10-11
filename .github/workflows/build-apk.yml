@@ -2,6 +2,7 @@ name: Build AURORA IPTV APK
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches: ["main"]
 
@@ -51,8 +52,8 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+      - name: Test and build debug APK
+        run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug
 
       - name: Save persistent test signing key
         uses: actions/cache/save@v4
@@ -69,4 +70,33 @@ jobs:
           name: aurora-iptv-apk
           path: app/build/outputs/apk/debug/aurora-iptv.apk
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Enable emulator acceleration
+        if: github.event_name == 'pull_request'
+        run: |
+          sudo chmod 666 /dev/kvm
+
+      - name: Check navigation, persistence and actual video playback
+        if: github.event_name == 'pull_request'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            gradle --no-daemon connectedDebugAndroidTest
+            adb pull /sdcard/Download/aurora-ui app/build/aurora-ui
+
+      - name: Upload UI verification
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-ui-verification
+          path: |
+            app/build/aurora-ui
+            app/build/reports/androidTests
+            app/build/reports/tests
+            app/build/reports/lint-results-debug.html
           retention-days: 14
