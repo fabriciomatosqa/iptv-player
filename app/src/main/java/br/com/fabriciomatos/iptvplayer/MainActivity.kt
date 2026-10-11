@@ -195,7 +195,7 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, col
         Spacer(Modifier.height(16.dp))
         Text(title, fontWeight = FontWeight.Bold, fontSize = 25.sp)
         Text(subtitle, fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
-        Text("$count canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+        Text(if (count == 1) "1 canal" else "$count canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
     } else Row(card, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(colors.first().copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = colors.first(), modifier = Modifier.size(28.dp))
@@ -234,17 +234,18 @@ private fun PlaylistSummary(model: AuroraViewModel) {
 
 @Composable
 private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
-    val channel = model.current ?: model.recent
+    val channel = model.current ?: model.recent ?: model.catalog.byKind[MediaKind.MOVIES]?.firstOrNull() ?: model.catalog.channels.firstOrNull()
+    val saved = model.playlistUrl.isNotBlank()
     Box(modifier.clip(Shape).background(Panel).clickable {
-        if (channel == null) model.settingsOpen = true else model.play(channel)
+        when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.settingsOpen = true }
     }) {
         if (channel?.imageUrl?.isNotBlank() == true) AsyncImage(channel.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Bg.copy(alpha = 0.98f)))))
         Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
             Icon(if (channel == null) Icons.Default.PlayCircle else Icons.Default.PlayArrow, null, tint = Mint, modifier = Modifier.size(30.dp))
-            Text(if (channel == null) "Tudo pronto para assistir" else if (model.current != null) "Em reprodução" else "Último conteúdo", fontSize = 11.sp, color = Mint)
-            Text(channel?.name ?: "Adicione sua M3U", fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 16.sp)
-            Text(channel?.group ?: "Sua lista fica salva aqui", fontSize = 11.sp, color = Muted, maxLines = 1)
+            Text(when { channel == null -> "Minha playlist"; model.current != null -> "Em reprodução"; model.recent != null -> "Último conteúdo"; else -> "Em destaque" }, fontSize = 11.sp, color = Mint)
+            Text(channel?.name ?: if (saved) "Carregar lista salva" else "Adicione sua M3U", fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 16.sp)
+            Text(channel?.group ?: if (saved) "Seu endereço já está salvo" else "Sua lista fica salva aqui", fontSize = 11.sp, color = Muted, maxLines = 1)
         }
     }
 }
