@@ -105,6 +105,9 @@ class PlaylistRepository(context: Context) {
                 done += batch.size
                 progress("Organizando catálogo salvo: " + done + " de " + remaining)
             }
+        }
+        // A process may stop after the last migration batch and before aggregation.
+        if (remaining > 0 || scalar(db, "SELECT indexed FROM playlists WHERE source_key=?", arrayOf(key)) == 0) {
             db.beginTransactionNonExclusive()
             try { rebuild(db, key); db.setTransactionSuccessful() } finally { db.endTransaction() }
         }
