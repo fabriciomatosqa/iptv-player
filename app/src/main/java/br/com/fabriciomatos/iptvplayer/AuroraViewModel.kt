@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -33,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -45,6 +47,8 @@ enum class Page { HOME, LIBRARY, FOOTBALL }
 class AuroraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PlaylistRepository(application)
     private val artwork = ArtworkResolver(repository)
+    private val scores = FootballScoreRepository(repository)
+    private val scoreRefresh = Mutex()
     private val coverRequests = mutableMapOf<String,Deferred<String?>>()
     private val preferences = AppSettings(application)
     var language by mutableStateOf(preferences.language()); private set
@@ -58,6 +62,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var parentalBusy by mutableStateOf(false); private set
     private var protectedAction: (() -> Unit)? = null
     var football by mutableStateOf(emptyList<FootballMatch>()); private set
+    var footballFeed by mutableStateOf(FootballFeed()); private set
+    var footballScoresLoading by mutableStateOf(false); private set
+    var footballSearch by mutableStateOf("")
+    var footballTab by mutableStateOf(FOOTBALL_GAMES)
+    var footballPosition: Pair<Pair<String,String>,Pair<Int,Int>>? = null
+    var fromFootball by mutableStateOf(false); private set
     var guideLoading by mutableStateOf(false); private set
     var guideError by mutableStateOf(false); private set
     var catalog by mutableStateOf(CatalogOverview(), referentialEqualityPolicy()); private set
@@ -97,7 +107,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private val favoriteWrites = Mutex()
     private var pendingFavorites: Set<String>? = null
     private var epgUrl = ""
-    private var foreground = false
+    private var foreground by mutableStateOf(false)
     private var resumePlayback = false
     private var playerInstance: ExoPlayer? = null
     private var seriesOrigin: CatalogLocation? = null
@@ -135,6 +145,15 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     init {
+        viewModelScope.launch {
+            snapshotFlow {if(initialized && foreground && page==Page.FOOTBALL && !settingsOpen)football else null}.collectLatest {matches->
+                if(matches!=null)while(true) {
+                    val next=System.currentTimeMillis()+FOOTBALL_REFRESH_MS
+                    updateFootballScores()
+                    delay((next-System.currentTimeMillis()).coerceAtLeast(1000L))
+                }
+            }
+        }
         viewModelScope.launch {
             try {
                 val saved = withContext(Dispatchers.IO) { Triple(repository.savedUrl(), repository.savedName(), repository.lastUrl()) }
@@ -190,6 +209,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             settingsOpen = false; message = null
             if (changed) {
                 catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
+                footballFeed=FootballFeed();footballSearch="";footballTab=FOOTBALL_GAMES;footballPosition=null;fromFootball=false
                 guideJob?.cancelAndJoin();guide=withContext(Dispatchers.IO){repository.savedGuide(clean)};football=emptyList()
                 stop(); openedSeries = null; openedSeriesId = null; selectedSeason = null; group = null; search = ""
                 withContext(Dispatchers.IO) { repository.restore(clean,::showProgress) }
@@ -242,7 +262,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun browse(kind: MediaKind?, favorites: Boolean = false) {
         if(!favorites && kind==selectedKind && openedSeriesId!=null) {closeSeries();return}
         if(!favorites && kind==selectedKind && current?.kind==MediaKind.MOVIES) {closeVideo();return}
-        seriesOrigin=null;playbackOrigin=null
+        seriesOrigin=null;playbackOrigin=null;fromFootball=false
         if(kind!=null && current!=null && (current?.kind!=kind || kind==MediaKind.SERIES))stop()
         openedSeriesId = null; openedSeries = null; selectedSeason = null
         selectedKind = kind; favoritesOnly = favorites; group = null; search = ""; page = Page.LIBRARY
@@ -261,12 +281,13 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     fun closeVideo() {
         val movie=current?.kind==MediaKind.MOVIES
+        val football=fromFootball
         val origin=playbackOrigin
         stop()
-        if(movie)restoreLocation(origin)
+        if(football)page=Page.FOOTBALL else if(movie)restoreLocation(origin)
     }
     fun backFromLibrary() {
-        when {openedSeriesId!=null->closeSeries();current?.kind==MediaKind.MOVIES->closeVideo();else->page=Page.HOME}
+        when {fromFootball->{stop();page=Page.FOOTBALL};openedSeriesId!=null->closeSeries();current?.kind==MediaKind.MOVIES->closeVideo();else->page=Page.HOME}
     }
     fun selectSeason(season: Int) { selectedSeason = season; updateFilter() }
     fun selectGroup(value: String?) {
@@ -349,7 +370,18 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
     fun showFootball() { page=Page.FOOTBALL;refreshGuide() }
-    fun refreshFootball() = refreshGuide(true)
+    fun refreshFootball() {refreshGuide(true);viewModelScope.launch {updateFootballScores(force=true)}}
+    fun playFootball(channel: Channel) {play(channel);fromFootball=true}
+    private suspend fun updateFootballScores(force: Boolean = false) = scoreRefresh.withLock {
+        if(!foreground || page!=Page.FOOTBALL)return@withLock
+        val source=playlistUrl
+        footballScoresLoading=true
+        try {
+            val feed=scores.load(football,force)
+            if(source==playlistUrl)footballFeed=feed
+        } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
+        finally {footballScoresLoading=false}
+    }
     fun toggleFavorite(channel: Channel) {
         val before = pendingFavorites ?: favorites
         val next = if(channel.url in before)before-channel.url else before+channel.url
@@ -392,6 +424,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun play(channel: Channel) {
         if(channel.adult && !adultUnlocked) { requireParental { play(channel) };return }
+        if(channel.kind!=MediaKind.LIVE)fromFootball=false
         if(channel.kind==MediaKind.MOVIES && (current?.kind!=MediaKind.MOVIES || playbackOrigin==null))playbackOrigin=catalogLocation()
         if(channel.kind==MediaKind.SERIES && openedSeriesId==null && seriesOrigin==null)seriesOrigin=catalogLocation()
         if (selectedKind != channel.kind) { group = null; search = ""; favoritesOnly = false }
@@ -415,7 +448,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         try {
             val instance = playerInstance ?: createPlayer().also { playerInstance = it }
-            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.6 Android" })
+            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.7 Android" })
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setDefaultRequestProperties(if (channel.referrer.isBlank()) emptyMap() else mapOf("Referer" to channel.referrer))
             val factory = DefaultMediaSourceFactory(DefaultDataSource.Factory(getApplication(), http))
@@ -453,7 +486,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
     fun retry() { current?.let(::play) }
-    fun stop() { playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null }
+    fun stop() { playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
     fun foreground(active: Boolean) {
         foreground = active
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()

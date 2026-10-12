@@ -111,6 +111,8 @@ class AuroraUiTest {
             screenshot("football-agenda")
             compose.onNodeWithText("Aurora").performClick()
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "TV Aurora" }
+            compose.onNodeWithContentDescription("Voltar ao futebol").performClick()
+            compose.waitUntil(10000) {model.page==Page.FOOTBALL && model.current==null}
             compose.onNodeWithContentDescription("Voltar ao início").performClick()
 
             compose.onNode(hasText("Filmes") and hasText("1 filme")).performClick()

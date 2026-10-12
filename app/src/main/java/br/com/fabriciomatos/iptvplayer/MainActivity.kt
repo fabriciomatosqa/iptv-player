@@ -446,8 +446,8 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
     val series = model.openedSeries
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = if (compact) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!compact || series != null || model.current?.kind==MediaKind.MOVIES) IconButton(onClick = {model.backFromLibrary()}) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, if (series != null) tr(R.string.back_series) else if(model.current?.kind==MediaKind.MOVIES)tr(R.string.back)else tr(R.string.back_home))
+        if (!compact || series != null || model.current?.kind==MediaKind.MOVIES || model.fromFootball) IconButton(onClick = {model.backFromLibrary()}) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, if(model.fromFootball)tr(R.string.back_football)else if (series != null) tr(R.string.back_series) else if(model.current?.kind==MediaKind.MOVIES)tr(R.string.back)else tr(R.string.back_home))
         }
         Column(Modifier.weight(1f)) {
             Text(series?.title ?: if (model.favoritesOnly) tr(R.string.favorites) else model.selectedKind?.let { kindLabel(it) } ?: tr(R.string.all_content),

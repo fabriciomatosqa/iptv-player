@@ -2,7 +2,15 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.6.0
+## Versão 1.7.0
+
+- Futebol com placar e tempo informados pelo serviço público da ESPN. Atualização a cada 60 segundos enquanto a agenda está visível e o app está em primeiro plano; consultas simultâneas limitadas e cache separado para resultados e calendário.
+- O horário real da partida é associado aos dois times e ao campeonato antes de mostrar o placar. Partidas encerradas antes da faixa de transmissão aparecem como reprise, com resultado final; o XMLTV também pode informar transmissão ao vivo ou reprise. Falta de cobertura e dados desatualizados são indicados, sem inventar placares ou tempos.
+- Busca por time, nomes abaixo dos escudos e abas na ordem Jogos, FIFA, Brasileirão, Libertadores, Sul-americana e demais campeonatos disponíveis.
+- Abrir um canal pela agenda e voltar pelo player ou pelo Android retorna ao futebol, preservando o filtro, a busca e a posição. Os 20 idiomas incluem os novos textos.
+- Migração do guia para guardar as indicações de transmissão sem apagar catálogo, endereço da lista ou favoritos.
+
+## Recursos da versão 1.6.0
 
 - Jogos entre seleções mostram o logo da FIFA e os escudos das federações, incluindo CBF, AFA, US Soccer e RFEF. Nomes femininos e de base usam a mesma federação; os escudos de outros países são identificados por nome exato e guardados em cache.
 - Voltar de um filme ou dos episódios restaura a subcategoria, a busca e a posição anterior da lista. O retorno funciona pelos botões da interface e pelo botão Voltar do Android, inclusive com catálogos paginados.

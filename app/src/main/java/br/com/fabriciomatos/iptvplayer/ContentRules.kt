@@ -14,12 +14,14 @@ private val matchSeparator = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
 private val footballCompetitions = Regex("\\b(brasileirao|libertadores|sul americana|sulamericana|champions league|liga dos campeoes|premier league|la liga|laliga|bundesliga|ligue 1|liga europa|europa league|conference league|copa do brasil|copa do mundo|copa do nordeste|serie [ab] italiana|campeonato (?:brasileiro|paulista|carioca|ingles|espanhol|portugues|italiano|alemao)|futebol|soccer|football)\\b")
 
 fun footballDetails(title: String, category: String = ""): FootballDetails? {
-    val text = normalized("$title $category")
+    val text = normalized("$title $category").replace('-', ' ').replace('–', ' ')
     if (Regex("\\b(americano|american|nfl|rugby|basquete|basketball|nba|baseball|beisebol|ufc|bjj|volei|voleibol|tenis|handebol|futsal)\\b").containsMatchIn(text)) return null
-    if (Regex("\\b(resenha|debate|mesa redonda|central do|noticias|jornal|sportcenter|sportscenter|gols da rodada|melhores momentos|documentario|reprise|40 minutos)\\b").containsMatchIn(text)) return null
+    if (Regex("\\b(resenha|debate|mesa redonda|central do|noticias|jornal|sportcenter|sportscenter|gols da rodada|melhores momentos|documentario|40 minutos)\\b").containsMatchIn(text)) return null
     if (!footballCompetitions.containsMatchIn(text)) return null
     // XMLTV feeds often repeat the matchup after ║, || or sub-title.
-    val parts = title.split(Regex("[║|]+|\\s+·\\s+")).map(String::trim).filter(String::isNotBlank)
+    val clean=title.replace(Regex("(?i)\\s*[\\[(](?:reprise|replay|ao vivo|live)[\\])]\\s*")," ")
+        .replace(Regex("(?i)^(?:reprise|replay)\\s*(?::|-)?\\s+|\\s+-\\s+(?:reprise|replay)$"),"")
+    val parts = clean.split(Regex("[║|]+|\\s+·\\s+")).map(String::trim).filter(String::isNotBlank)
     val main = parts.firstOrNull { matchSeparator.containsMatchIn(it) } ?: return null
     val separator = matchSeparator.find(main) ?: return null
     var home = main.substring(0, separator.range.first).trim()

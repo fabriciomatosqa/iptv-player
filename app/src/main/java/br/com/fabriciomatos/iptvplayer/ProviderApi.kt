@@ -68,7 +68,7 @@ object ProviderApi {
         val address = endpoint(source, action) ?: return
         val connection = (URL(address).openConnection() as HttpURLConnection).apply {
             connectTimeout = 10000; readTimeout = 25000
-            setRequestProperty("User-Agent", "AuroraIPTV/1.6 Android")
+            setRequestProperty("User-Agent", "AuroraIPTV/1.7 Android")
             setRequestProperty("Accept-Encoding", "gzip")
         }
         try {

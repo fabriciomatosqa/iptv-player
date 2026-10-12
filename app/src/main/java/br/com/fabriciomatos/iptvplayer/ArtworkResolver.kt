@@ -122,7 +122,7 @@ fun selectTeamBadge(name: String, teams: JSONArray): String {
 }
 private fun readArtworkJson(address: String): JSONObject {
     val connection=(URL(address).openConnection() as HttpURLConnection).apply {
-        connectTimeout=8000;readTimeout=8000;setRequestProperty("User-Agent","AuroraIPTV/1.6 Android")
+        connectTimeout=8000;readTimeout=8000;setRequestProperty("User-Agent","AuroraIPTV/1.7 Android")
         setRequestProperty("Accept","application/json")
     }
     try {
