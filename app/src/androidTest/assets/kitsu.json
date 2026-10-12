@@ -1,0 +1,90 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "canonicalTitle": "Sono Bisque Doll wa Koi wo Suru",
+        "titles": {
+          "en": "My Dress-Up Darling",
+          "en_jp": "Sono Bisque Doll wa Koi wo Suru",
+          "ja_jp": "その着せ替え人形〈ビスク・ドール〉は恋をする"
+        },
+        "abbreviatedTitles": [
+          "Sono Kisekae Ningyou wa Koi wo Suru"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/44382/poster_image/tiny-9a545875059d960f881a7d0b8394d97f.jpeg",
+          "large": "https://media.kitsu.app/anime/44382/poster_image/large-8ffc8ea9b6a1f9e79bc626e03baab167.jpeg",
+          "small": "https://media.kitsu.app/anime/44382/poster_image/small-7852e278813b03aaddfabb084a5d3ccc.jpeg",
+          "medium": "https://media.kitsu.app/anime/44382/poster_image/medium-3f1d12c9a238701563f95c29d9994afd.jpeg",
+          "original": "https://media.kitsu.app/anime/44382/poster_image/98e0bece112ab976f34502359505da50.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Sono Bisque Doll wa Koi wo Suru 2nd Season",
+        "titles": {
+          "en": "My Dress-Up Darling Season 2",
+          "en_jp": "Sono Bisque Doll wa Koi wo Suru 2nd Season",
+          "ja_jp": "その着せ替え人形は恋をする 第2季"
+        },
+        "abbreviatedTitles": [
+          "Sono Kisekae Ningyou wa Koi wo suru",
+          "หนุ่มเย็บผ้ากับสาวนักคอสเพลย์ ภาค 2",
+          "その着せ替え人形（ビスク・ドール）は恋をする",
+          "Kisekoi 2",
+          "Si Boneka Rias Sedang Jatuh Cinta"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46492/poster_image/tiny-c301fab4476d4d811faf28ad3b945ceb.jpeg",
+          "large": "https://media.kitsu.app/anime/46492/poster_image/large-36c833450f49f36bd9d2b84cf96ac9b6.jpeg",
+          "small": "https://media.kitsu.app/anime/46492/poster_image/small-35a58754bbb73d9041021b5aee73e1fb.jpeg",
+          "medium": "https://media.kitsu.app/anime/46492/poster_image/medium-28e3827899731dfe23ce5361b8e31582.jpeg",
+          "original": "https://media.kitsu.app/anime/46492/poster_image/2c8da49ae3abda3e19d7fa61d3d392f0.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    }
+  ]
+}

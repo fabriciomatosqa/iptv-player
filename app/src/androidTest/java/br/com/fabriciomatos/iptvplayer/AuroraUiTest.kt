@@ -105,9 +105,11 @@ class AuroraUiTest {
             screenshot("portrait-home")
             compose.waitUntil(15000) { model.football.size == 2 }
             compose.onNodeWithText("Futebol").performScrollTo().performClick()
-            compose.onNodeWithText("Champions League: Leste vs Oeste").assertExists()
+            compose.onNodeWithText("Champions League").assertExists()
+            compose.onNodeWithText("Leste").assertExists()
+            compose.onNodeWithText("Oeste").assertExists()
             screenshot("football-agenda")
-            compose.onNodeWithText("Futebol: Aurora x Norte").performClick()
+            compose.onNodeWithText("Aurora").performClick()
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "TV Aurora" }
             compose.onNodeWithContentDescription("Voltar ao início").performClick()
 
@@ -131,8 +133,10 @@ class AuroraUiTest {
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
             screenshot("landscape-player")
+            revealVideoControls()
             compose.onNodeWithContentDescription("Tela cheia").performClick()
             screenshot("fullscreen")
+            revealVideoControls()
             compose.onNodeWithContentDescription("Sair da tela cheia").performClick()
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
@@ -207,6 +211,9 @@ class AuroraUiTest {
                 compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
                 assertEquals(6, next.catalog.total)
                 assertFalse("Background update must not show loading", next.loading)
+                assertTrue("Daily progress must be visible without hiding the saved list", next.updating)
+                compose.onNodeWithTag("catalog_progress").assertExists()
+                compose.onNodeWithTag("catalog_progress_text").assertTextContains("0%",substring=true)
                 compose.onNodeWithText("6 conteúdos disponíveis").assertExists()
                 releaseDaily.countDown()
                 compose.waitUntil(15000) { next.catalog.total == 8 }
@@ -222,6 +229,10 @@ class AuroraUiTest {
                 assertEquals(2, requests.get())
             }
         } finally { releaseDaily.countDown(); scenario.close(); server.close() }
+    }
+
+    private fun revealVideoControls() {
+        compose.onNodeWithTag("video_surface").performTouchInput {click(androidx.compose.ui.geometry.Offset(center.x,center.y*.44f))}
     }
 
     private fun waitForText(text: String) {

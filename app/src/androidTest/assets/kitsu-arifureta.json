@@ -1,0 +1,407 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou",
+          "ja_jp": "ありふれた職業で世界最強"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/poster_images/14043/tiny.jpg",
+          "large": "https://media.kitsu.app/anime/poster_images/14043/large.jpg",
+          "small": "https://media.kitsu.app/anime/poster_images/14043/small.jpg",
+          "medium": "https://media.kitsu.app/anime/poster_images/14043/medium.jpg",
+          "original": "https://media.kitsu.app/anime/poster_images/14043/original.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou 2",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Season 2",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou 2",
+          "ja_jp": "ありふれた職業で世界最強 2"
+        },
+        "abbreviatedTitles": [
+          "Arifureta: From Commonplace to World's Strongest 2",
+          "From Common Job Class to the Strongest in the World 2nd Season",
+          "Arifureta Shokugyou de Sekai Saikyou 2nd Season"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/42611/poster_image/tiny-cd51b29da52947ebe40b1ae2d200996c.jpeg",
+          "large": "https://media.kitsu.app/anime/42611/poster_image/large-2603a7a0930f4c70bfe7061654031d5f.jpeg",
+          "small": "https://media.kitsu.app/anime/42611/poster_image/small-8f0d5a08d9efbff80a391212cc133e36.jpeg",
+          "medium": "https://media.kitsu.app/anime/42611/poster_image/medium-3562eaebce7fff97ad60e88bc1d34da7.jpeg",
+          "original": "https://media.kitsu.app/anime/42611/poster_image/95d869f45d41c5e8155deb6dacac82e3.png",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou Specials",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Specials",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou Specials",
+          "ja_jp": "ありふれた職業で世界最強"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/poster_images/42446/tiny.jpg",
+          "large": "https://media.kitsu.app/anime/poster_images/42446/large.jpg",
+          "small": "https://media.kitsu.app/anime/poster_images/42446/small.jpg",
+          "medium": "https://media.kitsu.app/anime/poster_images/42446/medium.jpg",
+          "original": "https://media.kitsu.app/anime/poster_images/42446/original.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "special"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou 3rd Season",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Season 3",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou 3rd Season",
+          "ja_jp": "ありふれた職業で世界最強 3rd season",
+          "th_th": "อาชีพกระจอกแล้วทำไม ยังไงข้าก็เทพ ภาค 3"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46454/poster_image/tiny-1e8e418f5c1492e539a08fb2f82cc00a.jpeg",
+          "large": "https://media.kitsu.app/anime/46454/poster_image/large-ebc18727dc5a7473aa8ed65600d15f1a.jpeg",
+          "small": "https://media.kitsu.app/anime/46454/poster_image/small-757c2c15e1a5b1443d3b201e2d7a57da.jpeg",
+          "medium": "https://media.kitsu.app/anime/46454/poster_image/medium-308a123c8022adec4e4de6c6df595bbf.jpeg",
+          "original": "https://media.kitsu.app/anime/46454/poster_image/111b8e80d4775d86210605cafe2dc792.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou Recap",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Recap",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou Recap",
+          "ja_jp": "ありふれた職業で世界最強 総集編 オルクス大迷宮"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/poster_images/42493/tiny.jpg",
+          "large": "https://media.kitsu.app/anime/poster_images/42493/large.jpg",
+          "small": "https://media.kitsu.app/anime/poster_images/42493/small.jpg",
+          "medium": "https://media.kitsu.app/anime/poster_images/42493/medium.jpg",
+          "original": "https://media.kitsu.app/anime/poster_images/42493/original.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "special"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou 2nd Season Special",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Season 2 Special",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou 2nd Season Special",
+          "ja_jp": "ありふれた職業で世界最強 2nd season 未放送エピソード"
+        },
+        "abbreviatedTitles": [
+          "อาชีพกระจอกแล้วทำไม ยังไงข้าก็เทพ ภาค 2 ตอนพิเศษ",
+          "From Common Job Class to the Strongest in the World 2nd Season"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46047/poster_image/tiny-bbcef0890bdd1de50c66e3fba13b0b67.jpeg",
+          "large": "https://media.kitsu.app/anime/46047/poster_image/large-ee91e44d6b69bf9a9b49bdd083d655e0.jpeg",
+          "small": "https://media.kitsu.app/anime/46047/poster_image/small-b1c1e3e6622ec6907722fd9d28a61d6f.jpeg",
+          "medium": "https://media.kitsu.app/anime/46047/poster_image/medium-ba1d18c536ff24e4059d6eb95d9458d6.jpeg",
+          "original": "https://media.kitsu.app/anime/46047/poster_image/65f7ec899328d5d8cccda0ebe55ad66a.png",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "special"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou 2nd season OVA",
+        "titles": {
+          "en": "Arifureta: Phantom Adventure and Miraculous Encounter",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou 2nd season OVA",
+          "ja_jp": "ありふれた職業で世界最強 2nd season OVA"
+        },
+        "abbreviatedTitles": [
+          "Arifureta: From Commonplace to World's Strongest OVA",
+          "Arifureta Shokugyou de Sekai Saikyou OVA"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46048/poster_image/tiny-6e5af13a7e9639c99f949e708e440b1f.jpeg",
+          "large": "https://media.kitsu.app/anime/46048/poster_image/large-a9192a43d798b701effa7e2b9d31dd50.jpeg",
+          "small": "https://media.kitsu.app/anime/46048/poster_image/small-6ab5dd03897c434d3cb61d8f64cd8759.jpeg",
+          "medium": "https://media.kitsu.app/anime/46048/poster_image/medium-942d0bc438cf1a604a57fb8bc06364ab.jpeg",
+          "original": "https://media.kitsu.app/anime/46048/poster_image/3f7d5ec945a7cd8b51efb0962bfd0722.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "OVA"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou: Prologue",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Episode 0",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou: Prologue",
+          "ja_jp": "ありふれた職業で世界最強 プロローグ"
+        },
+        "abbreviatedTitles": [
+          "Arifureta Shokugyou de Sekai Saikyou Episode 0"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/45782/poster_image/tiny-749f4f11f3c580e6ff4af834d0daf706.jpeg",
+          "large": "https://media.kitsu.app/anime/45782/poster_image/large-0b362ca2eae6519aa10ad5fade486a62.jpeg",
+          "small": "https://media.kitsu.app/anime/45782/poster_image/small-c535559bedb28b980a29ad367a0408e2.jpeg",
+          "medium": "https://media.kitsu.app/anime/45782/poster_image/medium-03382ced5b2bf9cf5b850cae5e08ab42.jpeg",
+          "original": "https://media.kitsu.app/anime/45782/poster_image/a19d081fbbdb9595d6840fc686cd5d16.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "ONA"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou Picture Drama",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Picture Drama",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou Picture Drama",
+          "ja_jp": "ありふれた職業で世界最強 ピクチャードラマ"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/48521/poster_image/tiny-91bc51f63e4fa989df5cf6cfc9cb4311.jpeg",
+          "large": "https://media.kitsu.app/anime/48521/poster_image/large-afef2024d8592ca6b5e7084c8125a13e.jpeg",
+          "small": "https://media.kitsu.app/anime/48521/poster_image/small-ac00ac50f0479cc7e165213f943b7db7.jpeg",
+          "medium": "https://media.kitsu.app/anime/48521/poster_image/medium-56227a201462231b758bc86a407e351c.jpeg",
+          "original": "https://media.kitsu.app/anime/48521/poster_image/dd726548aa45a648b5aefcfee5c81f44.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "ONA"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Arifureta Shokugyou de Sekai Saikyou 2nd Season Picture Drama",
+        "titles": {
+          "en": "Arifureta: From Commonplace to World's Strongest Season 2 Picture Drama",
+          "en_jp": "Arifureta Shokugyou de Sekai Saikyou 2nd Season Picture Drama",
+          "ja_jp": "ありふれた職業で世界最強 ピクチャードラマ"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/48527/poster_image/tiny-45a36c5fb637c3df2cfd4be69846fba3.jpeg",
+          "large": "https://media.kitsu.app/anime/48527/poster_image/large-08d72fa6da1e16312609abd1f13b5c02.jpeg",
+          "small": "https://media.kitsu.app/anime/48527/poster_image/small-5df8ca83820a0b9e88c2573b96e9a563.jpeg",
+          "medium": "https://media.kitsu.app/anime/48527/poster_image/medium-11cb4603669c9d4533e1a874e64a56c3.jpeg",
+          "original": "https://media.kitsu.app/anime/48527/poster_image/e51a6ef886a634c6c79974357d3fa9e5.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "ONA"
+      }
+    }
+  ]
+}

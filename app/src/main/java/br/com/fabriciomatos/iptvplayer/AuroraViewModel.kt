@@ -24,6 +24,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -41,6 +43,8 @@ enum class Page { HOME, LIBRARY, FOOTBALL }
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AuroraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PlaylistRepository(application)
+    private val artwork = ArtworkResolver(repository)
+    private val coverRequests = mutableMapOf<String,Deferred<String?>>()
     private val preferences = AppSettings(application)
     var language by mutableStateOf(preferences.language()); private set
     var epgOverride by mutableStateOf(preferences.epgUrl()); private set
@@ -59,10 +63,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var playlistUrl by mutableStateOf(""); private set
     var playlistName by mutableStateOf("Minha playlist"); private set
     var loading by mutableStateOf(false); private set
+    var updating by mutableStateOf(false); private set
     var initialized by mutableStateOf(false); private set
     var updated by mutableStateOf(0L); private set
     var message by mutableStateOf<String?>(null); private set
     var progressText by mutableStateOf<String?>(null); private set
+    var progressPercent by mutableStateOf<Int?>(null); private set
     var favorites by mutableStateOf(emptySet<String>()); private set
     var guide by mutableStateOf(Guide(), referentialEqualityPolicy()); private set
     var current by mutableStateOf<Channel?>(null); private set
@@ -120,8 +126,14 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             if (foreground && playlistUrl.isNotBlank()) refreshDaily()
         }
     }
-    private fun showProgress(text: String) { viewModelScope.launch {
-        progressText = preferences.text(if(text.startsWith("Baixando"))R.string.downloading else if(text.startsWith("Salvando"))R.string.importing else R.string.loading)
+    private fun showProgress(progress: CatalogProgress) { viewModelScope.launch {
+        if(initialized && !updating && !loading)return@launch
+        progressPercent=progress.percent
+        val stage=preferences.text(when(progress.stage) {
+            CatalogStage.DOWNLOADING->R.string.downloading;CatalogStage.IMPORTING->R.string.importing
+            CatalogStage.FINALIZING->R.string.finalizing;CatalogStage.COMPLETE->R.string.saved_text;else->R.string.loading
+        })
+        progressText=stage + if(progress.percent!=null)" · ${progress.percent}%" else if(progress.bytes>0)" · ${progress.bytes/(1024*1024)} MB" else ""
     } }
     private suspend fun reloadOverview() {
         val source = playlistUrl
@@ -163,7 +175,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val source = playlistUrl
         refreshJob = viewModelScope.launch {
             val quiet = silent && catalog.total > 0
-            val progress: (String) -> Unit = if (quiet) ({ _ -> }) else ::showProgress
+            val progress: (CatalogProgress) -> Unit = { value -> if(playlistUrl==source)showProgress(value) }
             try {
                 val pending = withContext(Dispatchers.IO) { !force && repository.hasPending(source) }
                 val claimed = if (pending) true else withContext(Dispatchers.IO) {
@@ -178,22 +190,23 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     return@launch
                 }
-                if (!quiet) { loading = true; message = null; progressText = if(pending) preferences.text(R.string.loading) else preferences.text(R.string.loading) }
+                updating=true;progressPercent=if(pending)50 else 0;progressText=preferences.text(R.string.loading)+" · ${progressPercent}%"
+                if (!quiet) { loading = true; message = null }
                 val metadata = withContext(Dispatchers.IO) {
                     if(pending) repository.metadata(source) else repository.fetchMetadata(source)
                 }
                 val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress) }
                 if (downloaded) {
-                    progress(preferences.text(R.string.loading))
                     withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress) }
                 } else withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
                 coroutineContext.ensureActive()
                 if (playlistUrl == source) reloadOverview()
+                showProgress(CatalogProgress(CatalogStage.COMPLETE,100));delay(500)
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
                 if (!quiet) message = if(catalog.total>0) preferences.text(R.string.load_failed)
                     else preferences.text(R.string.load_failed)
-            } finally { if(!quiet) { loading = false; progressText = null } }
+            } finally { updating=false;loading=false;progressText=null;progressPercent=null }
         }
     }
     fun browse(kind: MediaKind?, favorites: Boolean = false) {
@@ -216,7 +229,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun search(value: String) { search = value; updateFilter(debounce = true) }
     private fun updateFilter(debounce: Boolean = false) {
         filterJob?.cancel()
-        val query = BrowseQuery(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason,includeAdult=adultUnlocked && (group==ADULT_GROUP || favoritesOnly || selectedKind==null))
+        val aliases=if(selectedKind==MediaKind.MOVIES && group!=null)catalog.groups[MediaKind.MOVIES].orEmpty().filter { normalized(movieCategory(it))==normalized(group.orEmpty()) }else emptyList()
+        val query = BrowseQuery(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason,includeAdult=adultUnlocked && (group==ADULT_GROUP || favoritesOnly || selectedKind==null),groupAliases=aliases)
         filterJob = viewModelScope.launch {
             filtering = true
             if(debounce)delay(180)
@@ -227,8 +241,22 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     fun groups(): List<String> {
         val raw=if(selectedKind==null)catalog.groups.values.flatten().distinct() else catalog.groups[selectedKind].orEmpty()
+        if(selectedKind==MediaKind.MOVIES)return orderedMovieCategories(raw)
         return raw.filterNot(::isAdultGroup).sorted() + if(raw.any(::isAdultGroup))listOf(ADULT_GROUP)else emptyList()
     }
+    suspend fun animeCover(series: SeriesEntry): String? {
+        if(!series.anime || series.adult)return null
+        val source=playlistUrl;val key=source+":"+series.id
+        val request=coverRequests[key] ?: run {
+            if(coverRequests.size>=32)return null
+            viewModelScope.async { artwork.anime(source,series.title) }.also { task->
+                coverRequests[key]=task
+                task.invokeOnCompletion { viewModelScope.launch { if(coverRequests[key]===task)coverRequests.remove(key) } }
+            }
+        }
+        return request.await()
+    }
+    suspend fun footballArtwork(details: FootballDetails): FootballArtwork = viewModelScope.async {artwork.football(details)}.await()
     private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
     fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
     fun dismissParental() { parentalRequestId++;parentalDialog=false;protectedAction=null;parentalError=null }
@@ -330,7 +358,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         try {
             val instance = playerInstance ?: createPlayer().also { playerInstance = it }
-            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.4 Android" })
+            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.5 Android" })
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setDefaultRequestProperties(if (channel.referrer.isBlank()) emptyMap() else mapOf("Referer" to channel.referrer))
             val factory = DefaultMediaSourceFactory(DefaultDataSource.Factory(getApplication(), http))
@@ -348,6 +376,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun createPlayer(): ExoPlayer = ExoPlayer.Builder(getApplication<Application>())
+        .setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000)
         .setRenderersFactory(DefaultRenderersFactory(getApplication()).setEnableDecoderFallback(true))
         .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(10000, 30000, 1000, 2000).setTargetBufferBytes(32 * 1024 * 1024).build())
         .build().apply {

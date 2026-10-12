@@ -47,8 +47,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -147,8 +145,8 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text("AURORA IPTV", fontWeight = FontWeight.Black, fontSize = if (wide) 19.sp else 21.sp, letterSpacing = 1.sp)
-            Text(if (model.loading) model.progressText ?: tr(R.string.loading) else if (model.playlistUrl.isBlank()) tr(R.string.your_content) else model.progressText ?: model.playlistName,
-                color = if (model.loading) Mint else Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (model.updating) model.progressText ?: tr(R.string.loading) else if (model.playlistUrl.isBlank()) tr(R.string.your_content) else model.progressText ?: model.playlistName,
+                modifier=Modifier.testTag("catalog_progress_text"), color = if (model.updating) Mint else Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (wide) {
             Column(horizontalAlignment = Alignment.End) {
@@ -164,7 +162,7 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
 private fun Home(model: AuroraViewModel, wide: Boolean) {
     Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF102A35), Bg, Color(0xFF19142E))))) {
         BrandHeader(model, wide)
-        if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = Mint, trackColor = Panel)
+        if (model.updating) CatalogLoadingIndicator(model)
         if (wide) {
             Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CategoryCard(kindLabel(MediaKind.LIVE), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
@@ -266,7 +264,7 @@ private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
         when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.openSettings() }
     }) {
         val cover = channel?.let { if(it.kind==MediaKind.SERIES)it.seriesImageUrl.ifBlank {it.imageUrl}else it.imageUrl }
-        if (!cover.isNullOrBlank()) AsyncImage(cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        if (!cover.isNullOrBlank()) AsyncImage(catalogImage(cover), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Bg.copy(alpha = 0.98f)))))
         Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
             Icon(if (channel == null) Icons.Default.PlayCircle else Icons.Default.PlayArrow, null, tint = Mint, modifier = Modifier.size(30.dp))
@@ -319,7 +317,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                     if (live) GuideHeading() else if (series != null) SeasonChips(model, series)
                     ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = live)
                 } else {
-                    if (series != null) SeriesHeader(series)
+                    if (series != null) SeriesHeader(model,series)
                     SearchBox(model)
                     if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
                     if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth())
@@ -340,7 +338,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
             SearchBox(model, Modifier.padding(horizontal = 16.dp))
             TypeChips(model)
             if (series != null) {
-                if (model.current == null) SeriesHeader(series, Modifier.padding(horizontal = 16.dp))
+                if (model.current == null) SeriesHeader(model,series, Modifier.padding(horizontal = 16.dp))
                 SeasonChips(model, series)
             }
             val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
@@ -348,7 +346,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                 item { GroupChip(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
                 items(groups, key = { it }) { group -> GroupChip(groupLabel(group), model.group == group) { model.selectGroup(group) } }
             }
-            if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = Mint)
+            if (model.loading) CatalogLoadingIndicator(model)
             if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp))
             else ChannelList(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), guideMode = live && model.current != null)
         }
@@ -382,7 +380,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.VideoLibrary, null, tint = Cyan, modifier = Modifier.size(36.dp))
                         }
-                        if (series.imageUrl.isNotBlank()) AsyncImage(series.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        AnimePoster(model,series,Modifier.fillMaxSize())
                     }
                     Column(Modifier.padding(if (compact) 8.dp else 10.dp)) {
                         Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -396,11 +394,11 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
 }
 
 @Composable
-private fun SeriesHeader(series: SeriesEntry, modifier: Modifier = Modifier) {
+private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(54.dp, 76.dp).clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {
             Icon(Icons.Default.VideoLibrary, null, tint = Cyan)
-            if (series.imageUrl.isNotBlank()) AsyncImage(series.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            AnimePoster(model,series,Modifier.fillMaxSize())
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(tr(R.string.select_episode), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -575,12 +573,12 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
             .clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {
             Icon(if (isLive) Icons.Default.LiveTv else Icons.Default.Movie, null, tint = Cyan, modifier = Modifier.size(20.dp))
             val cover = if (channel.kind == MediaKind.SERIES) channel.seriesImageUrl.ifBlank { channel.imageUrl } else channel.imageUrl
-            if (cover.isNotBlank()) AsyncImage(cover, null, Modifier.fillMaxSize(), contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop)
+            if (cover.isNotBlank()) AsyncImage(catalogImage(cover), null, Modifier.fillMaxSize(), contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop)
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(if (guideMode) 1.2f else 1f)) {
             Text(channel.name, fontSize = if (guideMode) 11.sp else 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = if (selected) Mint else Txt)
-            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) Episode(channel, channel.seasonNumber.coerceAtLeast(1), channel.episodeNumber, channel.name).label else channel.group,
+            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) Episode(channel, channel.seasonNumber.coerceAtLeast(1), channel.episodeNumber, channel.name).label else groupLabel(if(channel.kind==MediaKind.MOVIES)movieCategory(channel.group)else channel.group),
                 fontSize = 11.sp, color = if (channel.kind == MediaKind.SERIES) Cyan else Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (guideMode) {
@@ -632,40 +630,6 @@ private fun guideClock(): Long {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { delay(60000); now = System.currentTimeMillis() } }
     return now
-}
-
-@Composable
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-private fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: Boolean = false) {
-    val player = model.player
-    Box(modifier.clip(RoundedCornerShape(if (fullscreen) 0.dp else 12.dp)).background(Color.Black)) {
-        if (player != null) AndroidView(
-            factory = { context -> PlayerView(context).apply {
-                this.player = player
-                keepScreenOn = true
-                useController = true
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                controllerShowTimeoutMs = 3500
-            } },
-            update = { view -> view.player = player },
-            onRelease = { view -> view.player = null; view.keepScreenOn = false },
-            modifier = Modifier.fillMaxSize()
-        )
-        if (model.buffering && model.playbackError == null) CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp), color = Mint, strokeWidth = 2.dp)
-        model.playbackError?.let { error ->
-            Column(Modifier.align(Alignment.Center).background(Bg.copy(alpha = 0.88f)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(error, fontSize = 12.sp, maxLines = 3)
-                TextButton(onClick = model::retry) { Text(tr(R.string.retry), color = Mint) }
-            }
-        }
-        IconButton(onClick = { model.fullscreen = !model.fullscreen }, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(12.dp))) {
-            Icon(if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen, if (fullscreen) tr(R.string.exit_fullscreen) else tr(R.string.fullscreen), tint = Txt)
-        }
-        if (fullscreen) IconButton(onClick = { model.fullscreen = false }, modifier = Modifier.align(Alignment.TopStart).padding(4.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(12.dp))) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, tr(R.string.back), tint = Txt)
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

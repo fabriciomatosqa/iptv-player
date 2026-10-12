@@ -81,7 +81,7 @@ class PlaylistRepository(context: Context) {
     }
 
     /** Upgrade/migrate in bounded batches; never materialize 300,000 Channel objects. */
-    @Synchronized fun restore(source: String, progress: (String) -> Unit = {}) {
+    @Synchronized fun restore(source: String, progress: (CatalogProgress) -> Unit = {}) {
         if (!favoritesSynced) syncFavorites()
         if (source.isBlank()) return
         val db = helper.writableDatabase; val key = digest(source)
@@ -103,7 +103,7 @@ class PlaylistRepository(context: Context) {
                     db.setTransactionSuccessful()
                 } finally { db.endTransaction() }
                 done += batch.size
-                progress("Organizando catálogo salvo: " + done + " de " + remaining)
+                progress(CatalogProgress(CatalogStage.PREPARING, done * 98 / remaining))
             }
         }
         // A process may stop after the last migration batch and before aggregation.
@@ -143,7 +143,14 @@ class PlaylistRepository(context: Context) {
             if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM channels e JOIN favorites f ON e.url=f.url WHERE e.source_key=c.source_key AND e.series_key=c.series_key)")
         } else {
             query.kind?.let { clauses.add("c.kind=?"); args.add(it.ordinal.toString()) }
-            query.group?.takeIf { it != ADULT_GROUP }?.let { clauses.add("c.group_name=?"); args.add(it) }
+            query.group?.takeIf { it != ADULT_GROUP }?.let {
+                val names = query.groupAliases.ifEmpty { if(it == RECENT_GROUP)emptyList() else listOf(it) }
+                val groupClause = if(names.isEmpty())"0=1" else "c.group_name IN("+List(names.size){"?"}.joinToString(",")+")"
+                if(it == RECENT_GROUP) {
+                    clauses.add("("+groupClause+" OR c.first_added>=?)")
+                    args.addAll(names);args.add((System.currentTimeMillis()-30L*86400000).toString())
+                } else {clauses.add(groupClause);args.addAll(names)}
+            }
             query.seriesId?.let { clauses.add("c.series_key=?"); args.add(it) }
             query.season?.let { clauses.add("c.season=?"); args.add(it.toString()) }
             if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM favorites f WHERE f.url=c.url)")
@@ -161,7 +168,7 @@ class PlaylistRepository(context: Context) {
     fun channels(query: BrowseQuery, offset: Int = 0, limit: Int = 60): List<Channel> {
         if (query.source.isBlank()) return emptyList()
         val (where, args) = where(query, false)
-        val order = if (query.seriesId == null) "c.position" else "c.season,CASE WHEN c.episode>0 THEN c.episode ELSE 2147483647 END,c.position"
+        val order = if(query.group==RECENT_GROUP)"c.first_added DESC,c.position DESC" else if (query.seriesId == null) "c.position" else "c.season,CASE WHEN c.episode>0 THEN c.episode ELSE 2147483647 END,c.position"
         return helper.readableDatabase.rawQuery("SELECT " + CHANNEL_COLUMNS + " FROM channels c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.series_norm WHERE " +
             where + " ORDER BY " + order + " LIMIT ? OFFSET ?", args + arrayOf(limit.coerceIn(1, 1000).toString(), offset.coerceAtLeast(0).toString())).use {
             buildList { while (it.moveToNext()) add(readChannel(it)) }
@@ -170,13 +177,13 @@ class PlaylistRepository(context: Context) {
     fun series(query: BrowseQuery, offset: Int = 0, limit: Int = 60): List<SeriesEntry> {
         if (query.source.isBlank()) return emptyList()
         val (where, args) = where(query, true)
-        return helper.readableDatabase.rawQuery("SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE " +
+        return helper.readableDatabase.rawQuery("SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult,EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE " +
             where + " ORDER BY c.name_norm LIMIT ? OFFSET ?", args + arrayOf(limit.coerceIn(1, 1000).toString(), offset.coerceAtLeast(0).toString())).use {
             buildList { while (it.moveToNext()) add(readSeries(it)) }
         }
     }
     fun seriesDetail(source: String, id: String): SeriesEntry? = helper.readableDatabase.rawQuery(
-        "SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE c.source_key=? AND c.series_key=?",
+        "SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult,EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE c.source_key=? AND c.series_key=?",
         arrayOf(digest(source), id)).use { if (it.moveToFirst()) readSeries(it) else null }
     fun seriesId(source: String, url: String): String? = helper.readableDatabase.rawQuery("SELECT series_key FROM channels WHERE source_key=? AND url=?", arrayOf(digest(source), url)).use {
         if (it.moveToFirst()) it.getString(0).takeIf(String::isNotBlank) else null
@@ -188,7 +195,7 @@ class PlaylistRepository(context: Context) {
         buildSet { while (it.moveToNext()) add(it.getString(0)) }
     }
     private fun readSeries(cursor: Cursor) = SeriesEntry(cursor.getString(0), cursor.getString(1), knownAnimePoster(cursor.getString(1)) ?: cursor.getString(2), emptySet(), emptyList(),
-        cursor.getInt(3), cursor.getString(4).split(',').mapNotNull(String::toIntOrNull).distinct().sorted(),cursor.getInt(5)!=0)
+        cursor.getInt(3), cursor.getString(4).split(',').mapNotNull(String::toIntOrNull).distinct().sorted(),cursor.getInt(5)!=0,cursor.getInt(6)!=0)
     private fun readChannel(cursor: Cursor): Channel {
         val kind = cursor.getInt(14).takeIf { it in 0..3 }?.let { MediaKind.entries[it] }
             ?: classifyContent(cursor.getString(0), cursor.getString(2), cursor.getString(1), cursor.getString(8))
@@ -263,11 +270,11 @@ class PlaylistRepository(context: Context) {
     private fun readyFile(source: String): File = File(app.filesDir, "catalog_pending/" + digest(source) + ".ready")
     fun hasPending(source: String) = readyFile(source).isFile
     /** Download to disk, validate EOF, then atomically mark the file ready for resumable import. */
-    suspend fun downloadFile(source: String, conditional: Boolean, progress: (String) -> Unit = {}): Boolean {
+    suspend fun downloadFile(source: String, conditional: Boolean, progress: (CatalogProgress) -> Unit = {}): Boolean {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
-            setRequestProperty("User-Agent","AuroraIPTV/1.4 Android"); setRequestProperty("Accept-Encoding","identity")
+            setRequestProperty("User-Agent","AuroraIPTV/1.5 Android"); setRequestProperty("Accept-Encoding","identity")
             if (conditional) {
                 validators.etag.takeIf(String::isNotBlank)?.let { setRequestProperty("If-None-Match",it) }
                 validators.modified.takeIf(String::isNotBlank)?.let { setRequestProperty("If-Modified-Since",it) }
@@ -282,14 +289,16 @@ class PlaylistRepository(context: Context) {
             val raw = connection.inputStream
             val gzip = connection.contentEncoding.equals("gzip",true)
             val input = if (gzip) GZIPInputStream(raw) else raw
+            val total = if(gzip)0L else connection.contentLengthLong
+            progress(downloadProgress(0,total))
             input.use { stream -> partial.outputStream().buffered(65536).use { output ->
                 val buffer=ByteArray(65536)
                 while (true) {
                     context.ensureActive()
                     val n=stream.read(buffer); if(n<0)break
                     output.write(buffer,0,n); bytes+=n
-                    val mb=bytes/(1024*1024)
-                    if(mb!=shown){ shown=mb; progress("Baixando lista completa: " + mb + " MB") }
+                    val step = if(total>0)bytes*100/total else bytes/(1024*1024)
+                    if(step!=shown){ shown=step; progress(downloadProgress(bytes,total)) }
                 }
             } }
             if (!gzip && connection.contentLengthLong > 0L && bytes != connection.contentLengthLong) throw IOException("O download da lista ficou incompleto.")
@@ -302,21 +311,29 @@ class PlaylistRepository(context: Context) {
             return true
         } finally { connection.disconnect(); partial.delete() }
     }
-    fun importPending(source: String, metadata: ProviderMetadata = metadata(source), progress: (String) -> Unit = {}): ImportResult {
+    fun importPending(source: String, metadata: ProviderMetadata = metadata(source), progress: (CatalogProgress) -> Unit = {}): ImportResult {
         val ready = readyFile(source)
         if (!ready.isFile) return ImportResult(0,overview(source).total)
         val info = runCatching { JSONObject(File(ready.parentFile,ready.name + ".info").readText()) }.getOrNull()
-        val result = ready.bufferedReader().use { reader -> importReader(source,reader,metadata,info?.optString("etag").orEmpty(),
-            info?.optString("modified").orEmpty(),info?.optString("source")?.ifBlank { source } ?: source,progress) }
+        val total=ready.length()
+        val result = ready.inputStream().use { input ->
+            val counting=CountingInputStream(input)
+            counting.bufferedReader().use { reader -> importReader(source,reader,metadata,info?.optString("etag").orEmpty(),
+                info?.optString("modified").orEmpty(),info?.optString("source")?.ifBlank { source } ?: source,progress,
+                {counting.bytes},total) }
+        }
         ready.delete(); File(ready.parentFile,ready.name + ".info").delete()
         invalidatePages(); return result
     }
     @Synchronized fun importReader(source: String, reader: java.io.Reader, metadata: ProviderMetadata = ProviderMetadata(),
-        etag: String = "", modified: String = "", resolvedSource: String = source, progress: (String) -> Unit = {}): ImportResult =
-        importRows(source,etag,modified,true,progress = { progress("Salvando catálogo: " + it + " entradas") }) { accept ->
+        etag: String = "", modified: String = "", resolvedSource: String = source, progress: (CatalogProgress) -> Unit = {},
+        bytesRead: () -> Long = {0L},totalBytes: Long = 0L): ImportResult =
+        importRows(source,etag,modified,true,progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
+            finalizing={progress(CatalogProgress(CatalogStage.FINALIZING,99))}) { accept ->
+            progress(importProgress(0,totalBytes,0))
             val stats=M3uParser.scan(reader,resolvedSource,metadata.categories) { accept(it) }
             stats.epgUrl
-        }.also { progress("Catálogo salvo: " + it.total + " conteúdos") }
+        }.also { progress(CatalogProgress(CatalogStage.COMPLETE,100,entries=it.total)) }
 
     /** Small-fixture compatibility; production always imports via the streaming reader. */
     @Synchronized fun appendCache(source: String, download: Download, now: Long = System.currentTimeMillis(), markChecked: Boolean = true): Int =
@@ -327,14 +344,15 @@ class PlaylistRepository(context: Context) {
     }
 
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
-        progress: (Int) -> Unit = {}, scan: ((Channel) -> Unit) -> String): ImportResult {
+        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, scan: ((Channel) -> Unit) -> String): ImportResult {
         val db=helper.writableDatabase; val key=digest(source); var added=0; var parsed=0
         db.beginTransactionNonExclusive()
         try {
             ensureSource(db,key)
+            val firstAdded=if(scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))>0)now else 0L
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
-            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult) VALUES(" + List(23){"?"}.joinToString(",") + ")"
+            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added) VALUES(" + List(24){"?"}.joinToString(",") + ")"
             val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=? WHERE source_key=? AND url=? AND seen_generation<>?"
             var epg=""
             db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
@@ -349,6 +367,7 @@ class PlaylistRepository(context: Context) {
                     listOf(c.name,c.group,c.imageUrl,c.tvgId,c.userAgent,c.referrer,c.mimeType,c.typeHint,c.seriesId,title,c.seriesImageUrl).forEachIndexed { i,v -> insert.bindString(i+4,v) }
                     insert.bindLong(15,season.toLong());insert.bindLong(16,number.toLong());insert.bindLong(17,c.kind.ordinal.toLong())
                     insert.bindString(18,c.searchText);insert.bindString(19,seriesKey);insert.bindString(20,norm);insert.bindString(21,episodeTitle);insert.bindLong(22,generation.toLong());insert.bindLong(23,if(c.adult)1L else 0L)
+                    insert.bindLong(24,firstAdded)
                     if(insert.executeInsert()!=-1L){added++;position++}
                     else {
                         update.clearBindings();update.bindLong(1,c.kind.ordinal.toLong());update.bindString(2,c.searchText)
@@ -368,6 +387,7 @@ class PlaylistRepository(context: Context) {
                 if(markChecked)put("checked",now)
                 if(added>0)put("updated",now)
             }
+            finalizing()
             db.update("playlists",values,"source_key=?",arrayOf(key));rebuild(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
             db.setTransactionSuccessful();return ImportResult(added,total)
@@ -405,14 +425,14 @@ class PlaylistRepository(context: Context) {
         }
         db.update("playlists",values,"source_key=?",arrayOf(key))
     }
-    private fun migrateLegacy(source: String, progress: (String) -> Unit) {
+    private fun migrateLegacy(source: String, progress: (CatalogProgress) -> Unit) {
         val key=digest(source)
         for(file in listOf(File(app.filesDir,"aurora_playlist_cache.jsonl.bak"),File(app.filesDir,"aurora_playlist_cache.jsonl"))){
             if(!file.isFile)continue
             val header=runCatching { file.bufferedReader().use { JSONObject(it.readLine().orEmpty()) } }.getOrNull()
             if(header?.has("schema")==true){if(header.optString("sourceHash")!=key)continue}
             else if(prefs.getString("cache_source_hash",key)!=key)continue
-            progress("Recuperando catálogo da versão anterior…")
+            progress(CatalogProgress(CatalogStage.PREPARING,0))
             val result=try { importRows(source,"","",false) { accept ->
                 file.bufferedReader().useLines { lines -> lines.forEach { raw ->
                     val item=runCatching { JSONObject(raw) }.getOrNull()
@@ -445,11 +465,11 @@ class PlaylistRepository(context: Context) {
             db.compileStatement("INSERT INTO guide_names VALUES(?,?,?)").use { statement ->
                 guide.names.forEach { (name,id)->statement.bindString(1,key);statement.bindString(2,name);statement.bindString(3,id);statement.executeInsert() }
             }
-            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?)").use { insert ->
+            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?,?)").use { insert ->
                 db.compileStatement("UPDATE guide_programmes SET is_game=MAX(is_game,?),show_now=MAX(show_now,?) WHERE source_key=? AND channel_id=? AND start=? AND title=?").use { update ->
                     fun row(id:String,p:Programme,game:Boolean,current:Boolean) {
                         insert.bindString(1,key);insert.bindString(2,id);insert.bindLong(3,p.start);insert.bindLong(4,p.end)
-                        insert.bindString(5,p.title);insert.bindString(6,p.image);insert.bindLong(7,if(game)1L else 0L);insert.bindLong(8,if(current)1L else 0L)
+                        insert.bindString(5,p.title);insert.bindString(6,p.image);insert.bindLong(7,if(game)1L else 0L);insert.bindLong(8,if(current)1L else 0L);insert.bindString(9,p.category)
                         if(insert.executeInsert()==-1L) {
                             update.bindLong(1,if(game)1L else 0L);update.bindLong(2,if(current)1L else 0L);update.bindString(3,key)
                             update.bindString(4,id);update.bindLong(5,p.start);update.bindString(6,p.title);update.executeUpdateDelete()
@@ -463,13 +483,26 @@ class PlaylistRepository(context: Context) {
         } finally { db.endTransaction() }
     }
     fun guideChecked(source: String): Long = helper.readableDatabase.rawQuery("SELECT updated FROM guide_cache WHERE source_key=?",arrayOf(digest(source))).use { if(it.moveToFirst())it.getLong(0)else 0L }
+
+    fun cachedAnimeCover(source: String, title: String, now: Long = System.currentTimeMillis()): String? = helper.readableDatabase.rawQuery(
+        "SELECT image,checked FROM anime_covers WHERE source_key=? AND name_norm=?",arrayOf(digest(source),normalized(title))).use {
+        if(!it.moveToFirst())null else it.getString(0).takeIf { image -> now-it.getLong(1)<if(image.isEmpty())3600000L else 365L*86400000 }
+    }
+    fun saveAnimeCover(source: String, title: String, image: String) {
+        helper.writableDatabase.execSQL("INSERT OR REPLACE INTO anime_covers VALUES(?,?,?,?,?)",arrayOf(digest(source),normalized(title),image,if(image.isEmpty())0 else 1,System.currentTimeMillis()))
+    }
+    fun cachedArtwork(key: String, now: Long = System.currentTimeMillis()): String? = helper.readableDatabase.rawQuery(
+        "SELECT json,expires FROM artwork_cache WHERE cache_key=?",arrayOf(key)).use { if(it.moveToFirst() && it.getLong(1)>now)it.getString(0)else null }
+    fun saveArtwork(key: String, json: String, lifetime: Long = 30L*86400000) {
+        helper.writableDatabase.execSQL("INSERT OR REPLACE INTO artwork_cache VALUES(?,?,?)",arrayOf(key,json,System.currentTimeMillis()+lifetime))
+    }
     fun savedGuide(source: String): Guide {
         val db=helper.readableDatabase;val key=digest(source)
         val names=HashMap<String,String>();val shows=HashMap<String,MutableList<Programme>>();val matches=ArrayList<GuideMatch>()
         db.rawQuery("SELECT name,channel_id FROM guide_names WHERE source_key=?",arrayOf(key)).use {while(it.moveToNext())names[it.getString(0)]=it.getString(1)}
-        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
+        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now,category FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
             while(it.moveToNext()) {
-                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4))
+                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4),it.getString(7))
                 if(it.getInt(5)==1)matches.add(GuideMatch(it.getString(0),programme))
                 if(it.getInt(6)==1)shows.getOrPut(it.getString(0)){ArrayList()}.add(programme)
             }
@@ -479,7 +512,7 @@ class PlaylistRepository(context: Context) {
     fun close() = helper.close()
     companion object {
         private const val RAW_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,c.series_image,c.season,c.episode,c.kind,c.adult"
-        private const val CHANNEL_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,CASE WHEN lower(c.group_name) LIKE '%crunchyroll%' OR lower(c.group_name) LIKE '%anime%' OR lower(c.group_name) LIKE '%funimation%' THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.series_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.series_image) END,c.season,c.episode,c.kind,c.adult"
+        private const val CHANNEL_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,CASE WHEN lower(c.group_name) LIKE '%crunchyroll%' OR lower(c.group_name) LIKE '%anime%' OR lower(c.group_name) LIKE '%funimation%' OR lower(c.group_name) LIKE '%hidive%' THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.series_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.series_image) END,c.season,c.episode,c.kind,c.adult"
         fun validUrl(value: String): Boolean = runCatching { val u=URL(value);(u.protocol=="http"||u.protocol=="https")&&u.host.isNotBlank() }.getOrDefault(false)
         fun digest(value: String)=MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString(""){"%02x".format(it)}
         private fun ensureSource(db: SQLiteDatabase,key: String){db.execSQL("INSERT OR IGNORE INTO playlists(source_key) VALUES(?)",arrayOf(key))}
@@ -487,17 +520,24 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,3){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,4){
     init{setWriteAheadLoggingEnabled(true)}
     override fun onConfigure(db: SQLiteDatabase){db.setForeignKeyConstraintsEnabled(true);db.execSQL("PRAGMA synchronous=FULL")}
     override fun onCreate(db: SQLiteDatabase){
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
-        upgrade(db); upgradePreferences(db)
+        upgrade(db); upgradePreferences(db); upgradeArtwork(db)
     }
     override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
         if(oldVersion<2)upgrade(db)
         if(oldVersion<3)upgradePreferences(db)
+        if(oldVersion<4)upgradeArtwork(db)
+    }
+    private fun upgradeArtwork(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE channels ADD COLUMN first_added INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX channel_recent ON channels(source_key,kind,first_added)")
+        db.execSQL("ALTER TABLE guide_programmes ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+        db.execSQL("CREATE TABLE artwork_cache(cache_key TEXT PRIMARY KEY,json TEXT NOT NULL,expires INTEGER NOT NULL)")
     }
     private fun upgradePreferences(db: SQLiteDatabase) {
         db.execSQL("ALTER TABLE channels ADD COLUMN adult INTEGER NOT NULL DEFAULT -1")

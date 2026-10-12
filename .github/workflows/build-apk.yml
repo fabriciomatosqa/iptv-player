@@ -53,7 +53,7 @@ jobs:
           gradle-version: "8.9"
 
       - name: Test and build debug APK
-        run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug
+        run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug compileDebugAndroidTestKotlin
 
       - name: Save persistent test signing key
         uses: actions/cache/save@v4
@@ -76,6 +76,12 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           sudo chmod 666 /dev/kvm
+
+      - name: Install media fixture tools
+        if: github.event_name == 'pull_request'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
 
       - name: Check navigation, persistence and actual video playback
         if: github.event_name == 'pull_request'

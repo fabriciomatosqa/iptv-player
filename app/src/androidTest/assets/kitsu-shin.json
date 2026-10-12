@@ -1,0 +1,85 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "canonicalTitle": "Shin no Nakama ja Nai to Yuusha no Party wo Oidasareta node, Henkyou de Slow Life suru Koto ni Shima",
+        "titles": {
+          "en": "Banished from the Hero's Party, I Decided to Live a Quiet Life in the Countryside",
+          "en_jp": "Shin no Nakama ja Nai to Yuusha no Party wo Oidasareta node, Henkyou de Slow Life suru Koto ni Shima",
+          "ja_jp": "真の仲間じゃないと勇者のパーティーを追い出されたので、辺境でスローライフすることにしました"
+        },
+        "abbreviatedTitles": [
+          "I Was Kicked out of the Hero's Party Because I Wasn't a True Companion so I Decided to Have a Slow Life at the Frontier"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/poster_images/44167/tiny.jpg",
+          "large": "https://media.kitsu.app/anime/poster_images/44167/large.jpg",
+          "small": "https://media.kitsu.app/anime/poster_images/44167/small.jpg",
+          "medium": "https://media.kitsu.app/anime/poster_images/44167/medium.jpg",
+          "original": "https://media.kitsu.app/anime/poster_images/44167/original.png",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Shin no Nakama ja Nai to Yuusha no Party wo Oidasareta node, Henkyou de Slow Life suru Koto ni shimashita 2nd Season",
+        "titles": {
+          "en": "Banished from the Hero’s Party, I Decided to Live a Quiet Life in the Countryside Season 2",
+          "en_jp": "Shin no Nakama ja Nai to Yuusha no Party wo Oidasareta node, Henkyou de Slow Life suru Koto ni shimashita 2nd Season",
+          "ja_jp": "真の仲間じゃないと勇者のパーティーを追い出されたので、辺境でスローライフすることにしました 第2期",
+          "th_th": "ผมโดนกลุ่มผู้กล้าขับไส เลยต้องไปสโลว์ไลฟ์ที่ชายแดน ภาค 2"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46686/poster_image/tiny-876ad706940a255b47b9397ce48ca321.jpeg",
+          "large": "https://media.kitsu.app/anime/46686/poster_image/large-db22aa6d67fd881c9a95e216c50907b4.jpeg",
+          "small": "https://media.kitsu.app/anime/46686/poster_image/small-25fd5fee59a96e213f35185b0f2e8591.jpeg",
+          "medium": "https://media.kitsu.app/anime/46686/poster_image/medium-b213817e8fd273e2c9e02a59663f203a.jpeg",
+          "original": "https://media.kitsu.app/anime/46686/poster_image/b8b3f80e7cc4556b3cf3d7587d981786.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    }
+  ]
+}

@@ -80,6 +80,17 @@
     <string name="remove_favorite">Usuń z ulubionych</string>
     <string name="logo">Logo AURORA IPTV</string>
     <string name="playlist_help">Dodaj raz. Oglądaj, kiedy chcesz.</string>
+    <string name="recently_added">Ostatnio dodane</string>
+    <string name="top_releases">Najlepsze premiery %1$d</string>
+    <string name="finalizing">Kończenie…</string>
+    <string name="audio_language">Dźwięk</string>
+    <string name="subtitles">Napisy</string>
+    <string name="subtitles_off">Wyłączone</string>
+    <string name="automatic">Automatycznie</string>
+    <string name="track">Ścieżka %1$d</string>
+    <string name="rewind">Cofnij o 10 sekund</string>
+    <string name="pause">Pauza</string>
+    <string name="forward">Przewiń o 10 sekund</string>
     <string name="one_channel">1 kanał</string>
     <string name="channel_count">%1$s kanały</string>
     <string name="one_movie">1 film</string>

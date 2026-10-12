@@ -1,0 +1,123 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "canonicalTitle": "Tensai Ouji no Akaji Kokka Saisei Jutsu: Souda, Baikoku shiyou",
+        "titles": {
+          "en": "The Genius Prince's Guide to Raising a Nation Out of Debt",
+          "en_jp": "Tensai Ouji no Akaji Kokka Saisei Jutsu: Souda, Baikoku shiyou",
+          "ja_jp": "天才王子の赤字国家再生術"
+        },
+        "abbreviatedTitles": [
+          "The Genius Prince's Guide to Raising a Nation Out of Debt (Hey, How About Treason?)"
+        ],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/44020/poster_image/tiny-c49c74e48c2d1259cb2d9b954b118637.jpeg",
+          "large": "https://media.kitsu.app/anime/44020/poster_image/large-1606676c9f96cb36c2d236e8b5b9b39d.jpeg",
+          "small": "https://media.kitsu.app/anime/44020/poster_image/small-00e716ce36a825c0a577989e7a9b330f.jpeg",
+          "medium": "https://media.kitsu.app/anime/44020/poster_image/medium-eef2d243aa33d7c9c58a7287318dc171.jpeg",
+          "original": "https://media.kitsu.app/anime/44020/poster_image/071bc84b75bf8b0c5840c9c0e32b5546.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "TV"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Tensai Ouji no Akaji Kokka Saisei Jutsu: Short Drama Specials",
+        "titles": {
+          "en": "The Genius Prince's Guide to Raising a Nation Out of Debt: Short Drama Specials",
+          "en_jp": "Tensai Ouji no Akaji Kokka Saisei Jutsu: Short Drama Specials",
+          "ja_jp": "天才王子の赤字国家再生術 ショートドラマ"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46124/poster_image/tiny-a2cd09e0aed9ba06e6103e1754a7af28.jpeg",
+          "large": "https://media.kitsu.app/anime/46124/poster_image/large-d817830f2cfcb854719b31cfc19b89b7.jpeg",
+          "small": "https://media.kitsu.app/anime/46124/poster_image/small-ca7baea3491bef9acc99b78e118ec8cd.jpeg",
+          "medium": "https://media.kitsu.app/anime/46124/poster_image/medium-7dfdf2bdcb67b77e64ced1b63012d9a4.jpeg",
+          "original": "https://media.kitsu.app/anime/46124/poster_image/00859e2fcbc95084c4e8cf69e0a48760.jpg",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "special"
+      }
+    },
+    {
+      "attributes": {
+        "canonicalTitle": "Tensai Ouji no Akaji Kokka Saisei Jutsu: Short Drama",
+        "titles": {
+          "en": "The Genius Prince's Guide to Raising a Nation Out of Debt: Short Drama",
+          "en_jp": "Tensai Ouji no Akaji Kokka Saisei Jutsu: Short Drama",
+          "ja_jp": "天才王子の赤字国家再生術 ショートドラマ"
+        },
+        "abbreviatedTitles": [],
+        "posterImage": {
+          "tiny": "https://media.kitsu.app/anime/46123/poster_image/tiny-068fb09d98fce67be9a304cd3feb7426.jpeg",
+          "large": "https://media.kitsu.app/anime/46123/poster_image/large-47d8dc3f27f20f936001fc9047acbe30.jpeg",
+          "small": "https://media.kitsu.app/anime/46123/poster_image/small-7cca44d317b4edb972b338b9d494f256.jpeg",
+          "medium": "https://media.kitsu.app/anime/46123/poster_image/medium-f1e8631edaa8e28f59fa0793beab08da.jpeg",
+          "original": "https://media.kitsu.app/anime/46123/poster_image/8511e6c1ac47dc3ce7174d064f555db5.png",
+          "meta": {
+            "dimensions": {
+              "tiny": {
+                "width": 110,
+                "height": 156
+              },
+              "large": {
+                "width": 550,
+                "height": 780
+              },
+              "small": {
+                "width": 284,
+                "height": 402
+              },
+              "medium": {
+                "width": 390,
+                "height": 554
+              }
+            }
+          }
+        },
+        "subtype": "special"
+      }
+    }
+  ]
+}

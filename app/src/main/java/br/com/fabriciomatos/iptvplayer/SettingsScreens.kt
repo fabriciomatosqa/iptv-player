@@ -1,6 +1,7 @@
 package br.com.fabriciomatos.iptvplayer
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,13 +29,17 @@ import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import coil.compose.AsyncImage
 
 @Composable internal fun tr(id: Int, vararg args: Any) = stringResource(id, *args)
 @Composable internal fun kindLabel(kind: MediaKind): String = tr(when(kind) {
     MediaKind.LIVE -> R.string.live; MediaKind.MOVIES -> R.string.movies
     MediaKind.SERIES -> R.string.series; else -> R.string.other
 })
-@Composable internal fun groupLabel(group: String) = if(group==ADULT_GROUP)tr(R.string.adult_category)else group
+@Composable internal fun groupLabel(group: String) = when(group) {
+    ADULT_GROUP->tr(R.string.adult_category);RECENT_GROUP->tr(R.string.recently_added)
+    RELEASES_2026_GROUP->tr(R.string.top_releases,2026);UHD_GROUP->"4K";else->group
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun SettingsPanel(model: AuroraViewModel) {
@@ -128,26 +136,46 @@ import java.util.Locale
         } else LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             items(matches,key={it.id}) {match ->
                 var expanded by remember {mutableStateOf(false)}
-                Card(onClick={model.play(match.channels.first())},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)) {
+                var artwork by remember(match.id) {mutableStateOf(FootballArtwork())}
+                LaunchedEffect(match.id) {artwork=model.footballArtwork(match.details)}
+                val championship=match.details.competition.ifBlank {tr(R.string.football)}
+                Card(onClick={model.play(match.channels.first())},modifier=Modifier.fillMaxWidth().testTag("football_match"),shape=RoundedCornerShape(18.dp),
+                    colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
                     Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Default.SportsSoccer,null,tint=MaterialTheme.colorScheme.primary)
-                        Column(Modifier.weight(1f).padding(horizontal=14.dp)) {
-                            Text(match.programme.title,fontWeight=FontWeight.SemiBold)
+                        FootballBadge(artwork.competition,championship,Modifier.size(40.dp))
+                        Column(Modifier.weight(1f).padding(start=12.dp)) {
+                            Text(championship,fontWeight=FontWeight.SemiBold,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(Modifier.fillMaxWidth().padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                FootballBadge(artwork.home,match.details.home,Modifier.size(30.dp))
+                                Text(match.details.home,Modifier.weight(1f),fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                                Text("X",color=MaterialTheme.colorScheme.primary,fontSize=12.sp)
+                                Text(match.details.away,Modifier.weight(1f),fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                                FootballBadge(artwork.away,match.details.away,Modifier.size(30.dp))
+                            }
                             val live=match.programme.start<=now
                             Text(if(live)tr(R.string.now)else SimpleDateFormat("EEE, dd MMM · HH:mm",Locale.getDefault()).format(Date(match.programme.start)),
                                 color=MaterialTheme.colorScheme.primary,fontSize=12.sp)
-                            Text(match.channels.first().name,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)
-                        }
-                        if(match.channels.size==1) Icon(Icons.Default.PlayArrow,tr(R.string.watch))
-                        else Box {
-                            IconButton(onClick={expanded=true}) {Icon(Icons.Default.MoreVert,tr(R.string.channels))}
-                            DropdownMenu(expanded,{expanded=false}) {match.channels.forEach {channel ->
-                                DropdownMenuItem(text={Text(channel.name)},onClick={expanded=false;model.play(channel)})
-                            }}
+                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                                Text(match.channels.first().name,Modifier.weight(1f),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)
+                                if(match.channels.size==1)Icon(Icons.Default.PlayArrow,tr(R.string.watch),Modifier.size(22.dp))
+                                else Box {
+                                    IconButton(onClick={expanded=true}) {Icon(Icons.Default.MoreVert,tr(R.string.channels))}
+                                    DropdownMenu(expanded,{expanded=false}) {match.channels.forEach {channel ->
+                                        DropdownMenuItem(text={Text(channel.name)},onClick={expanded=false;model.play(channel)})
+                                    }}
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable private fun FootballBadge(image: String, name: String, modifier: Modifier) {
+    Box(modifier.clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.5f)),contentAlignment=Alignment.Center) {
+        Text(name.split(Regex("\\s+")).take(2).mapNotNull {it.firstOrNull()?.uppercaseChar()}.joinToString(""),fontSize=10.sp,color=MaterialTheme.colorScheme.primary)
+        if(image.isNotBlank())AsyncImage(catalogImage(image),null,Modifier.fillMaxSize().padding(2.dp),contentScale=ContentScale.Fit)
     }
 }
