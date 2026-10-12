@@ -210,6 +210,7 @@ class AuroraUiTest {
     }
 
     private fun screenshot(name: String) {
+        compose.waitForIdle()
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         device.waitForIdle(3000)
