@@ -12,7 +12,7 @@ data class CatalogOverview(val total: Int = 0, val live: Int = 0, val movies: In
 }
 data class BrowseQuery(val source: String = "", val kind: MediaKind? = MediaKind.LIVE, val favoritesOnly: Boolean = false,
     val group: String? = null, val search: String = "", val seriesId: String? = null, val season: Int? = null, val includeAdult: Boolean = false, val revision: Int = 0,
-    val groupAliases: List<String> = emptyList())
+    val groupAliases: List<String> = emptyList(),val initialOffset: Int = 0)
 
 internal class CatalogPage<T : Any>(private val read: (Int, Int) -> List<T>) : PagingSource<Int, T>() {
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, T> = withContext(Dispatchers.IO) {

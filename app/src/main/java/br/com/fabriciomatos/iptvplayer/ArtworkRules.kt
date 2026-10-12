@@ -1,5 +1,7 @@
 package br.com.fabriciomatos.iptvplayer
 
+data class FootballArtwork(val competition: String = "", val home: String = "", val away: String = "")
+
 fun animeTitleKey(title: String) = canonicalAnimeTitle(title).replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
 fun animeTitleScore(request: String, candidate: String): Int {
     val a=animeTitleKey(request);val b=animeTitleKey(candidate)

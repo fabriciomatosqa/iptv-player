@@ -165,6 +165,28 @@ class PlaylistRepository(context: Context) {
         val (where, args) = where(query, shows)
         return scalar(helper.readableDatabase, "SELECT COUNT(*) FROM " + (if (shows) "series_directory" else "channels") + " c WHERE " + where, args)
     }
+    /** Find the remembered item in the complete filtered catalog, beyond the loaded pages. */
+    fun catalogOffset(query: BrowseQuery, item: String): Int? {
+        val shows=query.kind==MediaKind.SERIES && query.seriesId==null
+        val (where,args)=where(query,shows)
+        val table=if(shows)"series_directory" else "channels"
+        val id=if(shows)"series_key"else"url"
+        val fields=if(shows)"c.name_norm,c.series_key"else"c.position,c.first_added,c.season,CASE WHEN c.episode>0 THEN c.episode ELSE 2147483647 END"
+        val db=helper.readableDatabase
+        return db.rawQuery("SELECT $fields FROM $table c WHERE $where AND c.$id=?",args+item).use {cursor->
+            if(!cursor.moveToFirst())return@use null
+            val (before,values)=when {
+                shows->"(c.name_norm<? OR (c.name_norm=? AND c.series_key<?))" to arrayOf(cursor.getString(0),cursor.getString(0),cursor.getString(1))
+                query.group==RECENT_GROUP->"(c.first_added>? OR (c.first_added=? AND c.position>?))" to arrayOf(cursor.getLong(1).toString(),cursor.getLong(1).toString(),cursor.getLong(0).toString())
+                query.seriesId!=null->{
+                    val episode="CASE WHEN c.episode>0 THEN c.episode ELSE 2147483647 END"
+                    "(c.season<? OR (c.season=? AND $episode<?) OR (c.season=? AND $episode=? AND c.position<?))" to arrayOf(cursor.getInt(2).toString(),cursor.getInt(2).toString(),cursor.getInt(3).toString(),cursor.getInt(2).toString(),cursor.getInt(3).toString(),cursor.getLong(0).toString())
+                }
+                else->"c.position<?" to arrayOf(cursor.getLong(0).toString())
+            }
+            scalar(db,"SELECT COUNT(*) FROM $table c WHERE $where AND $before",args+values)
+        }
+    }
     fun channels(query: BrowseQuery, offset: Int = 0, limit: Int = 60): List<Channel> {
         if (query.source.isBlank()) return emptyList()
         val (where, args) = where(query, false)
@@ -178,7 +200,7 @@ class PlaylistRepository(context: Context) {
         if (query.source.isBlank()) return emptyList()
         val (where, args) = where(query, true)
         return helper.readableDatabase.rawQuery("SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult,EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE " +
-            where + " ORDER BY c.name_norm LIMIT ? OFFSET ?", args + arrayOf(limit.coerceIn(1, 1000).toString(), offset.coerceAtLeast(0).toString())).use {
+            where + " ORDER BY c.name_norm,c.series_key LIMIT ? OFFSET ?", args + arrayOf(limit.coerceIn(1, 1000).toString(), offset.coerceAtLeast(0).toString())).use {
             buildList { while (it.moveToNext()) add(readSeries(it)) }
         }
     }
@@ -274,7 +296,7 @@ class PlaylistRepository(context: Context) {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
-            setRequestProperty("User-Agent","AuroraIPTV/1.5 Android"); setRequestProperty("Accept-Encoding","identity")
+            setRequestProperty("User-Agent","AuroraIPTV/1.6 Android"); setRequestProperty("Accept-Encoding","identity")
             if (conditional) {
                 validators.etag.takeIf(String::isNotBlank)?.let { setRequestProperty("If-None-Match",it) }
                 validators.modified.takeIf(String::isNotBlank)?.let { setRequestProperty("If-Modified-Since",it) }

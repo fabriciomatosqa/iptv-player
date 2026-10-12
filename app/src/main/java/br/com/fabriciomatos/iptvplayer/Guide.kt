@@ -52,7 +52,7 @@ suspend fun loadGuide(source: String, channelIds: Set<String>, now: Long = Syste
     val connection = (URL(source).openConnection() as HttpURLConnection).apply {
         connectTimeout = 10000; readTimeout = 20000
         instanceFollowRedirects = true
-        setRequestProperty("User-Agent", "AuroraIPTV/1.5 Android")
+        setRequestProperty("User-Agent", "AuroraIPTV/1.6 Android")
     }
     try {
         if (connection.responseCode !in 200..299) return Guide()

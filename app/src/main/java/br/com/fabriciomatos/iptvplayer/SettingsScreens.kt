@@ -136,7 +136,7 @@ import coil.compose.AsyncImage
         } else LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             items(matches,key={it.id}) {match ->
                 var expanded by remember {mutableStateOf(false)}
-                var artwork by remember(match.id) {mutableStateOf(FootballArtwork())}
+                var artwork by remember(match.id) {mutableStateOf(initialFootballArtwork(match.details))}
                 LaunchedEffect(match.id) {artwork=model.footballArtwork(match.details)}
                 val championship=match.details.competition.ifBlank {tr(R.string.football)}
                 Card(onClick={model.play(match.channels.first())},modifier=Modifier.fillMaxWidth().testTag("football_match"),shape=RoundedCornerShape(18.dp),

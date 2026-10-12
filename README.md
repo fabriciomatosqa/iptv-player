@@ -2,7 +2,12 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.5.0
+## Versão 1.6.0
+
+- Jogos entre seleções mostram o logo da FIFA e os escudos das federações, incluindo CBF, AFA, US Soccer e RFEF. Nomes femininos e de base usam a mesma federação; os escudos de outros países são identificados por nome exato e guardados em cache.
+- Voltar de um filme ou dos episódios restaura a subcategoria, a busca e a posição anterior da lista. O retorno funciona pelos botões da interface e pelo botão Voltar do Android, inclusive com catálogos paginados.
+
+## Recursos da versão 1.5.0
 
 - Atualização com porcentagem baseada nos bytes recebidos e importados, também no topo da tela inicial durante a atualização automática, mantendo o catálogo disponível. Os 100% só aparecem após a gravação completa no SQLite; quando o servidor não informa o tamanho do download, aparece o volume recebido até ser possível calcular a porcentagem da importação.
 - Controles do vídeo visíveis por 3 segundos, com desaparecimento gradual até 5 segundos. Um toque volta a mostrá-los. Áudio e legendas disponíveis no título aparecem abaixo do tempo, com seleção efetiva das faixas.
