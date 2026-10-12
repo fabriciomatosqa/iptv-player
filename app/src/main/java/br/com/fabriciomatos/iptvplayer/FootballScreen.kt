@@ -89,9 +89,9 @@ import java.util.Locale
     LaunchedEffect(match.id) {artwork=model.footballArtwork(match.details)}
     val matched=remember(match,model.footballFeed) {matchFootballScore(match,model.footballFeed)}
     val event=matched?.event
-    val country=nationalMatch(match.details)!=null
-    val homeBadge=if(country)artwork.home else matched?.home?.badge?.takeIf(String::isNotBlank) ?: artwork.home
-    val awayBadge=if(country)artwork.away else matched?.away?.badge?.takeIf(String::isNotBlank) ?: artwork.away
+    val country=footballTabKey(match.details)==FOOTBALL_FIFA
+    val homeBadge=if(country)artwork.home else matched?.home?.badge?.takeIf {it.isNotBlank() && !it.contains("/countries/")} ?: artwork.home
+    val awayBadge=if(country)artwork.away else matched?.away?.badge?.takeIf {it.isNotBlank() && !it.contains("/countries/")} ?: artwork.away
     val competitionBadge=if(country)FIFA_BADGE else event?.badge?.takeIf(String::isNotBlank) ?: artwork.competition
     val championship=match.details.competition.ifBlank {event?.competition.orEmpty().ifBlank {tr(R.string.football)}}
     val mode=broadcastMode(match.programme,event)

@@ -27,7 +27,7 @@ class FootballUiTest {
         val file=File(context.cacheDir,"football.mp4")
         instrumentation.context.assets.open("smoke.mp4").use {input->file.outputStream().use {input.copyTo(it)}}
         val channels=listOf("Brasileirão","AFC","Premier League","Seleções").mapIndexed {i,name->
-            Channel("TV $name","${file.toURI()}#channel$i","Esportes",tvgId="sport$i")
+            Channel("TV $name","${file.toURI()}#channel$i","Esportes",tvgId="sport$i",typeHint="live")
         }
         fun p(title: String, start: Long, hint: BroadcastHint = BroadcastHint.UNKNOWN)=Programme(title,start,start+3*3600000L,broadcast=hint)
         val programmes=listOf(p("Fluminense x Botafogo - Campeonato Brasileiro",now-83*60000L,BroadcastHint.LIVE),
