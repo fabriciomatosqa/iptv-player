@@ -25,6 +25,8 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 enum class Page { HOME, LIBRARY }
@@ -61,6 +63,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private var refreshJob: Job? = null
     private var filterJob: Job? = null
     private var guideJob: Job? = null
+    private val favoriteWrites = Mutex()
+    private var pendingFavorites: Set<String>? = null
     private var epgUrl = ""
     private var foreground = false
     private var resumePlayback = false
@@ -187,10 +191,24 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     fun groups(): List<String> = if (selectedKind == null) catalog.groups.values.flatten().distinct().sorted() else catalog.groups[selectedKind].orEmpty()
     fun toggleFavorite(channel: Channel) {
-        favorites = if (channel.url in favorites) favorites - channel.url else favorites + channel.url
-        // SharedPreferences.apply enqueues the small write in order, without disk IO here.
-        repository.saveFavorites(favorites)
-        if (favoritesOnly) updateFilter()
+        val before = pendingFavorites ?: favorites
+        val next = if (channel.url in before) before - channel.url else before + channel.url
+        pendingFavorites = next
+        viewModelScope.launch {
+            try {
+                favoriteWrites.withLock {
+                    withContext(NonCancellable + Dispatchers.IO) { repository.saveFavorites(next) }
+                    // A visible star means its write is already durable, including after force-stop.
+                    favorites = next
+                    if (pendingFavorites == next) pendingFavorites = null
+                    if (favoritesOnly) updateFilter()
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) {
+                if (pendingFavorites == next) pendingFavorites = null
+                message = "Não consegui salvar o favorito. Verifique o espaço disponível."
+            }
+        }
     }
 
     private fun refreshGuide() {

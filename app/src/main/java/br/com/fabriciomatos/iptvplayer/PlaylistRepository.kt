@@ -26,7 +26,9 @@ class PlaylistRepository(context: Context) {
     fun savedUrl() = prefs.getString("playlist_url", "").orEmpty()
     fun savedName() = prefs.getString("playlist_name", "Minha playlist").orEmpty()
     fun favorites() = prefs.getStringSet("favorite_urls", emptySet()).orEmpty().toSet()
-    fun saveFavorites(urls: Set<String>) { prefs.edit().putStringSet("favorite_urls", urls).apply() }
+    fun saveFavorites(urls: Set<String>) {
+        if (!prefs.edit().putStringSet("favorite_urls", urls).commit()) throw IOException("Não consegui salvar os favoritos.")
+    }
     fun lastUrl() = prefs.getString("last_channel_url", "").orEmpty()
     fun saveLast(channel: Channel) { prefs.edit().putString("last_channel_url", channel.url).apply() }
 
