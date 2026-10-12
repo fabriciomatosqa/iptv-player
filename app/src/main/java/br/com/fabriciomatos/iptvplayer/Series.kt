@@ -18,12 +18,12 @@ data class Episode(val channel: Channel, val season: Int, val number: Int, val t
     val label: String get() = if (number > 0) "T${season.toString().padStart(2, '0')} • E${number.toString().padStart(2, '0')}" else "Temporada $season"
 }
 
-data class SeriesEntry(val id: String, val title: String, val imageUrl: String, val groups: Set<String>, val episodes: List<Episode>) {
+data class SeriesEntry(val id: String, val title: String, val imageUrl: String, val groups: Set<String>, val episodes: List<Episode>,
+    val episodeCount: Int = episodes.size, val seasons: List<Int> = episodes.map { it.season }.distinct().sorted()) {
     val searchText = normalized("$title ${groups.joinToString(" ")}")
-    val seasons = episodes.map { it.season }.distinct().sorted()
 }
 
-private data class SeriesIdentity(val id: String, val title: String, val episode: Episode)
+data class SeriesIdentity(val id: String, val title: String, val episode: Episode)
 
 private fun cleanTitle(value: String): String {
     var result = qualityTag.replace(value, " ").trim(' ', '-', '|', '.', ':')
@@ -32,7 +32,7 @@ private fun cleanTitle(value: String): String {
     return spaces.replace(result, " ").trim()
 }
 
-private fun describe(channel: Channel): SeriesIdentity {
+fun seriesIdentity(channel: Channel): SeriesIdentity {
     val match = seasonEpisodePatterns.firstNotNullOfOrNull { it.find(channel.name) }
     val lone = if (match == null) episodeOnly.find(channel.name) else null
     val marker = match ?: lone
@@ -48,7 +48,7 @@ private fun describe(channel: Channel): SeriesIdentity {
 }
 
 fun groupSeries(channels: List<Channel>): List<SeriesEntry> {
-    val entries = channels.map(::describe).groupBy { it.id }
+    val entries = channels.map(::seriesIdentity).groupBy { it.id }
     return entries.map { (id, items) ->
         val cover = items.firstNotNullOfOrNull { it.episode.channel.seriesImageUrl.takeIf(String::isNotBlank) }
             ?: items.firstNotNullOfOrNull { it.episode.channel.imageUrl.takeIf(String::isNotBlank) }.orEmpty()

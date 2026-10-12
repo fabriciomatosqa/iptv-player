@@ -21,6 +21,15 @@ class CachePersistenceTest {
 
     @Before fun reset() = resetCatalog(context)
 
+    private fun assertSaved(expected: List<Channel>, actual: List<Channel>) {
+        assertEquals(expected.map { Triple(it.url, it.name, it.kind) }, actual.map { Triple(it.url, it.name, it.kind) })
+        actual.filter { it.kind == MediaKind.SERIES }.forEach {
+            assertEquals(1, it.seasonNumber)
+            assertEquals(1, it.episodeNumber)
+            assertEquals("Rick e Morty", it.seriesTitle)
+        }
+    }
+
     @Test fun additiveCatalogAndDailyLedgerSurviveClosingRepository() {
         val first = PlaylistRepository(context)
         first.saveSource(source, "Minha lista")
@@ -29,7 +38,7 @@ class CachePersistenceTest {
         first.appendCache(source, Download(Playlist(listOf(b.copy(name = "Renomeado"), c, c)), "second", ""))
         first.close()
         val reopened = PlaylistRepository(context)
-        assertEquals(listOf(a, b, c), reopened.readCache(source).channels)
+        assertSaved(listOf(a, b, c), reopened.readCache(source).channels)
         assertEquals("second", reopened.state(source).etag)
         assertFalse(reopened.claimDailyAttempt(source))
         val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.timeInMillis
@@ -42,7 +51,7 @@ class CachePersistenceTest {
         assertFalse(next.claimDailyAttempt(source))
         assertTrue(next.readCache("https://other.test/list.m3u").channels.isEmpty())
         next.appendCache(source, Download(Playlist(emptyList()), "", ""))
-        assertEquals(listOf(a, b, c), next.readCache(source).channels)
+        assertSaved(listOf(a, b, c), next.readCache(source).channels)
         next.close()
     }
 
@@ -52,11 +61,11 @@ class CachePersistenceTest {
         file.writeText(JSONObject().put("schema", 2).put("sourceHash", PlaylistRepository.digest(source)).toString() + "\n" +
             JSONObject().put("name", c.name).put("url", c.url).put("group", c.group).toString() + "\n")
         val old = PlaylistRepository(context)
-        assertEquals(listOf(c), old.readCache(source).channels)
+        assertSaved(listOf(c), old.readCache(source).channels)
         old.close()
         file.delete()
         val reopened = PlaylistRepository(context)
-        assertEquals(listOf(c), reopened.readCache(source).channels)
+        assertSaved(listOf(c), reopened.readCache(source).channels)
         reopened.close()
     }
 

@@ -110,4 +110,23 @@ class PlaylistTest {
         assertEquals(0L, xmltvTime("not-a-date"))
         assertEquals(0L, xmltvTime("20269911230000 +0000"))
     }
+
+    @Test fun opaqueStreamsRespectProviderCategoriesAndLiveMarkers() {
+        val source = "https://example.test/list"
+        val metadata = mapOf("FILMES E SÉRIES" to MediaKind.LIVE, "Ação" to MediaKind.MOVIES, "Netflix" to MediaKind.SERIES)
+        val channels = mutableListOf<Channel>()
+        val stats = M3uParser.scan(StringReader("""
+            #EXTM3U
+            #EXTINF:-1 group-title="FILMES E SÉRIES",A&E
+            https://example.test/play/opaque-a/ts
+            #EXTINF:-1 group-title="Ação",Filme completo
+            https://example.test/play/opaque-b
+            #EXTINF:-1 group-title="Netflix",Rick e Morty S01E01
+            https://example.test/play/opaque-c
+        """.trimIndent()), source, metadata) { channels.add(it) }
+        assertEquals(3, stats.entries)
+        assertEquals(listOf(MediaKind.LIVE, MediaKind.MOVIES, MediaKind.SERIES), channels.map { it.kind })
+        assertEquals(MediaKind.LIVE, classifyContent("A&E", "FILMES E SÉRIES", "https://example.test/play/a/ts"))
+        assertEquals(MediaKind.MOVIES, classifyContent("Filme", "Ação", "https://example.test/play/b"))
+    }
 }

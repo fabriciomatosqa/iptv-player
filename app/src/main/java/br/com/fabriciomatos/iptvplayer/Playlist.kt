@@ -16,7 +16,7 @@ fun normalized(value: String): String = separators.replace(
 private val episodes = Regex("""\b(?:s\d{1,2}\s*e\d{1,3}|\d{1,2}\s*x\s*\d{1,3})\b""")
 private val vodFiles = Regex("""\.(mp4|mkv|avi|mov|m4v|wmv|webm)(\?|#|$)""", RegexOption.IGNORE_CASE)
 private val seriesWords = Regex("""\b(series?|seriados|tv shows?|temporadas?|episodios?|animes?|novelas?)\b""")
-private val movieWords = Regex("""\b(filmes?|movies?|cinema|lancamentos|film)\b""")
+private val movieWords = Regex("""\b(filmes?|movies?|cinema|lancamentos|film|acao|animacao|aventura|comedia|crime|documentarios?|drama|familia|faroeste|ficcao|guerra|fantasia|romance|suspense|terror|legendados|nacionais|dublagem|adultos|reelsshorts)\b""")
 
 fun classifyContent(name: String, group: String, url: String, typeHint: String = ""): MediaKind {
     when (normalized(typeHint)) {
@@ -28,13 +28,15 @@ fun classifyContent(name: String, group: String, url: String, typeHint: String =
     // Explicit provider paths take precedence over ambiguous groups like "Canais de filmes".
     if (path.contains("/series/") || path.contains("/episode/")) return MediaKind.SERIES
     if (path.contains("/live/")) return MediaKind.LIVE
+    if (path.startsWith("/play/") && (path.endsWith("/ts") || path.endsWith("/m3u8"))) return MediaKind.LIVE
     val title = normalized(name)
     val category = normalized(group)
     if (episodes.containsMatchIn(title) || hasEpisodeMarker(name)) return MediaKind.SERIES
     if (category.startsWith("canais ") || category.contains("ao vivo")) return MediaKind.LIVE
+    if (path.contains("/movie/") || path.contains("/movies/") || path.contains("/vod/")) return MediaKind.MOVIES
+    if (category.contains("filmes e series")) return if (vodFiles.containsMatchIn(url)) MediaKind.MOVIES else MediaKind.LIVE
     if (seriesWords.containsMatchIn(category)) return MediaKind.SERIES
     if (normalized(typeHint) == "vod") return MediaKind.MOVIES
-    if (path.contains("/movie/") || path.contains("/movies/") || path.contains("/vod/")) return MediaKind.MOVIES
     if (movieWords.containsMatchIn(category)) return MediaKind.MOVIES
     if (vodFiles.containsMatchIn(url)) return MediaKind.MOVIES
     // M3U television lists frequently group channels by country/language, not by "live".
@@ -62,6 +64,7 @@ data class Channel(
 }
 
 data class Playlist(val channels: List<Channel>, val epgUrl: String = "")
+data class ParseStats(val entries: Int, val rejected: Int, val epgUrl: String)
 
 object M3uParser {
     private val attributes = Regex("""([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
@@ -82,6 +85,15 @@ object M3uParser {
     fun parse(reader: Reader, source: String, checkCancelled: () -> Unit = {}): Playlist {
         val result = ArrayList<Channel>()
         val urls = HashSet<String>()
+        val stats = scan(reader, source, checkCancelled = checkCancelled) { if (urls.add(it.url)) result.add(it) }
+        return Playlist(result, stats.epgUrl)
+    }
+
+    /** Production imports write each row immediately; no catalog-sized list or URL set. */
+    fun scan(reader: Reader, source: String, categoryKinds: Map<String, MediaKind> = emptyMap(),
+        checkCancelled: () -> Unit = {}, accept: (Channel) -> Unit): ParseStats {
+        var entries = 0
+        var rejected = 0
         var name = ""
         var metadata: Map<String, String> = emptyMap()
         var group = ""
@@ -118,19 +130,23 @@ object M3uParser {
                     line.startsWith("#KODIPROP:mimetype=", true) -> mime = line.substringAfter('=').trim()
                     line.isNotBlank() && !line.startsWith('#') -> {
                         val url = if (pendingEntry || line.startsWith("https://", true) || line.startsWith("http://", true)) resolve(source, line) else ""
-                        if (url.isNotEmpty() && urls.add(url)) {
-                            result.add(Channel(
-                                name.ifBlank { metadata["tvg-name"].orEmpty().ifBlank { "Canal ${result.size + 1}" } },
+                        if (url.isNotEmpty()) {
+                            val category = group.ifBlank { "Canais" }
+                            val hint = categoryKinds[category.trim()]?.name?.lowercase(Locale.ROOT)
+                                ?: metadata["media-type"] ?: metadata["tvg-type"] ?: metadata["content-type"] ?: metadata["type"].orEmpty()
+                            accept(Channel(
+                                name.ifBlank { metadata["tvg-name"].orEmpty().ifBlank { "Canal ${entries + 1}" } },
                                 url, group.ifBlank { "Canais" },
                                 resolve(source, (metadata["tvg-logo"] ?: metadata["logo"] ?: metadata["poster"] ?: metadata["cover"]).orEmpty()),
                                 metadata["tvg-id"].orEmpty(), agent, referrer, mime,
-                                metadata["media-type"] ?: metadata["tvg-type"] ?: metadata["content-type"] ?: metadata["type"].orEmpty(),
+                                hint,
                                 metadata["series-id"].orEmpty(), metadata["series-name"] ?: metadata["series-title"].orEmpty(),
                                 resolve(source, metadata["series-poster"] ?: metadata["series-logo"].orEmpty()),
                                 (metadata["season-number"] ?: metadata["season"] ?: metadata["tvg-season"])?.toIntOrNull() ?: 0,
                                 (metadata["episode-number"] ?: metadata["episode"] ?: metadata["tvg-episode"])?.toIntOrNull() ?: 0
                             ))
-                        }
+                            entries++
+                        } else rejected++
                         name = ""; metadata = emptyMap(); group = ""; agent = ""; referrer = ""; mime = ""
                         pendingEntry = false
                     }
@@ -138,7 +154,7 @@ object M3uParser {
             }
         }
         checkCancelled()
-        return Playlist(result, epg)
+        return ParseStats(entries, rejected, epg)
     }
 
     fun resolve(source: String, value: String): String {
