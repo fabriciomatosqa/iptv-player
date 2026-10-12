@@ -1,0 +1,30 @@
+{
+  "leagues": [
+    {
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png",
+          "width": 500,
+          "height": 500,
+          "alt": "",
+          "rel": [
+            "full",
+            "default"
+          ],
+          "lastUpdated": "2019-05-08T16:07Z"
+        },
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/23.png",
+          "width": 500,
+          "height": 500,
+          "alt": "",
+          "rel": [
+            "full",
+            "dark"
+          ],
+          "lastUpdated": "2021-08-10T20:43Z"
+        }
+      ]
+    }
+  ]
+}

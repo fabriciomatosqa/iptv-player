@@ -4,7 +4,7 @@ Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras bore
 
 ## Versão 1.5.0
 
-- Atualização com porcentagem baseada nos bytes recebidos e importados. Os 100% só aparecem após a gravação completa no SQLite; quando o servidor não informa o tamanho do download, aparece o volume recebido até ser possível calcular a porcentagem da importação.
+- Atualização com porcentagem baseada nos bytes recebidos e importados, também no topo da tela inicial durante a atualização automática, mantendo o catálogo disponível. Os 100% só aparecem após a gravação completa no SQLite; quando o servidor não informa o tamanho do download, aparece o volume recebido até ser possível calcular a porcentagem da importação.
 - Controles do vídeo visíveis por 3 segundos, com desaparecimento gradual até 5 segundos. Um toque volta a mostrá-los. Áudio e legendas disponíveis no título aparecem abaixo do tempo, com seleção efetiva das faixas.
 - Cartazes de anime recuperados pelo título no catálogo Kitsu, com correspondência de nomes, proteção contra imagens de outra série e cache para reabertura. A imagem do provedor recebe uma alternativa quando falha.
 - Categorias equivalentes de filmes reunidas sem excluir conteúdos. Ordem: Adicionado recentemente, Top Lançamentos 2026, 4K, demais categorias em ordem alfabética e +18 por último. Recentes reúne o grupo Update e os filmes novos recebidos nas atualizações dos últimos 30 dias, sem tratar o catálogo inicial inteiro como novo.

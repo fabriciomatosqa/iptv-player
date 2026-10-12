@@ -63,6 +63,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var playlistUrl by mutableStateOf(""); private set
     var playlistName by mutableStateOf("Minha playlist"); private set
     var loading by mutableStateOf(false); private set
+    var updating by mutableStateOf(false); private set
     var initialized by mutableStateOf(false); private set
     var updated by mutableStateOf(0L); private set
     var message by mutableStateOf<String?>(null); private set
@@ -126,7 +127,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
     private fun showProgress(progress: CatalogProgress) { viewModelScope.launch {
-        if(initialized && !loading)return@launch
+        if(initialized && !updating && !loading)return@launch
         progressPercent=progress.percent
         val stage=preferences.text(when(progress.stage) {
             CatalogStage.DOWNLOADING->R.string.downloading;CatalogStage.IMPORTING->R.string.importing
@@ -174,7 +175,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val source = playlistUrl
         refreshJob = viewModelScope.launch {
             val quiet = silent && catalog.total > 0
-            val progress: (CatalogProgress) -> Unit = if (quiet) ({ _ -> }) else { value -> if(playlistUrl==source)showProgress(value) }
+            val progress: (CatalogProgress) -> Unit = { value -> if(playlistUrl==source)showProgress(value) }
             try {
                 val pending = withContext(Dispatchers.IO) { !force && repository.hasPending(source) }
                 val claimed = if (pending) true else withContext(Dispatchers.IO) {
@@ -189,7 +190,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     return@launch
                 }
-                if (!quiet) { loading = true; message = null; progressPercent=if(pending)50 else 0;progressText=preferences.text(R.string.loading)+" · ${progressPercent}%" }
+                updating=true;progressPercent=if(pending)50 else 0;progressText=preferences.text(R.string.loading)+" · ${progressPercent}%"
+                if (!quiet) { loading = true; message = null }
                 val metadata = withContext(Dispatchers.IO) {
                     if(pending) repository.metadata(source) else repository.fetchMetadata(source)
                 }
@@ -199,12 +201,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 } else withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
                 coroutineContext.ensureActive()
                 if (playlistUrl == source) reloadOverview()
-                if(!quiet) {showProgress(CatalogProgress(CatalogStage.COMPLETE,100));delay(500)}
+                showProgress(CatalogProgress(CatalogStage.COMPLETE,100));delay(500)
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
                 if (!quiet) message = if(catalog.total>0) preferences.text(R.string.load_failed)
                     else preferences.text(R.string.load_failed)
-            } finally { if(!quiet) { loading = false; progressText = null;progressPercent=null } }
+            } finally { updating=false;loading=false;progressText=null;progressPercent=null }
         }
     }
     fun browse(kind: MediaKind?, favorites: Boolean = false) {
@@ -374,6 +376,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun createPlayer(): ExoPlayer = ExoPlayer.Builder(getApplication<Application>())
+        .setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(10000)
         .setRenderersFactory(DefaultRenderersFactory(getApplication()).setEnableDecoderFallback(true))
         .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(10000, 30000, 1000, 2000).setTargetBufferBytes(32 * 1024 * 1024).build())
         .build().apply {

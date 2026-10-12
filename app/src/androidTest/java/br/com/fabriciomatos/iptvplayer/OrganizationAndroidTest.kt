@@ -90,4 +90,23 @@ class OrganizationAndroidTest {
         assertEquals(FootballDetails("Futebol","Aurora","Norte"),matches.last().details)
         reopened.close()
     }
+    @Test fun footballCrestsMatchTheExactClubsAndPersistWithoutNewNetworkRequests() = runBlocking {
+        fun asset(name: String)=JSONObject(instrumentation.context.assets.open(name).bufferedReader().use {it.readText()})
+        val teams=asset("sports-eng.1.json");val logo=asset("sports-premier-logo.json")
+        val repository=PlaylistRepository(context)
+        var calls=0
+        val resolver=ArtworkResolver(repository) {url->calls++;if(url.contains("/teams"))teams else logo}
+        val details=FootballDetails("Premier League","Chelsea","Bournemouth")
+        val badges=resolver.football(details)
+        assertEquals("https://a.espncdn.com/i/teamlogos/soccer/500/363.png",badges.home)
+        assertEquals("https://a.espncdn.com/i/teamlogos/soccer/500/349.png",badges.away)
+        assertTrue(badges.competition.contains("leaguelogos"));assertEquals(2,calls)
+        val brazil=sportsBundle(asset("sports-bra.2.json"),JSONObject())
+        assertEquals("https://a.espncdn.com/i/teamlogos/soccer/500/18187.png",selectTeamBadge("Operário-PR",brazil.getJSONArray("teams")))
+        assertEquals("",selectTeamBadge("Outro time",brazil.getJSONArray("teams")))
+        repository.close()
+        val reopened=PlaylistRepository(context)
+        val offline=ArtworkResolver(reopened) {error("Saved crests must work offline")}
+        assertEquals(badges,offline.football(details));reopened.close()
+    }
 }

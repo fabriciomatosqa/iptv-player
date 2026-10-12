@@ -145,8 +145,8 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text("AURORA IPTV", fontWeight = FontWeight.Black, fontSize = if (wide) 19.sp else 21.sp, letterSpacing = 1.sp)
-            Text(if (model.loading) model.progressText ?: tr(R.string.loading) else if (model.playlistUrl.isBlank()) tr(R.string.your_content) else model.progressText ?: model.playlistName,
-                modifier=Modifier.testTag("catalog_progress_text"), color = if (model.loading) Mint else Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (model.updating) model.progressText ?: tr(R.string.loading) else if (model.playlistUrl.isBlank()) tr(R.string.your_content) else model.progressText ?: model.playlistName,
+                modifier=Modifier.testTag("catalog_progress_text"), color = if (model.updating) Mint else Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (wide) {
             Column(horizontalAlignment = Alignment.End) {
@@ -162,7 +162,7 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
 private fun Home(model: AuroraViewModel, wide: Boolean) {
     Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF102A35), Bg, Color(0xFF19142E))))) {
         BrandHeader(model, wide)
-        if (model.loading) CatalogLoadingIndicator(model)
+        if (model.updating) CatalogLoadingIndicator(model)
         if (wide) {
             Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CategoryCard(kindLabel(MediaKind.LIVE), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),

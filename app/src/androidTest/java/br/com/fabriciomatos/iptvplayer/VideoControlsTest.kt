@@ -75,5 +75,5 @@ class VideoControlsTest {
             } finally {compose.mainClock.autoAdvance=true}
         }
     }
-    private fun reveal()=compose.onNodeWithTag("video_surface").performTouchInput {click(Offset(size.width*.5f,size.height*.22f))}
+    private fun reveal()=compose.onNodeWithTag("video_surface").performTouchInput {click(Offset(center.x,center.y*.44f))}
 }

@@ -211,6 +211,9 @@ class AuroraUiTest {
                 compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
                 assertEquals(6, next.catalog.total)
                 assertFalse("Background update must not show loading", next.loading)
+                assertTrue("Daily progress must be visible without hiding the saved list", next.updating)
+                compose.onNodeWithTag("catalog_progress").assertExists()
+                compose.onNodeWithTag("catalog_progress_text").assertTextContains("0%",substring=true)
                 compose.onNodeWithText("6 conteúdos disponíveis").assertExists()
                 releaseDaily.countDown()
                 compose.waitUntil(15000) { next.catalog.total == 8 }
@@ -229,7 +232,7 @@ class AuroraUiTest {
     }
 
     private fun revealVideoControls() {
-        compose.onNodeWithTag("video_surface").performTouchInput {click(androidx.compose.ui.geometry.Offset(size.width*.5f,size.height*.22f))}
+        compose.onNodeWithTag("video_surface").performTouchInput {click(androidx.compose.ui.geometry.Offset(center.x,center.y*.44f))}
     }
 
     private fun waitForText(text: String) {
