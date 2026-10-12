@@ -77,6 +77,12 @@ jobs:
         run: |
           sudo chmod 666 /dev/kvm
 
+      - name: Install media fixture tools
+        if: github.event_name == 'pull_request'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+
       - name: Check navigation, persistence and actual video playback
         if: github.event_name == 'pull_request'
         uses: reactivecircus/android-emulator-runner@v2
