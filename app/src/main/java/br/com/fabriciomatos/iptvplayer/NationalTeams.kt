@@ -43,7 +43,19 @@ private val nationalTeams = listOf(
     NationalTeam("Romania", setOf("Romênia", "Roménia", "Romania", "ROU")), NationalTeam("Hungary", setOf("Hungria", "Hungary", "HUN")),
     NationalTeam("Slovakia", setOf("Eslováquia", "Slovakia", "SVK")), NationalTeam("Slovenia", setOf("Eslovênia", "Eslovénia", "Slovenia", "SVN")),
     NationalTeam("Albania", setOf("Albânia", "Albania", "ALB")), NationalTeam("Bosnia and Herzegovina", setOf("Bósnia", "Bósnia e Herzegovina", "Bosnia and Herzegovina", "BIH")),
-    NationalTeam("Russia", setOf("Rússia", "Russia", "RUS")), NationalTeam("Israel", setOf("Israel", "ISR"))
+    NationalTeam("Russia", setOf("Rússia", "Russia", "RUS")), NationalTeam("Israel", setOf("Israel", "ISR")),
+    NationalTeam("Georgia", setOf("Geórgia", "Georgia", "GEO")), NationalTeam("Moldova", setOf("Moldávia", "Moldova", "MDA")),
+    NationalTeam("Iceland", setOf("Islândia", "Iceland", "ISL")), NationalTeam("Estonia", setOf("Estônia", "Estónia", "Estonia", "EST")),
+    NationalTeam("Latvia", setOf("Letônia", "Letónia", "Latvia", "LVA")), NationalTeam("Lithuania", setOf("Lituânia", "Lithuania", "LTU")),
+    NationalTeam("Bulgaria", setOf("Bulgária", "Bulgaria", "BUL")), NationalTeam("Belarus", setOf("Bielorrússia", "Belarus", "BLR")),
+    NationalTeam("Kosovo", setOf("Kosovo", "KOS")), NationalTeam("North Macedonia", setOf("Macedônia do Norte", "Macedónia do Norte", "North Macedonia", "MKD")),
+    NationalTeam("Luxembourg", setOf("Luxemburgo", "Luxembourg", "LUX")), NationalTeam("Andorra", setOf("Andorra", "AND")),
+    NationalTeam("Malta", setOf("Malta", "MLT")), NationalTeam("Cyprus", setOf("Chipre", "Cyprus", "CYP")),
+    NationalTeam("Montenegro", setOf("Montenegro", "MNE")), NationalTeam("Armenia", setOf("Armênia", "Arménia", "Armenia", "ARM")),
+    NationalTeam("Azerbaijan", setOf("Azerbaijão", "Azerbaijan", "AZE")), NationalTeam("Kazakhstan", setOf("Cazaquistão", "Kazakhstan", "KAZ")),
+    NationalTeam("Uzbekistan", setOf("Uzbequistão", "Uzbekistan", "UZB")), NationalTeam("Jordan", setOf("Jordânia", "Jordan", "JOR")),
+    NationalTeam("Indonesia", setOf("Indonésia", "Indonesia", "IDN")), NationalTeam("Thailand", setOf("Tailândia", "Thailand", "THA")),
+    NationalTeam("Vietnam", setOf("Vietnã", "Vietname", "Vietnam", "VIE")), NationalTeam("Malaysia", setOf("Malásia", "Malaysia", "MAS"))
 )
 
 private fun nationalKey(name: String): String = normalized(name)

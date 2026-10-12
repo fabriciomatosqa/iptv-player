@@ -296,7 +296,7 @@ class PlaylistRepository(context: Context) {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
-            setRequestProperty("User-Agent","AuroraIPTV/1.6 Android"); setRequestProperty("Accept-Encoding","identity")
+            setRequestProperty("User-Agent","AuroraIPTV/1.7 Android"); setRequestProperty("Accept-Encoding","identity")
             if (conditional) {
                 validators.etag.takeIf(String::isNotBlank)?.let { setRequestProperty("If-None-Match",it) }
                 validators.modified.takeIf(String::isNotBlank)?.let { setRequestProperty("If-Modified-Since",it) }
@@ -487,11 +487,11 @@ class PlaylistRepository(context: Context) {
             db.compileStatement("INSERT INTO guide_names VALUES(?,?,?)").use { statement ->
                 guide.names.forEach { (name,id)->statement.bindString(1,key);statement.bindString(2,name);statement.bindString(3,id);statement.executeInsert() }
             }
-            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?,?)").use { insert ->
+            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?,?,?)").use { insert ->
                 db.compileStatement("UPDATE guide_programmes SET is_game=MAX(is_game,?),show_now=MAX(show_now,?) WHERE source_key=? AND channel_id=? AND start=? AND title=?").use { update ->
                     fun row(id:String,p:Programme,game:Boolean,current:Boolean) {
                         insert.bindString(1,key);insert.bindString(2,id);insert.bindLong(3,p.start);insert.bindLong(4,p.end)
-                        insert.bindString(5,p.title);insert.bindString(6,p.image);insert.bindLong(7,if(game)1L else 0L);insert.bindLong(8,if(current)1L else 0L);insert.bindString(9,p.category)
+                        insert.bindString(5,p.title);insert.bindString(6,p.image);insert.bindLong(7,if(game)1L else 0L);insert.bindLong(8,if(current)1L else 0L);insert.bindString(9,p.category);insert.bindLong(10,p.broadcast.ordinal.toLong())
                         if(insert.executeInsert()==-1L) {
                             update.bindLong(1,if(game)1L else 0L);update.bindLong(2,if(current)1L else 0L);update.bindString(3,key)
                             update.bindString(4,id);update.bindLong(5,p.start);update.bindString(6,p.title);update.executeUpdateDelete()
@@ -522,9 +522,10 @@ class PlaylistRepository(context: Context) {
         val db=helper.readableDatabase;val key=digest(source)
         val names=HashMap<String,String>();val shows=HashMap<String,MutableList<Programme>>();val matches=ArrayList<GuideMatch>()
         db.rawQuery("SELECT name,channel_id FROM guide_names WHERE source_key=?",arrayOf(key)).use {while(it.moveToNext())names[it.getString(0)]=it.getString(1)}
-        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now,category FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
+        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now,category,broadcast FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
             while(it.moveToNext()) {
-                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4),it.getString(7))
+                val hint=BroadcastHint.entries.getOrElse(it.getInt(8)){BroadcastHint.UNKNOWN}
+                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4),it.getString(7),hint)
                 if(it.getInt(5)==1)matches.add(GuideMatch(it.getString(0),programme))
                 if(it.getInt(6)==1)shows.getOrPut(it.getString(0)){ArrayList()}.add(programme)
             }
@@ -542,18 +543,23 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,4){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,5){
     init{setWriteAheadLoggingEnabled(true)}
     override fun onConfigure(db: SQLiteDatabase){db.setForeignKeyConstraintsEnabled(true);db.execSQL("PRAGMA synchronous=FULL")}
     override fun onCreate(db: SQLiteDatabase){
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
-        upgrade(db); upgradePreferences(db); upgradeArtwork(db)
+        upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db)
     }
     override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
         if(oldVersion<2)upgrade(db)
         if(oldVersion<3)upgradePreferences(db)
         if(oldVersion<4)upgradeArtwork(db)
+        if(oldVersion<5)upgradeBroadcast(db)
+    }
+    private fun upgradeBroadcast(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE guide_programmes ADD COLUMN broadcast INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE guide_cache SET updated=0")
     }
     private fun upgradeArtwork(db: SQLiteDatabase) {
         db.execSQL("ALTER TABLE channels ADD COLUMN first_added INTEGER NOT NULL DEFAULT 0")

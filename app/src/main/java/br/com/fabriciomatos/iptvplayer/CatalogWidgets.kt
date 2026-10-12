@@ -32,7 +32,7 @@ import coil.request.ImageRequest
 @Composable internal fun catalogImage(image: String): ImageRequest {
     val context=LocalContext.current
     return remember(context,image) {ImageRequest.Builder(context).data(image)
-        .setHeader("User-Agent","AuroraIPTV/1.6 Android").apply {
+        .setHeader("User-Agent","AuroraIPTV/1.7 Android").apply {
             if(image.startsWith("https://media.kitsu.app/") || image.startsWith("https://media.kitsu.io/"))setHeader("Referer","https://kitsu.io/")
         }.build()}
 }
