@@ -37,6 +37,7 @@ class NewFeaturesTest {
             compose.onNodeWithText("Conteúdo +18").performClick()
             compose.onNodeWithText("Nova senha").performTextInput("2580")
             compose.onNodeWithText("Confirmar senha").performTextInput("2580")
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Salvar").performClick()
             compose.waitUntil(10000){model.adultUnlocked && !model.parentalDialog}
             compose.waitUntil(10000){compose.onAllNodesWithText("Filme privado").fetchSemanticsNodes().isNotEmpty()}
@@ -45,6 +46,7 @@ class NewFeaturesTest {
             compose.onNodeWithText("Filme privado").assertDoesNotExist()
             compose.onNodeWithText("Conteúdo +18").performClick()
             compose.onNodeWithText("Senha atual").performTextInput("0000")
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Desbloquear").performClick()
             compose.waitUntil(10000){model.parentalError!=null && !model.parentalBusy}
             assertFalse(model.adultUnlocked)
@@ -54,6 +56,7 @@ class NewFeaturesTest {
             compose.waitUntil(5000){model.parentalDialog}
             assertNull(model.current)
             compose.onNodeWithText("Senha atual").performTextInput("2580")
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Desbloquear").performClick()
             compose.waitUntil(10000){model.current?.adult==true}
             scenario.onActivity {model.foreground(false)}
@@ -79,9 +82,9 @@ class NewFeaturesTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
             compose.waitUntil(15000){model.initialized}
             compose.onNodeWithText("Movies").assertExists()
-            scenario.onActivity {model.setLanguage("ar")}
+            scenario.onActivity {model.chooseLanguage("ar")}
             compose.waitUntil(15000){compose.onAllNodesWithText("أفلام").fetchSemanticsNodes().isNotEmpty()}
-            scenario.onActivity {assertEquals(android.view.View.LAYOUT_DIRECTION_RTL,it.resources.configuration.layoutDirection);model.setLanguage("pt-BR")}
+            scenario.onActivity {assertEquals(android.view.View.LAYOUT_DIRECTION_RTL,it.resources.configuration.layoutDirection);model.chooseLanguage("pt-BR")}
             compose.waitUntil(15000){compose.onAllNodesWithText("Filmes").fetchSemanticsNodes().isNotEmpty()}
         }
     }

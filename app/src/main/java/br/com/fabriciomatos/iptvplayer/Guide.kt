@@ -24,7 +24,8 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
         if (available.isNotEmpty()) {
-            val id = normalized(entry.programme.title) + ":" + entry.programme.start
+            val specific=Regex("(?i)\\s+(?:x|vs\\.?|versus)\\s+").containsMatchIn(entry.programme.title)
+            val id = normalized(entry.programme.title) + ":" + entry.programme.start + if(specific)"" else ":"+entry.channelId
             val previous = result[id]
             result[id] = FootballMatch(id, entry.programme, (previous?.channels.orEmpty() + available).distinctBy { it.url })
         }
@@ -90,7 +91,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                             start = xmltvTime(parser.getAttributeValue(null, "start").orEmpty())
                             end = xmltvTime(parser.getAttributeValue(null, "stop").orEmpty())
                             title = ""; image = ""; category = ""
-                            accepted = end > now && start < now + 14 * 86400000L
+                            accepted = end > now
                         }
                         "title" -> if (entry == "programme" && accepted && title.isEmpty()) title = parser.nextText().take(300)
                         "category" -> if (entry == "programme" && accepted) category += " " + parser.nextText().take(100)

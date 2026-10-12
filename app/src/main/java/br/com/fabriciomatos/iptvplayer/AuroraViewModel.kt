@@ -147,6 +147,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             playlistUrl = clean; playlistName = name.trim().ifBlank { "Minha playlist" }
             settingsOpen = false; message = null
             if (changed) {
+                guideJob?.cancelAndJoin();guide=withContext(Dispatchers.IO){repository.savedGuide(clean)};football=emptyList()
                 stop(); openedSeries = null; openedSeriesId = null; selectedSeason = null; group = null; search = ""
                 withContext(Dispatchers.IO) { repository.restore(clean,::showProgress) }
                 reloadOverview()
@@ -247,7 +248,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             } finally { parentalBusy=false }
         }
     }
-    fun setLanguage(tag: String) { viewModelScope.launch {
+    fun chooseLanguage(tag: String) { viewModelScope.launch {
         if(withContext(Dispatchers.IO) { preferences.saveLanguage(tag) }) {
             language=tag
             androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.forLanguageTags(tag))

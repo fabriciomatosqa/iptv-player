@@ -284,7 +284,7 @@ private fun HomeNavigation(model: AuroraViewModel) {
         NavigationItem(tr(R.string.search), Icons.Default.Search) { model.browse(null) }
         NavigationItem(tr(R.string.favorites), Icons.Default.Star) { model.browse(null, true) }
         NavigationItem(tr(R.string.refresh), Icons.Default.Refresh) { model.refresh() }
-        NavigationItem(tr(R.string.settings), Icons.AutoMirrored.Filled.List) { model.openSettings() }
+        NavigationItem(tr(R.string.settings), Icons.Default.Settings) { model.openSettings() }
     }
 }
 
@@ -404,7 +404,7 @@ private fun SeriesHeader(series: SeriesEntry, modifier: Modifier = Modifier) {
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(tr(R.string.select_episode), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            Text("${episodeCount(series.episodeCount)} em ${seasonCount(series.seasons.size)}", color = Muted, fontSize = 12.sp)
+            Text(tr(R.string.episode_in_season,episodeCount(series.episodeCount),seasonCount(series.seasons.size)), color = Muted, fontSize = 12.sp)
         }
     }
 }

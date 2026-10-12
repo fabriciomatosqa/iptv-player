@@ -438,23 +438,44 @@ class PlaylistRepository(context: Context) {
         buildList { while(it.moveToNext()) add(readChannel(it)) }
     }
     fun saveGuide(source: String, guide: Guide, now: Long = System.currentTimeMillis()) {
-        fun programme(p: Programme) = JSONObject().put("title",p.title).put("start",p.start).put("end",p.end).put("image",p.image)
-        val root=JSONObject(); val names=JSONObject();guide.names.forEach { (k,v)->names.put(k,v) };root.put("names",names)
-        val shows=JSONObject();guide.programmes.forEach { (k,v)->shows.put(k,JSONArray(v.map(::programme))) };root.put("shows",shows)
-        root.put("matches",JSONArray(guide.matches.map { JSONObject().put("id",it.channelId).put("show",programme(it.programme)) }))
-        helper.writableDatabase.execSQL("INSERT OR REPLACE INTO guide_cache VALUES(?,?,?)",arrayOf(digest(source),root.toString(),now))
+        val db=helper.writableDatabase;val key=digest(source)
+        db.beginTransactionNonExclusive()
+        try {
+            db.delete("guide_names","source_key=?",arrayOf(key));db.delete("guide_programmes","source_key=?",arrayOf(key))
+            db.compileStatement("INSERT INTO guide_names VALUES(?,?,?)").use { statement ->
+                guide.names.forEach { (name,id)->statement.bindString(1,key);statement.bindString(2,name);statement.bindString(3,id);statement.executeInsert() }
+            }
+            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?)").use { insert ->
+                db.compileStatement("UPDATE guide_programmes SET is_game=MAX(is_game,?),show_now=MAX(show_now,?) WHERE source_key=? AND channel_id=? AND start=? AND title=?").use { update ->
+                    fun row(id:String,p:Programme,game:Boolean,current:Boolean) {
+                        insert.bindString(1,key);insert.bindString(2,id);insert.bindLong(3,p.start);insert.bindLong(4,p.end)
+                        insert.bindString(5,p.title);insert.bindString(6,p.image);insert.bindLong(7,if(game)1L else 0L);insert.bindLong(8,if(current)1L else 0L)
+                        if(insert.executeInsert()==-1L) {
+                            update.bindLong(1,if(game)1L else 0L);update.bindLong(2,if(current)1L else 0L);update.bindString(3,key)
+                            update.bindString(4,id);update.bindLong(5,p.start);update.bindString(6,p.title);update.executeUpdateDelete()
+                        }
+                    }
+                    guide.programmes.forEach { (id,list)->list.forEach {row(id,it,false,true)} }
+                    guide.matches.forEach {row(it.channelId,it.programme,true,false)}
+                }
+            }
+            db.execSQL("INSERT OR REPLACE INTO guide_cache VALUES(?,?)",arrayOf(key,now));db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
     fun guideChecked(source: String): Long = helper.readableDatabase.rawQuery("SELECT updated FROM guide_cache WHERE source_key=?",arrayOf(digest(source))).use { if(it.moveToFirst())it.getLong(0)else 0L }
-    fun savedGuide(source: String): Guide = runCatching {
-        val raw=helper.readableDatabase.rawQuery("SELECT data FROM guide_cache WHERE source_key=?",arrayOf(digest(source))).use { if(it.moveToFirst())it.getString(0)else "" }
-        if(raw.isBlank()) return Guide()
-        val root=JSONObject(raw)
-        fun programme(p: JSONObject)=Programme(p.getString("title"),p.getLong("start"),p.getLong("end"),p.optString("image"))
-        val names=root.getJSONObject("names");val shows=root.getJSONObject("shows");val matches=root.getJSONArray("matches")
-        Guide(names=names.keys().asSequence().associateWith { names.getString(it) },programmes=shows.keys().asSequence().associateWith { key->
-            val list=shows.getJSONArray(key);(0 until list.length()).map { programme(list.getJSONObject(it)) }
-        },matches=(0 until matches.length()).map { val entry=matches.getJSONObject(it);GuideMatch(entry.getString("id"),programme(entry.getJSONObject("show"))) })
-    }.getOrDefault(Guide())
+    fun savedGuide(source: String): Guide {
+        val db=helper.readableDatabase;val key=digest(source)
+        val names=HashMap<String,String>();val shows=HashMap<String,MutableList<Programme>>();val matches=ArrayList<GuideMatch>()
+        db.rawQuery("SELECT name,channel_id FROM guide_names WHERE source_key=?",arrayOf(key)).use {while(it.moveToNext())names[it.getString(0)]=it.getString(1)}
+        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
+            while(it.moveToNext()) {
+                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4))
+                if(it.getInt(5)==1)matches.add(GuideMatch(it.getString(0),programme))
+                if(it.getInt(6)==1)shows.getOrPut(it.getString(0)){ArrayList()}.add(programme)
+            }
+        }
+        return Guide(shows,names,matches)
+    }
     fun close() = helper.close()
     companion object {
         private const val RAW_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,c.series_image,c.season,c.episode,c.kind,c.adult"
@@ -485,7 +506,9 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         db.execSQL("UPDATE playlists SET metadata_ready=0,metadata_checked=0")
         db.execSQL("CREATE INDEX channel_adult_order ON channels(source_key,kind,adult,position)")
         db.execSQL("CREATE TABLE anime_covers(source_key TEXT NOT NULL,name_norm TEXT NOT NULL,image TEXT NOT NULL,verified INTEGER NOT NULL,checked INTEGER NOT NULL,PRIMARY KEY(source_key,name_norm))")
-        db.execSQL("CREATE TABLE guide_cache(source_key TEXT PRIMARY KEY,data TEXT NOT NULL,updated INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE guide_cache(source_key TEXT PRIMARY KEY,updated INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE guide_names(source_key TEXT NOT NULL,name TEXT NOT NULL,channel_id TEXT NOT NULL,PRIMARY KEY(source_key,name))")
+        db.execSQL("CREATE TABLE guide_programmes(source_key TEXT NOT NULL,channel_id TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,title TEXT NOT NULL,image TEXT NOT NULL,is_game INTEGER NOT NULL,show_now INTEGER NOT NULL,PRIMARY KEY(source_key,channel_id,start,title))")
     }
     private fun upgrade(db: SQLiteDatabase){
         listOf("kind INTEGER NOT NULL DEFAULT -1","search_text TEXT NOT NULL DEFAULT ''","series_key TEXT NOT NULL DEFAULT ''","series_norm TEXT NOT NULL DEFAULT ''",

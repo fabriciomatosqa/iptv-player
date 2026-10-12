@@ -1,6 +1,8 @@
 package br.com.fabriciomatos.iptvplayer
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,8 +57,8 @@ import java.util.Locale
                     item { Text("AURORA IPTV · 1.4.0",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp) }
                 }
                 2 -> items(appLanguages,key={it.tag}) {language ->
-                    Row(Modifier.fillMaxWidth().clickable {model.setLanguage(language.tag)}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                        RadioButton(selected=model.language==language.tag,onClick={model.setLanguage(language.tag)})
+                    Row(Modifier.fillMaxWidth().clickable {model.chooseLanguage(language.tag)}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                        RadioButton(selected=model.language==language.tag,onClick={model.chooseLanguage(language.tag)})
                         Text(language.label,Modifier.weight(1f).padding(start=8.dp),fontSize=16.sp)
                     }
                 }
@@ -87,7 +89,7 @@ import java.util.Locale
     val setup = model.changePassword || !model.parentalConfigured
     AlertDialog(onDismissRequest={if(!model.parentalBusy)model.dismissParental()},
         icon={Icon(Icons.Default.Lock,null)},title={Text(tr(if(setup)R.string.set_password else R.string.adult_category))},
-        text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(tr(if(setup)R.string.password_help else R.string.unlock_help))
             if(model.parentalConfigured) PasswordField(password,{password=it},tr(R.string.password))
             if(setup) {
