@@ -330,7 +330,7 @@ class PlaylistRepository(context: Context) {
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
             val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation) VALUES(" + List(22){"?"}.joinToString(",") + ")"
-            val updateSql="UPDATE channels SET kind=?,search_text=?,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=? WHERE source_key=? AND url=? AND seen_generation<>?"
+            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=? WHERE source_key=? AND url=? AND seen_generation<>?"
             var epg=""
             db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
                 epg=scan { c ->
