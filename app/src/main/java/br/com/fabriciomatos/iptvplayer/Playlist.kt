@@ -18,19 +18,24 @@ private val vodFiles = Regex("""\.(mp4|mkv|avi|mov|m4v|wmv|webm)(\?|#|$)""", Reg
 private val seriesWords = Regex("""\b(series?|seriados|tv shows?|temporadas?|episodios?|animes?|novelas?)\b""")
 private val movieWords = Regex("""\b(filmes?|movies?|cinema|lancamentos|film)\b""")
 
-fun classifyContent(name: String, group: String, url: String): MediaKind {
+fun classifyContent(name: String, group: String, url: String, typeHint: String = ""): MediaKind {
+    when (normalized(typeHint)) {
+        "live", "tv", "ao vivo", "channel" -> return MediaKind.LIVE
+        "movie", "movies", "filme", "filmes", "vod" -> return MediaKind.MOVIES
+        "series", "serie", "episode", "episodio", "tv show" -> return MediaKind.SERIES
+    }
     val path = runCatching { URI(url).path.orEmpty().lowercase(Locale.ROOT) }.getOrDefault("")
     // Explicit provider paths take precedence over ambiguous groups like "Canais de filmes".
     if (path.contains("/series/") || path.contains("/episode/")) return MediaKind.SERIES
-    if (path.contains("/movie/") || path.contains("/movies/") || path.contains("/vod/")) return MediaKind.MOVIES
     if (path.contains("/live/")) return MediaKind.LIVE
     val title = normalized(name)
     val category = normalized(group)
-    if (episodes.containsMatchIn(title)) return MediaKind.SERIES
-    if (vodFiles.containsMatchIn(url)) return MediaKind.MOVIES
+    if (episodes.containsMatchIn(title) || hasEpisodeMarker(name)) return MediaKind.SERIES
     if (category.startsWith("canais ") || category.contains("ao vivo")) return MediaKind.LIVE
     if (seriesWords.containsMatchIn(category)) return MediaKind.SERIES
+    if (path.contains("/movie/") || path.contains("/movies/") || path.contains("/vod/")) return MediaKind.MOVIES
     if (movieWords.containsMatchIn(category)) return MediaKind.MOVIES
+    if (vodFiles.containsMatchIn(url)) return MediaKind.MOVIES
     // M3U television lists frequently group channels by country/language, not by "live".
     return MediaKind.LIVE
 }
@@ -44,7 +49,13 @@ data class Channel(
     val userAgent: String = "",
     val referrer: String = "",
     val mimeType: String = "",
-    val kind: MediaKind = classifyContent(name, group, url)
+    val typeHint: String = "",
+    val seriesId: String = "",
+    val seriesTitle: String = "",
+    val seriesImageUrl: String = "",
+    val seasonNumber: Int = 0,
+    val episodeNumber: Int = 0,
+    val kind: MediaKind = if (seriesId.isNotBlank() || seriesTitle.isNotBlank() || episodeNumber > 0) MediaKind.SERIES else classifyContent(name, group, url, typeHint)
 ) {
     val searchText = normalized("$name $group")
 }
@@ -111,7 +122,12 @@ object M3uParser {
                                 name.ifBlank { metadata["tvg-name"].orEmpty().ifBlank { "Canal ${result.size + 1}" } },
                                 url, group.ifBlank { "Canais" },
                                 resolve(source, (metadata["tvg-logo"] ?: metadata["logo"] ?: metadata["poster"] ?: metadata["cover"]).orEmpty()),
-                                metadata["tvg-id"].orEmpty(), agent, referrer, mime
+                                metadata["tvg-id"].orEmpty(), agent, referrer, mime,
+                                metadata["media-type"] ?: metadata["tvg-type"] ?: metadata["content-type"] ?: metadata["type"].orEmpty(),
+                                metadata["series-id"].orEmpty(), metadata["series-name"] ?: metadata["series-title"].orEmpty(),
+                                resolve(source, metadata["series-poster"] ?: metadata["series-logo"].orEmpty()),
+                                (metadata["season-number"] ?: metadata["season"] ?: metadata["tvg-season"])?.toIntOrNull() ?: 0,
+                                (metadata["episode-number"] ?: metadata["episode"] ?: metadata["tvg-episode"])?.toIntOrNull() ?: 0
                             ))
                         }
                         name = ""; metadata = emptyMap(); group = ""; agent = ""; referrer = ""; mime = ""
@@ -133,27 +149,32 @@ object M3uParser {
     }
 }
 
-/** Reuse unchanged items when updating; only the catalog changes, never the current player. */
+/** Daily updates are additive: missing old entries and their objects remain available. */
 fun mergePlaylist(previous: List<Channel>, fresh: List<Channel>): List<Channel> {
-    val old = previous.associateBy { it.url }
-    return fresh.map { next -> old[next.url]?.takeIf { it == next } ?: next }
+    val urls = previous.mapTo(HashSet(previous.size + fresh.size)) { it.url }
+    val additions = fresh.filter { urls.add(it.url) }
+    return if (additions.isEmpty()) previous else previous + additions
 }
 
 data class Catalog(
     val channels: List<Channel> = emptyList(),
     val byKind: Map<MediaKind, List<Channel>> = emptyMap(),
-    val groups: Map<MediaKind, List<String>> = emptyMap()
+    val groups: Map<MediaKind, List<String>> = emptyMap(),
+    val series: List<SeriesEntry> = emptyList(),
+    val seriesByEpisodeUrl: Map<String, String> = emptyMap()
 ) {
     companion object {
         fun build(channels: List<Channel>): Catalog {
             val byKind = channels.groupBy { it.kind }
-            return Catalog(channels, byKind, byKind.mapValues { (_, items) -> items.map { it.group }.distinct().sorted() })
+            val series = groupSeries(byKind[MediaKind.SERIES].orEmpty())
+            return Catalog(channels, byKind, byKind.mapValues { (_, items) -> items.map { it.group }.distinct().sorted() },
+                series, series.flatMap { show -> show.episodes.map { it.channel.url to show.id } }.toMap())
         }
     }
 }
 
 fun filterChannels(catalog: Catalog, kind: MediaKind?, favoritesOnly: Boolean, favorites: Set<String>, group: String?, query: String): List<Channel> {
-    val source = if (favoritesOnly || kind == null) catalog.channels else catalog.byKind[kind].orEmpty()
+    val source = if (kind == null) catalog.channels else catalog.byKind[kind].orEmpty()
     val terms = normalized(query).split(' ').filter { it.isNotEmpty() }
     if (!favoritesOnly && group == null && terms.isEmpty()) return source
     return source.filter { (!favoritesOnly || it.url in favorites) && (group == null || it.group == group) && terms.all(it.searchText::contains) }

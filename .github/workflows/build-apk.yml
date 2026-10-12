@@ -87,6 +87,7 @@ jobs:
           disable-animations: true
           script: |
             gradle --no-daemon connectedDebugAndroidTest
+            python3 test/verify-force-stop.py
             adb pull /sdcard/Download/aurora-ui app/build/aurora-ui
 
       - name: Upload UI verification
