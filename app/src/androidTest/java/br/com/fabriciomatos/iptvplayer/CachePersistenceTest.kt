@@ -21,6 +21,15 @@ class CachePersistenceTest {
 
     @Before fun reset() = resetCatalog(context)
 
+    private fun assertSaved(expected: List<Channel>, actual: List<Channel>) {
+        assertEquals(expected.map { Triple(it.url, it.name, it.kind) }, actual.map { Triple(it.url, it.name, it.kind) })
+        actual.filter { it.kind == MediaKind.SERIES }.forEach {
+            assertEquals(1, it.seasonNumber)
+            assertEquals(1, it.episodeNumber)
+            assertEquals("Rick e Morty", it.seriesTitle)
+        }
+    }
+
     @Test fun additiveCatalogAndDailyLedgerSurviveClosingRepository() {
         val first = PlaylistRepository(context)
         first.saveSource(source, "Minha lista")
@@ -29,7 +38,7 @@ class CachePersistenceTest {
         first.appendCache(source, Download(Playlist(listOf(b.copy(name = "Renomeado"), c, c)), "second", ""))
         first.close()
         val reopened = PlaylistRepository(context)
-        assertEquals(listOf(a, b, c), reopened.readCache(source).channels)
+        assertSaved(listOf(a, b, c), reopened.readCache(source).channels)
         assertEquals("second", reopened.state(source).etag)
         assertFalse(reopened.claimDailyAttempt(source))
         val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.timeInMillis
@@ -42,7 +51,7 @@ class CachePersistenceTest {
         assertFalse(next.claimDailyAttempt(source))
         assertTrue(next.readCache("https://other.test/list.m3u").channels.isEmpty())
         next.appendCache(source, Download(Playlist(emptyList()), "", ""))
-        assertEquals(listOf(a, b, c), next.readCache(source).channels)
+        assertSaved(listOf(a, b, c), next.readCache(source).channels)
         next.close()
     }
 
@@ -52,11 +61,11 @@ class CachePersistenceTest {
         file.writeText(JSONObject().put("schema", 2).put("sourceHash", PlaylistRepository.digest(source)).toString() + "\n" +
             JSONObject().put("name", c.name).put("url", c.url).put("group", c.group).toString() + "\n")
         val old = PlaylistRepository(context)
-        assertEquals(listOf(c), old.readCache(source).channels)
+        assertSaved(listOf(c), old.readCache(source).channels)
         old.close()
         file.delete()
         val reopened = PlaylistRepository(context)
-        assertEquals(listOf(c), reopened.readCache(source).channels)
+        assertSaved(listOf(c), reopened.readCache(source).channels)
         reopened.close()
     }
 
@@ -85,6 +94,28 @@ class CachePersistenceTest {
             assertEquals(listOf(a), repository.readCache(source).channels)
             assertEquals("old", repository.state(source).etag)
         } finally { db.close(); repository.close() }
+    }
+
+    @Test fun upgradesVersion12DatabaseWithoutLosingRows() {
+        val path = context.getDatabasePath("aurora_catalog.db")
+        path.parentFile!!.mkdirs()
+        SQLiteDatabase.openOrCreateDatabase(path, null).use { db ->
+            db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
+            db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url))")
+            val key = PlaylistRepository.digest(source)
+            db.execSQL("INSERT INTO playlists(source_key,etag) VALUES(?,?)", arrayOf(key, "saved-validator"))
+            listOf(a, b, c).forEachIndexed { index, row ->
+                db.execSQL("INSERT INTO channels VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", arrayOf(key,row.url,index,row.name,row.group,"","","","","","","","","",0,0))
+            }
+            db.version = 1
+        }
+        val repository = PlaylistRepository(context)
+        repository.restore(source)
+        assertEquals(3, repository.overview(source).total)
+        assertEquals(1, repository.overview(source).series)
+        assertSaved(listOf(a, b, c), repository.channels(BrowseQuery(source, kind = null)))
+        assertEquals("saved-validator", repository.state(source).etag)
+        repository.close()
     }
 }
 

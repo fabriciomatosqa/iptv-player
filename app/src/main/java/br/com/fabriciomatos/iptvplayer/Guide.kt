@@ -13,7 +13,7 @@ import java.util.zip.GZIPInputStream
 
 data class Programme(val title: String, val start: Long, val end: Long, val image: String = "")
 data class Guide(val programmes: Map<String, List<Programme>> = emptyMap(), val names: Map<String, String> = emptyMap()) {
-    fun forChannel(channel: Channel): List<Programme> = programmes[channel.tvgId]
+    fun forChannel(channel: Channel): List<Programme> = if (channel.kind != MediaKind.LIVE) emptyList() else programmes[channel.tvgId]
         ?: programmes[names[normalized(channel.name)]] ?: emptyList()
 }
 
@@ -31,7 +31,7 @@ suspend fun loadGuide(source: String, channelIds: Set<String>, now: Long = Syste
     val connection = (URL(source).openConnection() as HttpURLConnection).apply {
         connectTimeout = 10000; readTimeout = 20000
         instanceFollowRedirects = true
-        setRequestProperty("User-Agent", "AuroraIPTV/1.1 Android")
+        setRequestProperty("User-Agent", "AuroraIPTV/1.3 Android")
     }
     try {
         if (connection.responseCode !in 200..299) return Guide()

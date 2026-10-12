@@ -99,19 +99,21 @@ class AuroraUiTest {
             compose.onNodeWithText("Endereço M3U / M3U8").performTextInput("$base/list.m3u")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Salvar playlist").performScrollTo().performClick()
-            compose.waitUntil(15000) { model.catalog.channels.size == 6 && !model.loading }
+            compose.waitUntil(15000) { model.catalog.total == 6 && !model.loading }
             PlaylistRepository(context).also { assertEquals(6, it.readCache("$base/list.m3u").channels.size); it.close() }
             screenshot("portrait-home")
 
-            compose.onNodeWithText("Filmes").performClick()
-            compose.waitUntil { model.visible.size == 1 }
+            compose.onNode(hasText("Filmes") and hasText("1 filme")).performClick()
+            compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }
+            waitForText("Luz do Norte")
             compose.onNodeWithText("Luz do Norte").assertExists()
             compose.onNodeWithText("TV Aurora").assertDoesNotExist()
             compose.onNodeWithText("Rick e Morty S01E01").assertDoesNotExist()
             compose.onNodeWithContentDescription("Voltar ao início").performClick()
             compose.onNodeWithText("Ao vivo").performClick()
-            compose.waitUntil { model.visible.size == 1 }
+            compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }
             compose.onNodeWithText("Luz do Norte").assertDoesNotExist()
+            waitForText("TV Aurora")
             compose.onNodeWithText("TV Aurora").performClick()
             compose.waitUntil(20000) { model.isPlaying && model.guide.programmes.isNotEmpty() }
             lateinit var original: Player
@@ -130,22 +132,26 @@ class AuroraUiTest {
             screenshot("portrait-player")
             compose.onNodeWithContentDescription("Voltar ao início").performClick()
 
-            compose.onNode(hasText("Séries") and hasText("Suas séries e temporadas")).performClick()
-            compose.waitUntil { model.visibleSeries.size == 2 }
+            compose.onNode(hasText("Séries") and hasText("2 séries")).performClick()
+            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
+            waitForText("Rick e Morty")
             compose.onAllNodesWithText("Rick e Morty").assertCountEquals(1)
             compose.onNodeWithText("Rick e Morty S01E01").assertDoesNotExist()
             compose.onNodeWithText("TV Aurora").assertDoesNotExist()
             compose.onNodeWithText("Luz do Norte").assertDoesNotExist()
             screenshot("portrait-series")
+            waitForText("Rick e Morty")
             compose.onNodeWithText("Rick e Morty").performClick()
-            compose.waitUntil { model.visible.size == 2 }
+            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
+            waitForText("Rick e Morty S01E01")
             compose.onNodeWithText("Rick e Morty S01E01").assertExists()
             compose.onNodeWithText("Rick e Morty S01E02").assertExists()
             compose.onNodeWithText("Rick e Morty S02E01").assertDoesNotExist()
             screenshot("portrait-episodes")
             compose.onNodeWithText("Temporada 2").performClick()
-            compose.waitUntil { model.visible.size == 1 }
+            compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }
             compose.onNodeWithText("Rick e Morty S01E01").assertDoesNotExist()
+            waitForText("Rick e Morty S02E01")
             compose.onNodeWithText("Rick e Morty S02E01").performClick()
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "Rick e Morty S02E01" }
             compose.onNodeWithContentDescription("Voltar às séries").performClick()
@@ -153,11 +159,12 @@ class AuroraUiTest {
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
             screenshot("landscape-home")
-            compose.onNode(hasText("Séries") and hasText("Suas séries e temporadas")).performClick()
-            compose.waitUntil { model.visibleSeries.size == 2 }
+            compose.onNode(hasText("Séries") and hasText("2 séries")).performClick()
+            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
             screenshot("landscape-series")
+            waitForText("Rick e Morty")
             compose.onNodeWithText("Rick e Morty").performClick()
-            compose.waitUntil { model.visible.size == 2 }
+            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
             screenshot("landscape-episodes")
             scenario.recreate()
             scenario.close()
@@ -166,7 +173,7 @@ class AuroraUiTest {
             ActivityScenario.launch(MainActivity::class.java).use { reopened ->
                 lateinit var next: AuroraViewModel
                 reopened.onActivity { next = ViewModelProvider(it)[AuroraViewModel::class.java] }
-                compose.waitUntil(15000) { next.initialized && next.catalog.channels.size == 6 }
+                compose.waitUntil(15000) { next.initialized && next.catalog.total == 6 }
                 compose.waitForIdle()
                 assertEquals(1, requests.get())
                 assertTrue(next.favorites.contains("$base/live/clip.mp4"))
@@ -190,23 +197,27 @@ class AuroraUiTest {
                 }
                 compose.waitUntil(15000) { next.initialized && dailyStarted.count == 0L }
                 compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
-                assertEquals(6, next.catalog.channels.size)
+                assertEquals(6, next.catalog.total)
                 assertFalse("Background update must not show loading", next.loading)
                 compose.onNodeWithText("6 conteúdos disponíveis").assertExists()
                 releaseDaily.countDown()
-                compose.waitUntil(15000) { next.catalog.channels.size == 8 }
-                assertTrue(next.catalog.channels.any { it.name == "TV Aurora" })
-                assertEquals(2, next.catalog.series.size)
-                assertEquals(4, next.catalog.series.single { it.title == "Rick e Morty" }.episodes.size)
+                compose.waitUntil(15000) { next.catalog.total == 8 }
+                PlaylistRepository(context).also { assertEquals("TV Aurora", it.channel("$base/list.m3u", "$base/live/clip.mp4")?.name); it.close() }
+                assertEquals(2, next.catalog.series)
+                PlaylistRepository(context).also { assertEquals(4, it.series(BrowseQuery("$base/list.m3u", MediaKind.SERIES)).single { series -> series.title == "Rick e Morty" }.episodeCount); it.close() }
             }
             ActivityScenario.launch(MainActivity::class.java).use { again ->
                 lateinit var next: AuroraViewModel
                 again.onActivity { next = ViewModelProvider(it)[AuroraViewModel::class.java] }
-                compose.waitUntil(15000) { next.initialized && next.catalog.channels.size == 8 }
+                compose.waitUntil(15000) { next.initialized && next.catalog.total == 8 }
                 compose.waitForIdle()
                 assertEquals(2, requests.get())
             }
         } finally { releaseDaily.countDown(); scenario.close(); server.close() }
+    }
+
+    private fun waitForText(text: String) {
+        compose.waitUntil(15000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun screenshot(name: String) {

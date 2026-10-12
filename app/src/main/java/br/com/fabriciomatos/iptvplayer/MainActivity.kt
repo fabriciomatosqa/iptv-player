@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -47,6 +46,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import androidx.paging.compose.itemContentType
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -133,7 +136,7 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text("AURORA IPTV", fontWeight = FontWeight.Black, fontSize = if (wide) 19.sp else 21.sp, letterSpacing = 1.sp)
-            Text(if (model.loading) "Atualizando sua lista…" else if (model.playlistUrl.isBlank()) "Seu conteúdo, do seu jeito" else model.playlistName,
+            Text(if (model.loading) model.progressText ?: "Atualizando sua lista…" else if (model.playlistUrl.isBlank()) "Seu conteúdo, do seu jeito" else model.progressText ?: model.playlistName,
                 color = if (model.loading) Mint else Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (wide) {
@@ -153,12 +156,12 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
         if (wide) {
             Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CategoryCard(MediaKind.LIVE.title, "Assista aos seus canais", Icons.Default.LiveTv, listOf(Cyan, Mint),
-                    model.catalog.byKind[MediaKind.LIVE].orEmpty().size, Modifier.weight(0.9f).fillMaxHeight(), large = true) { model.browse(MediaKind.LIVE) }
+                    model.catalog.live, Modifier.weight(0.9f).fillMaxHeight(), large = true) { model.browse(MediaKind.LIVE) }
                 Column(Modifier.weight(1.45f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)),
-                        model.catalog.byKind[MediaKind.MOVIES].orEmpty().size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.MOVIES) }
+                        model.catalog.movies, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.MOVIES) }
                     CategoryCard("Séries", "Suas séries e temporadas", Icons.Default.VideoLibrary, listOf(Mint, Cyan),
-                        model.catalog.series.size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.SERIES) }
+                        model.catalog.series, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.SERIES) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SmallAction("Favoritos", Icons.Default.Star, Modifier.weight(1f)) { model.browse(null, true) }
                         SmallAction("Minha playlist", Icons.AutoMirrored.Filled.List, Modifier.weight(1f)) { model.settingsOpen = true }
@@ -173,17 +176,17 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
                     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("O que vamos assistir?", fontSize = 23.sp, fontWeight = FontWeight.Bold)
                         Text(when {
-                            model.catalog.channels.isNotEmpty() -> "${model.catalog.channels.size} conteúdos disponíveis"
-                            model.loading -> "Carregando sua playlist…"
+                            model.catalog.total > 0 -> "${formatCount(model.catalog.total)} conteúdos disponíveis"
+                            model.loading || !model.initialized -> model.progressText ?: "Carregando sua playlist…"
                             model.playlistUrl.isNotBlank() -> "Sua playlist está salva. Toque em Atualizar."
                             else -> "Cadastre sua playlist para começar"
                         },
                             fontSize = 13.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
-                item { CategoryCard("Ao vivo", "Canais em tempo real", Icons.Default.LiveTv, listOf(Cyan, Mint), model.catalog.byKind[MediaKind.LIVE].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.LIVE) } }
-                item { CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)), model.catalog.byKind[MediaKind.MOVIES].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.MOVIES) } }
-                item { CategoryCard("Séries", "Suas séries e temporadas", Icons.Default.VideoLibrary, listOf(Mint, Cyan), model.catalog.series.size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.SERIES) } }
+                item { CategoryCard("Ao vivo", "Canais em tempo real", Icons.Default.LiveTv, listOf(Cyan, Mint), model.catalog.live, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.LIVE) } }
+                item { CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)), model.catalog.movies, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.MOVIES) } }
+                item { CategoryCard("Séries", "Suas séries e temporadas", Icons.Default.VideoLibrary, listOf(Mint, Cyan), model.catalog.series, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.SERIES) } }
                 item { PlaylistSummary(model) }
                 if (model.current != null || model.recent != null) item { RecentCard(model, Modifier.fillMaxWidth().height(130.dp)) }
                 model.message?.let { message -> item { Text(message, fontSize = 12.sp, color = Gold) } }
@@ -202,7 +205,7 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, col
         Spacer(Modifier.height(16.dp))
         Text(title, fontWeight = FontWeight.Bold, fontSize = 25.sp)
         Text(subtitle, fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
-        Text(if (count == 1) "1 canal" else "$count canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+        Text(if (count == 1) "1 canal" else "${formatCount(count)} canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
     } else Row(card, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(colors.first().copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = colors.first(), modifier = Modifier.size(28.dp))
@@ -210,7 +213,11 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, col
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(subtitle, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (count > 0) when (title) {
+                "Séries" -> if (count == 1) "1 série" else "${formatCount(count)} séries"
+                "Filmes" -> if (count == 1) "1 filme" else "${formatCount(count)} filmes"
+                else -> if (count == 1) "1 canal" else "${formatCount(count)} canais"
+            } else subtitle, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Icon(Icons.Default.ChevronRight, null, tint = colors.first())
     }
@@ -241,7 +248,7 @@ private fun PlaylistSummary(model: AuroraViewModel) {
 
 @Composable
 private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
-    val channel = model.current ?: model.recent ?: model.catalog.byKind[MediaKind.MOVIES]?.firstOrNull() ?: model.catalog.channels.firstOrNull()
+    val channel = model.current ?: model.recent
     val saved = model.playlistUrl.isNotBlank()
     Box(modifier.clip(Shape).background(Panel).clickable {
         when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.settingsOpen = true }
@@ -337,9 +344,10 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
 
 @Composable
 private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
-    if (model.visibleSeries.isEmpty()) {
+    val entries = model.seriesPages.collectAsLazyPagingItems()
+    if (entries.itemCount == 0) {
         Box(modifier, contentAlignment = Alignment.Center) {
-            Text(if (model.loading || !model.initialized) "Preparando suas séries…" else "Nenhuma série encontrada", color = Muted)
+            CatalogStatus(model, entries.loadState.refresh) { entries.retry() }
         }
         return
     }
@@ -352,7 +360,8 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
         LazyVerticalGrid(columns = columns, modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            gridItems(model.visibleSeries, key = { it.id }) { series ->
+            items(entries.itemCount, key = entries.itemKey { it.id }) { index ->
+                val series = entries[index] ?: return@items
                 Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { model.showSeries(series) }) {
                     Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, Color(0xFF28234A)))),
                         contentAlignment = Alignment.Center) {
@@ -363,7 +372,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
                     }
                     Column(Modifier.padding(if (compact) 8.dp else 10.dp)) {
                         Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodes.size)}", fontSize = if (compact) 9.sp else 10.sp, color = Muted,
+                        Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodeCount)}", fontSize = if (compact) 9.sp else 10.sp, color = Muted,
                             modifier = Modifier.padding(top = 4.dp), maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -381,7 +390,7 @@ private fun SeriesHeader(series: SeriesEntry, modifier: Modifier = Modifier) {
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text("Escolha um episódio", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            Text("${episodeCount(series.episodes.size)} em ${seasonCount(series.seasons.size)}", color = Muted, fontSize = 12.sp)
+            Text("${episodeCount(series.episodeCount)} em ${seasonCount(series.seasons.size)}", color = Muted, fontSize = 12.sp)
         }
     }
 }
@@ -406,8 +415,8 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
         Column(Modifier.weight(1f)) {
             Text(series?.title ?: if (model.favoritesOnly) "Favoritos" else model.selectedKind?.title ?: "Todos os conteúdos",
                 fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 19.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(if (seriesRoot) if (model.visibleSeries.size == 1) "1 série" else "${model.visibleSeries.size} séries"
-                else if (series != null) episodeCount(model.visible.size) else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
+            Text(if (seriesRoot) if (model.visibleCount == 1) "1 série" else "${formatCount(model.visibleCount)} séries"
+                else if (series != null) episodeCount(model.visibleCount) else "${formatCount(model.visibleCount)} itens", color = Muted, fontSize = 10.sp)
         }
         IconButton(onClick = { model.refresh() }) { Icon(Icons.Default.Refresh, "Atualizar lista", tint = Cyan, modifier = Modifier.size(22.dp)) }
         if (!compact) IconButton(onClick = { model.settingsOpen = true }) { Icon(Icons.Default.Settings, "Minha playlist", tint = Muted) }
@@ -504,26 +513,41 @@ private fun GuideHeading() {
 private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
     val now = guideClock()
     val scroll = rememberLazyListState()
+    val entries = model.channelPages.collectAsLazyPagingItems()
     LaunchedEffect(model.selectedKind, model.favoritesOnly, model.group, model.search, model.openedSeriesId, model.selectedSeason) { scroll.scrollToItem(0) }
-    if (model.visible.isEmpty()) {
-        Box(modifier, contentAlignment = Alignment.Center) {
-            Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(if (model.favoritesOnly) Icons.Default.StarBorder else Icons.Default.LiveTv, null, tint = Muted, modifier = Modifier.size(36.dp))
-                Text(when { !model.initialized || model.loading -> "Preparando sua lista…"
-                    model.catalog.channels.isEmpty() -> "Cadastre sua playlist M3U"
-                    model.favoritesOnly -> "Marque seus conteúdos com a estrela"
-                    else -> "Nenhum conteúdo encontrado" }, modifier = Modifier.padding(top = 8.dp), fontSize = 14.sp)
-                if (model.catalog.channels.isEmpty() && model.initialized) TextButton(onClick = { model.settingsOpen = true }) { Text("Minha playlist") }
-                model.message?.let { Text(it, fontSize = 11.sp, color = Gold) }
-            }
-        }
+    if (entries.itemCount == 0) {
+        Box(modifier, contentAlignment = Alignment.Center) { CatalogStatus(model,entries.loadState.refresh) { entries.retry() } }
         return
     }
     LazyColumn(modifier, state = scroll, contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        // Parser/cache de-duplicate URLs, so lazy keys are stable even for repeated provider entries.
-        items(model.visible, key = { it.url }, contentType = { it.kind }) { channel ->
-            ChannelRow(channel, model, guideMode, now)
+        items(entries.itemCount, key = entries.itemKey { it.url }, contentType = entries.itemContentType { it.kind }) { index ->
+            entries[index]?.let { ChannelRow(it,model,guideMode,now) }
         }
+        if (entries.loadState.append is LoadState.Loading) item {
+            Box(Modifier.fillMaxWidth().padding(12.dp),contentAlignment=Alignment.Center) { CircularProgressIndicator(Modifier.size(22.dp),color=Mint) }
+        }
+        if (entries.loadState.append is LoadState.Error) item { TextButton(onClick={entries.retry()}) { Text("Tentar carregar mais") } }
+    }
+}
+
+@Composable
+private fun CatalogStatus(model: AuroraViewModel, state: LoadState, retry: () -> Unit) {
+    Column(Modifier.padding(16.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+        if (model.loading || !model.initialized || state is LoadState.Loading) {
+            CircularProgressIndicator(Modifier.size(26.dp),color=Mint)
+            Text(model.progressText ?: "Abrindo conteúdos salvos…",Modifier.padding(top=12.dp),fontSize=13.sp)
+        } else {
+            Icon(Icons.Default.VideoLibrary,null,tint=Muted,modifier=Modifier.size(36.dp))
+            Text(when {
+                state is LoadState.Error -> "Não consegui abrir esta parte da lista."
+                model.catalog.total == 0 -> if(model.playlistUrl.isBlank()) "Cadastre sua playlist M3U" else "Seu endereço está salvo. Toque em Atualizar."
+                model.favoritesOnly -> "Marque seus conteúdos com a estrela"
+                else -> "Nenhum conteúdo encontrado"
+            },Modifier.padding(top=8.dp),fontSize=14.sp)
+            if(state is LoadState.Error) TextButton(onClick=retry) { Text("Tentar novamente") }
+            else if(model.catalog.total==0) TextButton(onClick={if(model.playlistUrl.isBlank())model.settingsOpen=true else model.refresh(force=true)}) { Text(if(model.playlistUrl.isBlank()) "Minha playlist" else "Atualizar") }
+        }
+        model.message?.let { Text(it,fontSize=11.sp,color=Gold) }
     }
 }
 
@@ -536,12 +560,13 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
         Box(Modifier.size(if (guideMode || isLive) 38.dp else 52.dp, if (guideMode || isLive) 38.dp else 68.dp)
             .clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {
             Icon(if (isLive) Icons.Default.LiveTv else Icons.Default.Movie, null, tint = Cyan, modifier = Modifier.size(20.dp))
-            if (channel.imageUrl.isNotBlank()) AsyncImage(channel.imageUrl, null, Modifier.fillMaxSize(), contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop)
+            val cover = if (channel.kind == MediaKind.SERIES) channel.seriesImageUrl.ifBlank { channel.imageUrl } else channel.imageUrl
+            if (cover.isNotBlank()) AsyncImage(cover, null, Modifier.fillMaxSize(), contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop)
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(if (guideMode) 1.2f else 1f)) {
             Text(channel.name, fontSize = if (guideMode) 11.sp else 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = if (selected) Mint else Txt)
-            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) model.openedSeries?.episodes?.firstOrNull { it.channel.url == channel.url }?.label ?: channel.group else channel.group,
+            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) Episode(channel, channel.seasonNumber.coerceAtLeast(1), channel.episodeNumber, channel.name).label else channel.group,
                 fontSize = 11.sp, color = if (channel.kind == MediaKind.SERIES) Cyan else Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (guideMode) {
@@ -582,7 +607,8 @@ private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
 
 private fun time(value: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(value))
 private fun seasonCount(value: Int) = if (value == 1) "1 temporada" else "$value temporadas"
-private fun episodeCount(value: Int) = if (value == 1) "1 episódio" else "$value episódios"
+private fun episodeCount(value: Int) = if (value == 1) "1 episódio" else "${formatCount(value)} episódios"
+private fun formatCount(value: Int) = java.text.NumberFormat.getIntegerInstance(Locale("pt", "BR")).format(value)
 
 @Composable
 private fun guideClock(): Long {
@@ -659,7 +685,7 @@ private fun PlaylistSettings(model: AuroraViewModel) {
                 }
             }
             if (model.playlistUrl.isNotBlank()) item {
-                Text("${model.catalog.channels.size} conteúdos salvos" + if (model.updated > 0) " • Atualização: ${SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(model.updated))}" else "",
+                Text("${formatCount(model.catalog.total)} conteúdos salvos" + if (model.updated > 0) " • Atualização: ${SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(model.updated))}" else "",
                     color = Muted, fontSize = 12.sp)
                 OutlinedButton(onClick = { model.settingsOpen = false; model.refresh(force = true) }, enabled = !model.loading, modifier = Modifier.fillMaxWidth()) { Text("Atualizar lista agora") }
             }

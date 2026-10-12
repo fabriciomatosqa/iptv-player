@@ -2,7 +2,14 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.2.0
+## Versão 1.3.0
+
+- Importação de M3U em fluxo, diretamente para SQLite; download temporário validado e recuperável antes da importação. Catálogos grandes não ficam inteiros na memória.
+- Navegação paginada, totais calculados no banco e busca em todo o catálogo, inclusive conteúdo fora das páginas já abertas.
+- Categorias e cartazes consultados na API do mesmo provedor quando disponível. URLs opacas e grupos ambíguos passam a respeitar a classificação informada pelo servidor.
+- Cartaz da série aplicado também nos episódios; programação XMLTV reservada aos canais ao vivo.
+- Teste de escala com 315.898 conteúdos únicos, 43.792 filmes, 270.072 episódios e 2.034 canais, incluindo encerramentos reais do processo e reabertura.
+
 
 - Abertura vertical com cartões Ao vivo, Filmes e Séries; abertura horizontal com painel de conteúdo e atalhos.
 - Navegação em paisagem com menu, categorias, vídeo e guia Agora/A seguir. Tela cheia disponível no player.
@@ -37,4 +44,4 @@ gradle testDebugUnitTest lintDebug assembleDebug
 
 O GitHub Actions executa testes de classificação, séries e calendário, testes de banco/migração/rollback, navegação e reprodução HTTP em um emulador. A verificação também encerra o processo com `am force-stop` duas vezes e confirma que o catálogo e os favoritos reaparecem.
 
-O APK fica em **Actions → Build AURORA IPTV APK → execução concluída → Artifacts → aurora-iptv-apk**. O pacote `br.com.fabriciomatos.iptvplayer` e a chave de teste em cache foram preservados para instalação sobre a versão 1.1.0.
+O APK fica em **Actions → Build AURORA IPTV APK → execução concluída → Artifacts → aurora-iptv-apk**. O pacote `br.com.fabriciomatos.iptvplayer` e a chave de teste em cache foram preservados para instalação sobre as versões 1.1.0 e 1.2.0.
