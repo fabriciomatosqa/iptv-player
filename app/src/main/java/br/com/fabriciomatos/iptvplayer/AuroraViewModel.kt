@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -30,8 +31,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -99,11 +100,39 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private var foreground = false
     private var resumePlayback = false
     private var playerInstance: ExoPlayer? = null
+    private var seriesOrigin: CatalogLocation? = null
+    private var playbackOrigin: CatalogLocation? = null
+    private val catalogAnchors = LinkedHashMap<CatalogPositionKey,CatalogAnchor>()
+    fun catalogPositionKey() = CatalogPositionKey(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason)
+    fun catalogAnchor(key: CatalogPositionKey) = catalogAnchors[key]
+    fun rememberCatalogAnchor(key: CatalogPositionKey, anchor: CatalogAnchor) {
+        catalogAnchors[key]=anchor
+        while(catalogAnchors.size>100)catalogAnchors.remove(catalogAnchors.keys.first())
+    }
+    private fun catalogLocation() = CatalogLocation(page,selectedKind,favoritesOnly,group,search)
+    private fun restoreLocation(location: CatalogLocation?) {
+        if(location!=null) {
+            page=location.page;selectedKind=location.kind;favoritesOnly=location.favorites
+            group=location.group.takeUnless {it==ADULT_GROUP && !adultUnlocked};search=location.search
+        }
+        updateFilter()
+    }
     val player: ExoPlayer? get() = playerInstance
-    private val browseQuery = MutableStateFlow(BrowseQuery())
+    private var browseQuery = BrowseQuery()
+    private var pagingJob: Job? = null
     private val pagingConfig = PagingConfig(pageSize = 60, initialLoadSize = 60, maxSize = 240, enablePlaceholders = false)
-    val channelPages = browseQuery.flatMapLatest { query -> Pager(pagingConfig) { repository.channelPages(query) }.flow }.cachedIn(viewModelScope)
-    val seriesPages = browseQuery.flatMapLatest { query -> Pager(pagingConfig) { repository.seriesPages(query) }.flow }.cachedIn(viewModelScope)
+    var channelPages by mutableStateOf<Flow<PagingData<Channel>>>(flowOf(PagingData.empty())); private set
+    var seriesPages by mutableStateOf<Flow<PagingData<SeriesEntry>>>(flowOf(PagingData.empty())); private set
+    private fun applyBrowseQuery(query: BrowseQuery) {
+        if(query==browseQuery)return
+        browseQuery=query
+        // Each filter owns its cache: returning cannot replay the episode list as a series catalog.
+        pagingJob?.cancel()
+        val job=Job(viewModelScope.coroutineContext[Job]);pagingJob=job
+        val scope=CoroutineScope(viewModelScope.coroutineContext+job)
+        channelPages=Pager(pagingConfig,initialKey=query.initialOffset/60*60) {repository.channelPages(query)}.flow.cachedIn(scope)
+        seriesPages=Pager(pagingConfig,initialKey=query.initialOffset/60*60) {repository.seriesPages(query)}.flow.cachedIn(scope)
+    }
 
     init {
         viewModelScope.launch {
@@ -160,6 +189,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             playlistUrl = clean; playlistName = name.trim().ifBlank { "Minha playlist" }
             settingsOpen = false; message = null
             if (changed) {
+                catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
                 guideJob?.cancelAndJoin();guide=withContext(Dispatchers.IO){repository.savedGuide(clean)};football=emptyList()
                 stop(); openedSeries = null; openedSeriesId = null; selectedSeason = null; group = null; search = ""
                 withContext(Dispatchers.IO) { repository.restore(clean,::showProgress) }
@@ -210,6 +240,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
     fun browse(kind: MediaKind?, favorites: Boolean = false) {
+        if(!favorites && kind==selectedKind && openedSeriesId!=null) {closeSeries();return}
+        if(!favorites && kind==selectedKind && current?.kind==MediaKind.MOVIES) {closeVideo();return}
+        seriesOrigin=null;playbackOrigin=null
         if(kind!=null && current!=null && (current?.kind!=kind || kind==MediaKind.SERIES))stop()
         openedSeriesId = null; openedSeries = null; selectedSeason = null
         selectedKind = kind; favoritesOnly = favorites; group = null; search = ""; page = Page.LIBRARY
@@ -217,24 +250,46 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     fun showSeries(series: SeriesEntry) {
         if(series.adult && !adultUnlocked) { requireParental { showSeries(series) }; return }
+        if(openedSeriesId==null)seriesOrigin=catalogLocation()
         openedSeriesId = series.id; openedSeries = series; selectedSeason = series.seasons.firstOrNull(); group = null; search = ""
         updateFilter()
     }
-    fun closeSeries() { stop(); openedSeriesId = null; openedSeries = null; selectedSeason = null; search = ""; updateFilter() }
+    fun closeSeries() {
+        val origin=seriesOrigin;seriesOrigin=null
+        stop();openedSeriesId=null;openedSeries=null;selectedSeason=null;search=""
+        restoreLocation(origin)
+    }
+    fun closeVideo() {
+        val movie=current?.kind==MediaKind.MOVIES
+        val origin=playbackOrigin
+        stop()
+        if(movie)restoreLocation(origin)
+    }
+    fun backFromLibrary() {
+        when {openedSeriesId!=null->closeSeries();current?.kind==MediaKind.MOVIES->closeVideo();else->page=Page.HOME}
+    }
     fun selectSeason(season: Int) { selectedSeason = season; updateFilter() }
     fun selectGroup(value: String?) {
         if(value==ADULT_GROUP && !adultUnlocked) { requireParental { selectGroup(value) }; return }
-        group = value; updateFilter()
+        group = value
+        if(current?.kind==MediaKind.MOVIES)playbackOrigin=catalogLocation()
+        updateFilter()
     }
-    fun search(value: String) { search = value; updateFilter(debounce = true) }
+    fun search(value: String) { search = value;if(current?.kind==MediaKind.MOVIES)playbackOrigin=catalogLocation(); updateFilter(debounce = true) }
     private fun updateFilter(debounce: Boolean = false) {
         filterJob?.cancel()
         val aliases=if(selectedKind==MediaKind.MOVIES && group!=null)catalog.groups[MediaKind.MOVIES].orEmpty().filter { normalized(movieCategory(it))==normalized(group.orEmpty()) }else emptyList()
-        val query = BrowseQuery(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason,includeAdult=adultUnlocked && (group==ADULT_GROUP || favoritesOnly || selectedKind==null),groupAliases=aliases)
+        val key=catalogPositionKey()
+        var query = BrowseQuery(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason,includeAdult=adultUnlocked && (group==ADULT_GROUP || favoritesOnly || selectedKind==null),groupAliases=aliases)
         filterJob = viewModelScope.launch {
             filtering = true
             if(debounce)delay(180)
-            browseQuery.value = query
+            val old=browseQuery
+            val same=old.copy(initialOffset=0)==query
+            val anchor=catalogAnchors[key]
+            val offset=if(same)old.initialOffset else if(anchor!=null)withContext(Dispatchers.IO) {repository.catalogOffset(query,anchor.item)} ?: 0 else 0
+            query=query.copy(initialOffset=offset)
+            applyBrowseQuery(query)
             visibleCount = withContext(Dispatchers.IO) { repository.matchingCount(query) }
             filtering = false
         }
@@ -337,6 +392,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun play(channel: Channel) {
         if(channel.adult && !adultUnlocked) { requireParental { play(channel) };return }
+        if(channel.kind==MediaKind.MOVIES && (current?.kind!=MediaKind.MOVIES || playbackOrigin==null))playbackOrigin=catalogLocation()
+        if(channel.kind==MediaKind.SERIES && openedSeriesId==null && seriesOrigin==null)seriesOrigin=catalogLocation()
         if (selectedKind != channel.kind) { group = null; search = ""; favoritesOnly = false }
         selectedKind = channel.kind
         if (channel.kind == MediaKind.SERIES) {
@@ -358,7 +415,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         try {
             val instance = playerInstance ?: createPlayer().also { playerInstance = it }
-            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.5 Android" })
+            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.6 Android" })
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setDefaultRequestProperties(if (channel.referrer.isBlank()) emptyMap() else mapOf("Referer" to channel.referrer))
             val factory = DefaultMediaSourceFactory(DefaultDataSource.Factory(getApplication(), http))
@@ -396,11 +453,14 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
     fun retry() { current?.let(::play) }
-    fun stop() { playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false }
+    fun stop() { playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null }
     fun foreground(active: Boolean) {
         foreground = active
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()
         if (!active) {
+            catalogAnchors.keys.removeAll {it.group==ADULT_GROUP}
+            if(seriesOrigin?.group==ADULT_GROUP)seriesOrigin=null
+            if(playbackOrigin?.group==ADULT_GROUP)playbackOrigin=null
             adultUnlocked=false;dismissParental()
             if(current?.adult==true)stop()
             if(recent?.adult==true)recent=null

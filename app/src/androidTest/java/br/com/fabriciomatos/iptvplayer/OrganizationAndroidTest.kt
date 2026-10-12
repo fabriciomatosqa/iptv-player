@@ -109,4 +109,23 @@ class OrganizationAndroidTest {
         val offline=ArtworkResolver(reopened) {error("Saved crests must work offline")}
         assertEquals(badges,offline.football(details));reopened.close()
     }
+    @Test fun nationalMatchesUseFifaFederationsAndSavedExactCountryMatches() = runBlocking {
+        val repository=PlaylistRepository(context)
+        var calls=0
+        val portuguese="https://r2.thesportsdb.com/images/media/team/badge/portugal.png"
+        val json=JSONObject().put("teams",org.json.JSONArray().put(JSONObject().put("strTeam","Portugal").put("strSport","Soccer").put("strBadge",portuguese))
+            .put(JSONObject().put("strTeam","Portugal FC").put("strSport","Soccer").put("strBadge","https://example.test/club.png")))
+        val resolver=ArtworkResolver(repository) {url->calls++;assertTrue(url.endsWith("t=Portugal"));json}
+        val known=resolver.football(FootballDetails("Amistoso","Brasil","Argentina"))
+        assertEquals(initialFootballArtwork(FootballDetails("Amistoso","Brasil","Argentina")),known)
+        assertEquals(0,calls)
+        val details=FootballDetails("Amistoso Feminino","Portugal Feminino","Espanha Feminina")
+        val fetched=resolver.football(details)
+        assertEquals(FIFA_BADGE,fetched.competition);assertEquals(portuguese,fetched.home);assertEquals(1,calls)
+        assertEquals("",selectFederationBadge(nationalTeam("Brasil")!!,json))
+        repository.close()
+        val reopened=PlaylistRepository(context)
+        assertEquals(fetched,ArtworkResolver(reopened) {error("Federation metadata must be cached")}.football(details))
+        reopened.close()
+    }
 }

@@ -14,9 +14,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -53,6 +54,8 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import androidx.paging.compose.itemContentType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withTimeoutOrNull
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -106,7 +109,7 @@ internal fun AuroraApp(model: AuroraViewModel) {
     BackHandler(enabled = model.settingsOpen || model.fullscreen || model.page != Page.HOME || model.current != null) {
         when { model.settingsOpen -> if(model.settingsSection!=0)model.settingsSection=0 else model.settingsOpen = false
             model.fullscreen -> model.fullscreen = false
-            model.openedSeries != null -> model.closeSeries()
+            model.page == Page.LIBRARY -> model.backFromLibrary()
             model.page != Page.HOME -> model.page = Page.HOME
             else -> model.stop() }
     }
@@ -332,7 +335,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                 VideoPane(model, Modifier.fillMaxWidth().aspectRatio(16f / 9f))
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(model.current!!.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    IconButton(onClick = { model.stop() }, Modifier.size(48.dp)) { Icon(Icons.Default.Close, tr(R.string.close_video), tint = Muted) }
+                    IconButton(onClick = { model.closeVideo() }, Modifier.size(48.dp)) { Icon(Icons.Default.Close, tr(R.string.close_video), tint = Muted) }
                 }
             }
             SearchBox(model, Modifier.padding(horizontal = 16.dp))
@@ -356,6 +359,28 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
 @Composable
 private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
     val entries = model.seriesPages.collectAsLazyPagingItems()
+    val key=model.catalogPositionKey()
+    val anchor=remember(key) {model.catalogAnchor(key)}
+    val scroll=remember(key) {LazyGridState(anchor?.index ?: 0,anchor?.offset ?: 0)}
+    var restored by remember(key) {mutableStateOf(anchor==null)}
+    LaunchedEffect(key,entries) {
+        restored=anchor==null
+        if(anchor!=null)withTimeoutOrNull(5000) {
+            while(true) {
+                val index=entries.itemSnapshotList.items.indexOfFirst {it.id==anchor.item}
+                if(!model.filtering && index>=0) {scroll.scrollToItem(index,anchor.offset);break}
+                delay(40)
+            }
+        }
+        restored=true
+    }
+    LaunchedEffect(key,entries,restored) {if(restored)snapshotFlow {
+        if(model.filtering || entries.loadState.refresh is LoadState.Loading)null
+        else Triple(scroll.firstVisibleItemIndex,scroll.firstVisibleItemScrollOffset,entries.itemSnapshotList.items)
+    }.collectLatest {frame->frame?.let {(index,offset,items)->
+        items.getOrNull(index)?.let {model.rememberCatalogAnchor(key,CatalogAnchor(it.id,offset,index))}
+    }
+    }}
     if (entries.itemCount == 0) {
         Box(modifier, contentAlignment = Alignment.Center) {
             CatalogStatus(model, entries.loadState.refresh) { entries.retry() }
@@ -368,7 +393,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
         val targetWidth = ((maxHeight - 82.dp).coerceAtLeast(48.dp) * (2f / 3f)).coerceAtMost(138.dp)
         val columns = if (compact) GridCells.Fixed(kotlin.math.ceil((maxWidth.value + 12f) / (targetWidth.value + 12f)).toInt().coerceAtLeast(1))
             else GridCells.Adaptive(138.dp)
-        LazyVerticalGrid(columns = columns, modifier = Modifier.fillMaxSize(),
+        LazyVerticalGrid(columns = columns, state=scroll, modifier = Modifier.fillMaxSize().testTag("series_grid"),
             contentPadding = PaddingValues(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             items(entries.itemCount, key = entries.itemKey { it.id }) { index ->
@@ -421,8 +446,8 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
     val series = model.openedSeries
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = if (compact) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!compact || series != null) IconButton(onClick = { if (series != null) model.closeSeries() else model.page = Page.HOME }) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, if (series != null) tr(R.string.back_series) else tr(R.string.back_home))
+        if (!compact || series != null || model.current?.kind==MediaKind.MOVIES) IconButton(onClick = {model.backFromLibrary()}) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, if (series != null) tr(R.string.back_series) else if(model.current?.kind==MediaKind.MOVIES)tr(R.string.back)else tr(R.string.back_home))
         }
         Column(Modifier.weight(1f)) {
             Text(series?.title ?: if (model.favoritesOnly) tr(R.string.favorites) else model.selectedKind?.let { kindLabel(it) } ?: tr(R.string.all_content),
@@ -524,14 +549,34 @@ private fun GuideHeading() {
 @Composable
 private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
     val now = guideClock()
-    val scroll = rememberLazyListState()
     val entries = model.channelPages.collectAsLazyPagingItems()
-    LaunchedEffect(model.selectedKind, model.favoritesOnly, model.group, model.search, model.openedSeriesId, model.selectedSeason) { scroll.scrollToItem(0) }
+    val key=model.catalogPositionKey()
+    val anchor=remember(key) {model.catalogAnchor(key)}
+    val scroll=remember(key) {LazyListState(anchor?.index ?: 0,anchor?.offset ?: 0)}
+    var restored by remember(key) {mutableStateOf(anchor==null)}
+    LaunchedEffect(key,entries) {
+        restored=anchor==null
+        if(anchor!=null)withTimeoutOrNull(5000) {
+            while(true) {
+                val index=entries.itemSnapshotList.items.indexOfFirst {it.url==anchor.item}
+                if(!model.filtering && index>=0) {scroll.scrollToItem(index,anchor.offset);break}
+                delay(40)
+            }
+        }
+        restored=true
+    }
+    LaunchedEffect(key,entries,restored) {if(restored)snapshotFlow {
+        if(model.filtering || entries.loadState.refresh is LoadState.Loading)null
+        else Triple(scroll.firstVisibleItemIndex,scroll.firstVisibleItemScrollOffset,entries.itemSnapshotList.items)
+    }.collectLatest {frame->frame?.let {(index,offset,items)->
+        items.getOrNull(index)?.let {model.rememberCatalogAnchor(key,CatalogAnchor(it.url,offset,index))}
+    }
+    }}
     if (entries.itemCount == 0) {
         Box(modifier, contentAlignment = Alignment.Center) { CatalogStatus(model,entries.loadState.refresh) { entries.retry() } }
         return
     }
-    LazyColumn(modifier, state = scroll, contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    LazyColumn(modifier.testTag("channel_list"), state = scroll, contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         items(entries.itemCount, key = entries.itemKey { it.url }, contentType = entries.itemContentType { it.kind }) { index ->
             entries[index]?.takeIf { !it.adult || model.adultUnlocked }?.let { ChannelRow(it,model,guideMode,now) }
         }

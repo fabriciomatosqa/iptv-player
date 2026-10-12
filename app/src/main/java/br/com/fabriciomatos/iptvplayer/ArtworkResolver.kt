@@ -12,13 +12,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-data class FootballArtwork(val competition: String = "", val home: String = "", val away: String = "")
-
 /** Public title/name metadata only. Playlist URLs and provider credentials never leave the provider. */
 class ArtworkResolver(private val repository: PlaylistRepository, private val readJson: (String)->JSONObject = ::readArtworkJson) {
     private val animeLock=Mutex()
     private val sportsLock=Mutex()
     private var animeRequestAt=0L
+    private var federationRequestAt=0L
 
     suspend fun anime(source: String, title: String): String? = animeLock.withLock {
         withContext(Dispatchers.IO) { repository.cachedAnimeCover(source,title) }?.let { return@withLock it.takeIf(String::isNotEmpty) }
@@ -35,6 +34,9 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         image
     }
     suspend fun football(details: FootballDetails): FootballArtwork = sportsLock.withLock {
+        nationalMatch(details)?.let { (home,away) ->
+            return@withLock FootballArtwork(FIFA_BADGE,federationBadge(home),federationBadge(away))
+        }
         val slug=footballLeagueSlug(details.competition) ?: return@withLock FootballArtwork()
         val cacheKey="football:$slug"
         val cached=withContext(Dispatchers.IO) { repository.cachedArtwork(cacheKey) }
@@ -50,6 +52,34 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         FootballArtwork(bundle.optString("badge"),selectTeamBadge(details.home,bundle.optJSONArray("teams") ?: JSONArray()),
             selectTeamBadge(details.away,bundle.optJSONArray("teams") ?: JSONArray()))
     }
+    private suspend fun federationBadge(team: NationalTeam): String {
+        if(team.badge.isNotBlank())return team.badge
+        val key="federation:${normalized(team.country)}"
+        withContext(Dispatchers.IO) {repository.cachedArtwork(key)}?.let {return JSONObject(it).optString("badge")}
+        val wait=federationRequestAt+2100-System.currentTimeMillis()
+        if(wait>0)delay(wait)
+        federationRequestAt=System.currentTimeMillis()
+        val badge=try {
+            val country=URLEncoder.encode(team.country,"UTF-8")
+            val json=withContext(Dispatchers.IO) {readJson("https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=$country")}
+            selectFederationBadge(team,json)
+        } catch(e: CancellationException) {throw e} catch(_: Exception) {""}
+        withContext(Dispatchers.IO) {repository.saveArtwork(key,JSONObject().put("badge",badge).toString(),if(badge.isBlank())3600000L else 30*86400000L)}
+        return badge
+    }
+}
+
+fun selectFederationBadge(request: NationalTeam, json: JSONObject): String {
+    val teams=json.optJSONArray("teams") ?: return ""
+    val matches=buildList {
+        for(i in 0 until teams.length()) {
+            val team=teams.optJSONObject(i) ?: continue
+            if(team.optString("strSport")!="Soccer" || nationalTeam(team.optString("strTeam"))?.country!=request.country)continue
+            val badge=team.optString("strBadge")
+            if(badge.startsWith("https://r2.thesportsdb.com/images/media/team/badge/"))add(badge)
+        }
+    }.distinct()
+    return matches.singleOrNull().orEmpty()
 }
 
 fun selectAnimePoster(title: String, json: JSONObject): String? {
@@ -92,7 +122,7 @@ fun selectTeamBadge(name: String, teams: JSONArray): String {
 }
 private fun readArtworkJson(address: String): JSONObject {
     val connection=(URL(address).openConnection() as HttpURLConnection).apply {
-        connectTimeout=8000;readTimeout=8000;setRequestProperty("User-Agent","AuroraIPTV/1.5 Android")
+        connectTimeout=8000;readTimeout=8000;setRequestProperty("User-Agent","AuroraIPTV/1.6 Android")
         setRequestProperty("Accept","application/json")
     }
     try {
