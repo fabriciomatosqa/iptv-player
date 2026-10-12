@@ -343,22 +343,29 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
         }
         return
     }
-    LazyVerticalGrid(columns = GridCells.Adaptive(138.dp), modifier = modifier,
-        contentPadding = PaddingValues(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        gridItems(model.visibleSeries, key = { it.id }) { series ->
-            Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { model.showSeries(series) }) {
-                Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, Color(0xFF28234A)))),
-                    contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.VideoLibrary, null, tint = Cyan, modifier = Modifier.size(36.dp))
+    BoxWithConstraints(modifier) {
+        val compact = maxWidth > maxHeight
+        // Keep a full poster and its caption visible on short landscape screens.
+        val targetWidth = ((maxHeight - 82.dp).coerceAtLeast(48.dp) * (2f / 3f)).coerceAtMost(138.dp)
+        val columns = if (compact) GridCells.Fixed(kotlin.math.ceil((maxWidth.value + 12f) / (targetWidth.value + 12f)).toInt().coerceAtLeast(1))
+            else GridCells.Adaptive(138.dp)
+        LazyVerticalGrid(columns = columns, modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            gridItems(model.visibleSeries, key = { it.id }) { series ->
+                Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { model.showSeries(series) }) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, Color(0xFF28234A)))),
+                        contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.VideoLibrary, null, tint = Cyan, modifier = Modifier.size(36.dp))
+                        }
+                        if (series.imageUrl.isNotBlank()) AsyncImage(series.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
-                    if (series.imageUrl.isNotBlank()) AsyncImage(series.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                }
-                Column(Modifier.padding(10.dp)) {
-                    Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodes.size)}", fontSize = 10.sp, color = Muted,
-                        modifier = Modifier.padding(top = 4.dp), maxLines = 2)
+                    Column(Modifier.padding(if (compact) 8.dp else 10.dp)) {
+                        Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodes.size)}", fontSize = if (compact) 9.sp else 10.sp, color = Muted,
+                            modifier = Modifier.padding(top = 4.dp), maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
         }
