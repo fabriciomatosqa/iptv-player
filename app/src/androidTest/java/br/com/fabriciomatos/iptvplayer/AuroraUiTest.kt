@@ -103,7 +103,7 @@ class AuroraUiTest {
             PlaylistRepository(context).also { assertEquals(6, it.readCache("$base/list.m3u").channels.size); it.close() }
             screenshot("portrait-home")
 
-            compose.onNodeWithText("Filmes").performClick()
+            compose.onNode(hasText("Filmes") and hasText("1 filme")).performClick()
             compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }
             waitForText("Luz do Norte")
             compose.onNodeWithText("Luz do Norte").assertExists()

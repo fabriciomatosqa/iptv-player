@@ -205,7 +205,7 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, col
         Spacer(Modifier.height(16.dp))
         Text(title, fontWeight = FontWeight.Bold, fontSize = 25.sp)
         Text(subtitle, fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
-        Text(if (count == 1) "1 canal" else "$count canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+        Text(if (count == 1) "1 canal" else "${formatCount(count)} canais", color = Mint, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
     } else Row(card, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(colors.first().copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = colors.first(), modifier = Modifier.size(28.dp))
@@ -213,7 +213,11 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, col
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(if (count > 0) formatCount(count) + if (title == "Séries") " séries" else if(title == "Filmes") " filmes" else " canais" else subtitle, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (count > 0) when (title) {
+                "Séries" -> if (count == 1) "1 série" else "${formatCount(count)} séries"
+                "Filmes" -> if (count == 1) "1 filme" else "${formatCount(count)} filmes"
+                else -> if (count == 1) "1 canal" else "${formatCount(count)} canais"
+            } else subtitle, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Icon(Icons.Default.ChevronRight, null, tint = colors.first())
     }
