@@ -95,7 +95,8 @@ class AuroraUiTest {
         try {
             scenario.onActivity { model = ViewModelProvider(it)[AuroraViewModel::class.java]; it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
             compose.waitUntil(15000) { model.initialized }
-            compose.onNodeWithContentDescription("Configurações").performClick()
+            compose.onNodeWithTag("settings_gear").performClick()
+            compose.onNodeWithText("Minha playlist").performClick()
             compose.onNodeWithText("Endereço M3U / M3U8").performTextInput("$base/list.m3u")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Salvar playlist").performScrollTo().performClick()

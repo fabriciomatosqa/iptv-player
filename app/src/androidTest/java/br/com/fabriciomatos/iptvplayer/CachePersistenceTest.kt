@@ -120,6 +120,7 @@ class CachePersistenceTest {
 }
 
 internal fun resetCatalog(context: android.content.Context) {
+    context.getSharedPreferences("aurora_settings", 0).edit().clear().commit()
     context.getSharedPreferences("aurora_iptv_preferences", 0).edit().clear().commit()
     context.deleteDatabase("aurora_catalog.db")
     File(context.filesDir, "aurora_playlist_cache.jsonl").delete()

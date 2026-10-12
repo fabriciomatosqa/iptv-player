@@ -35,12 +35,25 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-enum class Page { HOME, LIBRARY }
+enum class Page { HOME, LIBRARY, FOOTBALL }
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AuroraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PlaylistRepository(application)
+    private val preferences = AppSettings(application)
+    var language by mutableStateOf(preferences.language()); private set
+    var epgOverride by mutableStateOf(preferences.epgUrl()); private set
+    var parentalConfigured by mutableStateOf(preferences.hasPassword()); private set
+    var adultUnlocked by mutableStateOf(false); private set
+    var parentalDialog by mutableStateOf(false); private set
+    var changePassword by mutableStateOf(false); private set
+    var parentalError by mutableStateOf<String?>(null); private set
+    var parentalBusy by mutableStateOf(false); private set
+    private var protectedAction: (() -> Unit)? = null
+    var football by mutableStateOf(emptyList<FootballMatch>()); private set
+    var guideLoading by mutableStateOf(false); private set
+    var guideError by mutableStateOf(false); private set
     var catalog by mutableStateOf(CatalogOverview(), referentialEqualityPolicy()); private set
     var playlistUrl by mutableStateOf(""); private set
     var playlistName by mutableStateOf("Minha playlist"); private set
@@ -67,6 +80,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var openedSeries by mutableStateOf<SeriesEntry?>(null); private set
     var selectedSeason by mutableStateOf<Int?>(null); private set
     var settingsOpen by mutableStateOf(false)
+    var settingsSection by mutableStateOf(0)
+    fun openSettings(section: Int = 0) {settingsSection=section;settingsOpen=true}
     var fullscreen by mutableStateOf(false)
     private var refreshJob: Job? = null
     private var filterJob: Job? = null
@@ -88,22 +103,25 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val saved = withContext(Dispatchers.IO) { Triple(repository.savedUrl(), repository.savedName(), repository.lastUrl()) }
                 playlistUrl = saved.first; playlistName = saved.second
-                progressText = if (playlistUrl.isBlank()) null else "Abrindo catálogo salvo…"
+                progressText = if (playlistUrl.isBlank()) null else preferences.text(R.string.loading)
                 val source = playlistUrl
                 withContext(Dispatchers.IO) { repository.restore(source, ::showProgress) }
                 if (playlistUrl != source) return@launch
                 favorites = withContext(Dispatchers.IO) { repository.favorites() }
+                guide = withContext(Dispatchers.IO) { repository.savedGuide(source) }
                 reloadOverview()
                 recent = withContext(Dispatchers.IO) {
-                    repository.channel(source, saved.third) ?: repository.channels(BrowseQuery(source, MediaKind.MOVIES),limit=1).firstOrNull()
+                    repository.channel(source, saved.third)?.takeUnless { it.adult } ?: repository.channels(BrowseQuery(source, MediaKind.MOVIES),limit=1).firstOrNull()
                 }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { message = "Não consegui abrir o catálogo salvo. Seu endereço continua salvo; tente Atualizar." }
+            catch (_: Exception) { message = preferences.text(R.string.load_failed) }
             finally { initialized = true; progressText = null }
             if (foreground && playlistUrl.isNotBlank()) refreshDaily()
         }
     }
-    private fun showProgress(text: String) { viewModelScope.launch { progressText = text } }
+    private fun showProgress(text: String) { viewModelScope.launch {
+        progressText = preferences.text(if(text.startsWith("Baixando"))R.string.downloading else if(text.startsWith("Salvando"))R.string.importing else R.string.loading)
+    } }
     private suspend fun reloadOverview() {
         val source = playlistUrl
         val data = withContext(Dispatchers.IO) {
@@ -120,10 +138,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     fun savePlaylist(url: String, name: String) {
         val clean = url.trim()
-        if (!PlaylistRepository.validUrl(clean)) { message = "Use um endereço M3U HTTP ou HTTPS válido."; return }
+        if (!PlaylistRepository.validUrl(clean)) { message = preferences.text(R.string.invalid_url); return }
         viewModelScope.launch {
             try { withContext(Dispatchers.IO) { repository.saveSource(clean,name.trim()) } }
-            catch (_: Exception) { message = "Não consegui salvar o endereço. Verifique o espaço disponível."; return@launch }
+            catch (_: Exception) { message = preferences.text(R.string.load_failed); return@launch }
             refreshJob?.cancelAndJoin()
             val changed = clean != playlistUrl
             playlistUrl = clean; playlistName = name.trim().ifBlank { "Minha playlist" }
@@ -158,21 +176,21 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     return@launch
                 }
-                if (!quiet) { loading = true; message = null; progressText = if(pending) "Retomando a lista já baixada…" else "Carregando informações da lista…" }
+                if (!quiet) { loading = true; message = null; progressText = if(pending) preferences.text(R.string.loading) else preferences.text(R.string.loading) }
                 val metadata = withContext(Dispatchers.IO) {
                     if(pending) repository.metadata(source) else repository.fetchMetadata(source)
                 }
                 val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress) }
                 if (downloaded) {
-                    progress("Salvando catálogo completo…")
+                    progress(preferences.text(R.string.loading))
                     withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress) }
                 } else withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
                 coroutineContext.ensureActive()
                 if (playlistUrl == source) reloadOverview()
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (!quiet) message = if(catalog.total>0) "Não consegui atualizar agora. Sua lista salva continua disponível."
-                    else "Endereço salvo. Não consegui concluir a lista; toque em Atualizar para tentar novamente."
+                if (!quiet) message = if(catalog.total>0) preferences.text(R.string.load_failed)
+                    else preferences.text(R.string.load_failed)
             } finally { if(!quiet) { loading = false; progressText = null } }
         }
     }
@@ -183,16 +201,20 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         updateFilter()
     }
     fun showSeries(series: SeriesEntry) {
+        if(series.adult && !adultUnlocked) { requireParental { showSeries(series) }; return }
         openedSeriesId = series.id; openedSeries = series; selectedSeason = series.seasons.firstOrNull(); group = null; search = ""
         updateFilter()
     }
     fun closeSeries() { stop(); openedSeriesId = null; openedSeries = null; selectedSeason = null; search = ""; updateFilter() }
     fun selectSeason(season: Int) { selectedSeason = season; updateFilter() }
-    fun selectGroup(value: String?) { group = value; updateFilter() }
+    fun selectGroup(value: String?) {
+        if(value==ADULT_GROUP && !adultUnlocked) { requireParental { selectGroup(value) }; return }
+        group = value; updateFilter()
+    }
     fun search(value: String) { search = value; updateFilter(debounce = true) }
     private fun updateFilter(debounce: Boolean = false) {
         filterJob?.cancel()
-        val query = BrowseQuery(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason)
+        val query = BrowseQuery(playlistUrl,selectedKind,favoritesOnly,group,search,openedSeriesId,selectedSeason,includeAdult=adultUnlocked && (group==ADULT_GROUP || favoritesOnly || selectedKind==null))
         filterJob = viewModelScope.launch {
             filtering = true
             if(debounce)delay(180)
@@ -201,7 +223,45 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             filtering = false
         }
     }
-    fun groups(): List<String> = if(selectedKind==null)catalog.groups.values.flatten().distinct().sorted() else catalog.groups[selectedKind].orEmpty()
+    fun groups(): List<String> {
+        val raw=if(selectedKind==null)catalog.groups.values.flatten().distinct() else catalog.groups[selectedKind].orEmpty()
+        return raw.filterNot(::isAdultGroup).sorted() + if(raw.any(::isAdultGroup))listOf(ADULT_GROUP)else emptyList()
+    }
+    private fun requireParental(action: () -> Unit) { protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
+    fun editParental() { protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
+    fun dismissParental() { parentalDialog=false;protectedAction=null;parentalError=null }
+    fun submitParental(password: String, newPassword: String = "", confirmation: String = "") {
+        if(parentalBusy)return
+        viewModelScope.launch {
+            parentalBusy=true
+            try {
+                val setting=changePassword || !parentalConfigured
+                if(setting && (newPassword.length !in 4..64 || newPassword!=confirmation)) {
+                    parentalError=preferences.text(R.string.password_mismatch);return@launch
+                }
+                val ok=withContext(Dispatchers.IO) { if(setting)preferences.setPassword(password,newPassword)else preferences.verifyPassword(password) }
+                if(!ok) { parentalError=preferences.text(if(preferences.blockedUntil()>System.currentTimeMillis())R.string.password_wait else R.string.wrong_password);return@launch }
+                parentalConfigured=preferences.hasPassword();adultUnlocked=!changePassword
+                val action=protectedAction;parentalDialog=false;protectedAction=null;parentalError=null;changePassword=false
+                updateFilter();action?.invoke()
+            } finally { parentalBusy=false }
+        }
+    }
+    fun setLanguage(tag: String) { viewModelScope.launch {
+        if(withContext(Dispatchers.IO) { preferences.saveLanguage(tag) }) {
+            language=tag
+            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.forLanguageTags(tag))
+        }
+    } }
+    fun setGuideAddress(address: String) {
+        val clean=address.trim()
+        if(clean.isNotBlank() && !PlaylistRepository.validUrl(clean)) { message=preferences.text(R.string.invalid_url);return }
+        viewModelScope.launch {
+            if(withContext(Dispatchers.IO) { preferences.saveEpgUrl(clean) }) { epgOverride=clean;refreshGuide(true) }
+        }
+    }
+    fun showFootball() { page=Page.FOOTBALL;refreshGuide() }
+    fun refreshFootball() = refreshGuide(true)
     fun toggleFavorite(channel: Channel) {
         val before = pendingFavorites ?: favorites
         val next = if(channel.url in before)before-channel.url else before+channel.url
@@ -215,26 +275,39 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     if(favoritesOnly) { repository.invalidatePages(); updateFilter() }
                 }
             } catch(e: CancellationException) { throw e }
-            catch(_: Exception) { if(pendingFavorites==next)pendingFavorites=null;message="Não consegui salvar o favorito. Verifique o espaço disponível." }
+            catch(_: Exception) { if(pendingFavorites==next)pendingFavorites=null;message=preferences.text(R.string.load_failed) }
         }
     }
-    private fun refreshGuide() {
-        guideJob?.cancel()
-        val source = epgUrl; val playlist = playlistUrl
-        if(source.isBlank()) { guide = Guide(); return }
+    private fun refreshGuide(force: Boolean = false) {
+        if(guideJob?.isActive==true)return
+        val source = epgOverride.ifBlank { epgUrl.ifBlank { ProviderApi.epgEndpoint(playlistUrl).orEmpty() } }
+        val playlist=playlistUrl
+        if(source.isBlank()) { guideLoading=false;guideError=true;return }
         guideJob = viewModelScope.launch {
+            guideLoading=true
             try {
-                guide = withContext(Dispatchers.IO) { loadGuide(source,repository.liveIds(playlist)) }
+                val channels=withContext(Dispatchers.IO) { repository.liveChannels(playlist) }
+                football=footballMatches(guide,channels)
+                val checked=withContext(Dispatchers.IO) { repository.guideChecked(playlist) }
+                if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
+                    val fresh=withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
+                    if(fresh.names.isNotEmpty() || fresh.programmes.isNotEmpty()) {
+                        withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh) }
+                        if(playlistUrl==playlist) { guide=fresh;football=footballMatches(fresh,channels);guideError=false }
+                    } else guideError=true
+                }
             } catch(e: CancellationException) { throw e }
-            catch(_: Exception) { }
+            catch(_: Exception) { guideError=true }
+            finally { guideLoading=false }
         }
     }
 
     fun play(channel: Channel) {
+        if(channel.adult && !adultUnlocked) { requireParental { play(channel) };return }
         if (selectedKind != channel.kind) { group = null; search = ""; favoritesOnly = false }
         selectedKind = channel.kind
         if (channel.kind == MediaKind.SERIES) {
-            selectedSeason = channel.seasonNumber.coerceAtLeast(1)
+            selectedSeason = channel.seasonNumber
             viewModelScope.launch {
                 val detail = withContext(Dispatchers.IO) {
                     repository.seriesId(playlistUrl,channel.url)?.let { repository.seriesDetail(playlistUrl,it) }
@@ -252,7 +325,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         try {
             val instance = playerInstance ?: createPlayer().also { playerInstance = it }
-            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.3 Android" })
+            val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.4 Android" })
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setDefaultRequestProperties(if (channel.referrer.isBlank()) emptyMap() else mapOf("Referer" to channel.referrer))
             val factory = DefaultMediaSourceFactory(DefaultDataSource.Factory(getApplication(), http))
@@ -266,7 +339,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             if (mime.isNotBlank()) item.setMimeType(mime)
             instance.setMediaSource(factory.createMediaSource(item.build()))
             instance.prepare(); instance.playWhenReady = true
-        } catch (_: Exception) { buffering = false; playbackError = "Não consegui abrir este vídeo. Tente outro canal ou tente novamente." }
+        } catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.load_failed) }
     }
 
     private fun createPlayer(): ExoPlayer = ExoPlayer.Builder(getApplication<Application>())
@@ -279,10 +352,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 override fun onPlayerError(error: PlaybackException) {
                     buffering = false
                     playbackError = when (error.errorCode) {
-                        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Sem conexão com o canal. Confira sua internet e tente novamente."
-                        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "O servidor não liberou este canal. Tente outro ou atualize a lista."
-                        PlaybackException.ERROR_CODE_DECODING_FAILED, PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> "Este vídeo usa um formato que o aparelho não conseguiu reproduzir."
-                        else -> "Não foi possível reproduzir este canal. Tente novamente ou escolha outro."
+                        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> preferences.text(R.string.load_failed)
+                        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> preferences.text(R.string.load_failed)
+                        PlaybackException.ERROR_CODE_DECODING_FAILED, PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> preferences.text(R.string.load_failed)
+                        else -> preferences.text(R.string.load_failed)
                     }
                 }
             })
@@ -293,7 +366,13 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun foreground(active: Boolean) {
         foreground = active
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()
-        if (!active) { resumePlayback = playerInstance?.playWhenReady == true; playerInstance?.pause() }
+        if (!active) {
+            adultUnlocked=false;dismissParental()
+            if(current?.adult==true)stop()
+            if(recent?.adult==true)recent=null
+            if(group==ADULT_GROUP || openedSeries?.adult==true) {group=null;openedSeries=null;openedSeriesId=null;selectedSeason=null}
+            updateFilter()
+            resumePlayback = playerInstance?.playWhenReady == true; playerInstance?.pause() }
         else if (resumePlayback) { playerInstance?.play(); resumePlayback = false }
     }
     override fun onCleared() {

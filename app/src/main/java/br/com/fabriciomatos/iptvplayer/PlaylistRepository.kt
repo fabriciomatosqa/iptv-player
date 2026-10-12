@@ -88,12 +88,12 @@ class PlaylistRepository(context: Context) {
         ensureSource(db, key)
         val count = scalar(db, "SELECT COUNT(*) FROM channels WHERE source_key=?", arrayOf(key))
         if (count == 0) migrateLegacy(source, progress)
-        val remaining = scalar(db, "SELECT COUNT(*) FROM channels WHERE source_key=? AND kind=-1", arrayOf(key))
+        val remaining = scalar(db, "SELECT COUNT(*) FROM channels WHERE source_key=? AND (kind=-1 OR adult=-1)", arrayOf(key))
         if (remaining > 0) {
             val kinds = metadata(source).categories
             var done = 0
             while (true) {
-                val batch = db.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND kind=-1 LIMIT 256", arrayOf(key)).use { cursor ->
+                val batch = db.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND (kind=-1 OR adult=-1) LIMIT 256", arrayOf(key)).use { cursor ->
                     buildList { while (cursor.moveToNext()) add(readChannel(cursor)) }
                 }
                 if (batch.isEmpty()) break
@@ -133,15 +133,17 @@ class PlaylistRepository(context: Context) {
 
     private fun where(query: BrowseQuery, shows: Boolean): Pair<String, Array<String>> {
         val clauses = mutableListOf("c.source_key=?"); val args = mutableListOf(digest(query.source))
+        if (query.group == ADULT_GROUP) { clauses.add("c.adult=1");if(!query.includeAdult)clauses.add("1=0") }
+        else if (!query.includeAdult) clauses.add("c.adult=0")
         if (shows) {
-            if (query.group != null) {
+            if (query.group != null && query.group != ADULT_GROUP) {
                 clauses.add("EXISTS(SELECT 1 FROM series_groups g WHERE g.source_key=c.source_key AND g.series_key=c.series_key AND g.group_name=?)")
                 args.add(query.group)
             }
             if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM channels e JOIN favorites f ON e.url=f.url WHERE e.source_key=c.source_key AND e.series_key=c.series_key)")
         } else {
             query.kind?.let { clauses.add("c.kind=?"); args.add(it.ordinal.toString()) }
-            query.group?.let { clauses.add("c.group_name=?"); args.add(it) }
+            query.group?.takeIf { it != ADULT_GROUP }?.let { clauses.add("c.group_name=?"); args.add(it) }
             query.seriesId?.let { clauses.add("c.series_key=?"); args.add(it) }
             query.season?.let { clauses.add("c.season=?"); args.add(it.toString()) }
             if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM favorites f WHERE f.url=c.url)")
@@ -168,13 +170,13 @@ class PlaylistRepository(context: Context) {
     fun series(query: BrowseQuery, offset: Int = 0, limit: Int = 60): List<SeriesEntry> {
         if (query.source.isBlank()) return emptyList()
         val (where, args) = where(query, true)
-        return helper.readableDatabase.rawQuery("SELECT c.series_key,c.title,COALESCE(NULLIF(p.image,''),c.image),c.episode_count,c.seasons FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE " +
+        return helper.readableDatabase.rawQuery("SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE " +
             where + " ORDER BY c.name_norm LIMIT ? OFFSET ?", args + arrayOf(limit.coerceIn(1, 1000).toString(), offset.coerceAtLeast(0).toString())).use {
             buildList { while (it.moveToNext()) add(readSeries(it)) }
         }
     }
     fun seriesDetail(source: String, id: String): SeriesEntry? = helper.readableDatabase.rawQuery(
-        "SELECT c.series_key,c.title,COALESCE(NULLIF(p.image,''),c.image),c.episode_count,c.seasons FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE c.source_key=? AND c.series_key=?",
+        "SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE c.source_key=? AND c.series_key=?",
         arrayOf(digest(source), id)).use { if (it.moveToFirst()) readSeries(it) else null }
     fun seriesId(source: String, url: String): String? = helper.readableDatabase.rawQuery("SELECT series_key FROM channels WHERE source_key=? AND url=?", arrayOf(digest(source), url)).use {
         if (it.moveToFirst()) it.getString(0).takeIf(String::isNotBlank) else null
@@ -185,14 +187,14 @@ class PlaylistRepository(context: Context) {
     fun liveIds(source: String): Set<String> = helper.readableDatabase.rawQuery("SELECT DISTINCT tvg_id FROM channels WHERE source_key=? AND kind=0 AND tvg_id<>''", arrayOf(digest(source))).use {
         buildSet { while (it.moveToNext()) add(it.getString(0)) }
     }
-    private fun readSeries(cursor: Cursor) = SeriesEntry(cursor.getString(0), cursor.getString(1), cursor.getString(2), emptySet(), emptyList(),
-        cursor.getInt(3), cursor.getString(4).split(',').mapNotNull(String::toIntOrNull).distinct().sorted())
+    private fun readSeries(cursor: Cursor) = SeriesEntry(cursor.getString(0), cursor.getString(1), knownAnimePoster(cursor.getString(1)) ?: cursor.getString(2), emptySet(), emptyList(),
+        cursor.getInt(3), cursor.getString(4).split(',').mapNotNull(String::toIntOrNull).distinct().sorted(),cursor.getInt(5)!=0)
     private fun readChannel(cursor: Cursor): Channel {
         val kind = cursor.getInt(14).takeIf { it in 0..3 }?.let { MediaKind.entries[it] }
             ?: classifyContent(cursor.getString(0), cursor.getString(2), cursor.getString(1), cursor.getString(8))
-        return Channel(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3), cursor.getString(4),
+        return Channel(cursor.getString(0), cursor.getString(1), cursor.getString(2), if(kind==MediaKind.SERIES && isAnimeGroup(cursor.getString(2)))knownAnimePoster(cursor.getString(10)) ?: cursor.getString(11) else cursor.getString(3), cursor.getString(4),
             cursor.getString(5), cursor.getString(6), cursor.getString(7), cursor.getString(8), cursor.getString(9),
-            cursor.getString(10), cursor.getString(11), cursor.getInt(12), cursor.getInt(13), kind)
+            cursor.getString(10), knownAnimePoster(cursor.getString(10)) ?: cursor.getString(11), cursor.getInt(12), cursor.getInt(13), kind, cursor.getInt(15).let { if(it<0)isAdultGroup(cursor.getString(2)) else it!=0 })
     }
 
     fun metadata(source: String): ProviderMetadata {
@@ -201,8 +203,8 @@ class PlaylistRepository(context: Context) {
         db.rawQuery("SELECT group_name,kind FROM provider_categories WHERE source_key=?", arrayOf(key)).use {
             while (it.moveToNext()) kinds[it.getString(0)] = MediaKind.entries[it.getInt(1)]
         }
-        db.rawQuery("SELECT name_norm,title,image,provider_id FROM series_posters WHERE source_key=?", arrayOf(key)).use {
-            while (it.moveToNext()) posters[it.getString(0)] = SeriesPoster(it.getString(1), it.getString(2), it.getString(3))
+        db.rawQuery("SELECT name_norm,title,image,provider_id,verified_anime FROM series_posters WHERE source_key=?", arrayOf(key)).use {
+            while (it.moveToNext()) posters[it.getString(0)] = SeriesPoster(it.getString(1), it.getString(2), it.getString(3),it.getInt(4)==1)
         }
         return ProviderMetadata(kinds, posters)
     }
@@ -228,10 +230,10 @@ class PlaylistRepository(context: Context) {
             db.compileStatement("INSERT OR REPLACE INTO provider_categories(source_key,group_name,kind) VALUES(?,?,?)").use { statement ->
                 fresh.categories.forEach { (name, kind) -> statement.bindString(1,key); statement.bindString(2,name); statement.bindLong(3,kind.ordinal.toLong()); statement.executeInsert() }
             }
-            db.compileStatement("INSERT OR REPLACE INTO series_posters(source_key,name_norm,title,image,provider_id) VALUES(?,?,?,?,?)").use { statement ->
+            db.compileStatement("INSERT OR REPLACE INTO series_posters(source_key,name_norm,title,image,provider_id,verified_anime) VALUES(?,?,?,?,?,?)").use { statement ->
                 fresh.posters.forEach { (name, poster) ->
                     statement.bindString(1,key); statement.bindString(2,name); statement.bindString(3,poster.title)
-                    statement.bindString(4,poster.image); statement.bindString(5,poster.providerId); statement.executeInsert()
+                    statement.bindString(4,poster.image); statement.bindString(5,poster.providerId);statement.bindLong(6,if(poster.anime)1 else 0); statement.executeInsert()
                 }
             }
             val ready = if (fresh.posters.isNotEmpty()) 2 else if (fresh.categories.isNotEmpty()) 1 else 0
@@ -247,7 +249,7 @@ class PlaylistRepository(context: Context) {
                 db.execSQL("UPDATE channels SET kind=-1 WHERE source_key=? AND group_name=? AND kind<>?", arrayOf(key,group,kind.ordinal))
             }
             while (true) {
-                val batch = db.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND kind=-1 LIMIT 256", arrayOf(key)).use { cursor ->
+                val batch = db.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND (kind=-1 OR adult=-1) LIMIT 256", arrayOf(key)).use { cursor ->
                     buildList { while (cursor.moveToNext()) add(readChannel(cursor)) }
                 }
                 if (batch.isEmpty()) break
@@ -265,7 +267,7 @@ class PlaylistRepository(context: Context) {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
-            setRequestProperty("User-Agent","AuroraIPTV/1.3 Android"); setRequestProperty("Accept-Encoding","identity")
+            setRequestProperty("User-Agent","AuroraIPTV/1.4 Android"); setRequestProperty("Accept-Encoding","identity")
             if (conditional) {
                 validators.etag.takeIf(String::isNotBlank)?.let { setRequestProperty("If-None-Match",it) }
                 validators.modified.takeIf(String::isNotBlank)?.let { setRequestProperty("If-Modified-Since",it) }
@@ -332,8 +334,8 @@ class PlaylistRepository(context: Context) {
             ensureSource(db,key)
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
-            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation) VALUES(" + List(22){"?"}.joinToString(",") + ")"
-            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=? WHERE source_key=? AND url=? AND seen_generation<>?"
+            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult) VALUES(" + List(23){"?"}.joinToString(",") + ")"
+            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=? WHERE source_key=? AND url=? AND seen_generation<>?"
             var epg=""
             db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
                 epg=scan { c ->
@@ -346,13 +348,13 @@ class PlaylistRepository(context: Context) {
                     insert.clearBindings();insert.bindString(1,key);insert.bindString(2,c.url);insert.bindLong(3,position)
                     listOf(c.name,c.group,c.imageUrl,c.tvgId,c.userAgent,c.referrer,c.mimeType,c.typeHint,c.seriesId,title,c.seriesImageUrl).forEachIndexed { i,v -> insert.bindString(i+4,v) }
                     insert.bindLong(15,season.toLong());insert.bindLong(16,number.toLong());insert.bindLong(17,c.kind.ordinal.toLong())
-                    insert.bindString(18,c.searchText);insert.bindString(19,seriesKey);insert.bindString(20,norm);insert.bindString(21,episodeTitle);insert.bindLong(22,generation.toLong())
+                    insert.bindString(18,c.searchText);insert.bindString(19,seriesKey);insert.bindString(20,norm);insert.bindString(21,episodeTitle);insert.bindLong(22,generation.toLong());insert.bindLong(23,if(c.adult)1L else 0L)
                     if(insert.executeInsert()!=-1L){added++;position++}
                     else {
                         update.clearBindings();update.bindLong(1,c.kind.ordinal.toLong());update.bindString(2,c.searchText)
                         update.bindString(3,seriesKey);update.bindString(4,norm);update.bindString(5,title);update.bindString(6,c.seriesImageUrl)
                         update.bindLong(7,season.toLong());update.bindLong(8,number.toLong());update.bindString(9,episodeTitle)
-                        update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindString(12,key);update.bindString(13,c.url);update.bindLong(14,generation.toLong())
+                        update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L);update.bindString(13,key);update.bindString(14,c.url);update.bindLong(15,generation.toLong())
                         update.executeUpdateDelete()
                     }
                     parsed++
@@ -378,7 +380,7 @@ class PlaylistRepository(context: Context) {
     private fun indexRow(db: SQLiteDatabase, key: String, c: Channel) {
         val identity=if(c.kind==MediaKind.SERIES)seriesIdentity(c) else null
         val values=ContentValues().apply {
-            put("kind",c.kind.ordinal);put("search_text",c.searchText);put("type_hint",c.typeHint)
+            put("adult",if(c.adult)1 else 0);put("kind",c.kind.ordinal);put("search_text",c.searchText);put("type_hint",c.typeHint)
             put("series_key",identity?.id.orEmpty());put("series_norm",identity?.title?.let(::normalized).orEmpty())
             put("series_title",identity?.title ?: c.seriesTitle);put("season",identity?.episode?.season ?: c.seasonNumber)
             put("episode",identity?.episode?.number ?: c.episodeNumber);put("episode_title",identity?.episode?.title.orEmpty())
@@ -389,7 +391,7 @@ class PlaylistRepository(context: Context) {
         db.delete("series_directory","source_key=?",arrayOf(key))
         db.delete("series_groups","source_key=?",arrayOf(key))
         db.delete("catalog_groups","source_key=?",arrayOf(key))
-        db.execSQL("INSERT INTO series_directory(source_key,series_key,name_norm,title,image,episode_count,seasons,search_text) SELECT source_key,series_key,MIN(series_norm),MIN(series_title),COALESCE(NULLIF(MAX(series_image),''),MIN(image_url)),COUNT(*),GROUP_CONCAT(DISTINCT season),MIN(series_norm)||' '||GROUP_CONCAT(DISTINCT group_name) FROM channels WHERE source_key=? AND kind=2 AND series_key<>'' GROUP BY series_key",arrayOf(key))
+        db.execSQL("INSERT INTO series_directory(source_key,series_key,name_norm,title,image,episode_count,seasons,search_text,adult) SELECT source_key,series_key,MIN(series_norm),MIN(series_title),COALESCE(NULLIF(MAX(series_image),''),MIN(image_url)),COUNT(*),GROUP_CONCAT(DISTINCT season),MIN(series_norm)||' '||GROUP_CONCAT(DISTINCT group_name),MAX(adult) FROM channels WHERE source_key=? AND kind=2 AND series_key<>'' GROUP BY series_key",arrayOf(key))
         db.execSQL("INSERT INTO series_groups(source_key,series_key,group_name) SELECT DISTINCT source_key,series_key,group_name FROM channels WHERE source_key=? AND kind=2 AND series_key<>''",arrayOf(key))
         db.execSQL("INSERT INTO catalog_groups(source_key,kind,group_name,amount) SELECT source_key,kind,group_name,COUNT(*) FROM channels WHERE source_key=? AND kind<>2 GROUP BY kind,group_name",arrayOf(key))
         db.execSQL("INSERT INTO catalog_groups(source_key,kind,group_name,amount) SELECT source_key,2,group_name,COUNT(*) FROM series_groups WHERE source_key=? GROUP BY group_name",arrayOf(key))
@@ -432,10 +434,31 @@ class PlaylistRepository(context: Context) {
     private fun legacyChannel(o: JSONObject): Channel? = o.optString("url").takeIf(String::isNotBlank)?.let {
         Channel(o.optString("name","Canal"),it,o.optString("group","Canais"),o.optString("imageUrl"),o.optString("tvgId"),o.optString("userAgent"),o.optString("referrer"),o.optString("mimeType"))
     }
+    fun liveChannels(source: String): List<Channel> = helper.readableDatabase.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND kind=0 AND adult=0 ORDER BY position",arrayOf(digest(source))).use {
+        buildList { while(it.moveToNext()) add(readChannel(it)) }
+    }
+    fun saveGuide(source: String, guide: Guide, now: Long = System.currentTimeMillis()) {
+        fun programme(p: Programme) = JSONObject().put("title",p.title).put("start",p.start).put("end",p.end).put("image",p.image)
+        val root=JSONObject(); val names=JSONObject();guide.names.forEach { (k,v)->names.put(k,v) };root.put("names",names)
+        val shows=JSONObject();guide.programmes.forEach { (k,v)->shows.put(k,JSONArray(v.map(::programme))) };root.put("shows",shows)
+        root.put("matches",JSONArray(guide.matches.map { JSONObject().put("id",it.channelId).put("show",programme(it.programme)) }))
+        helper.writableDatabase.execSQL("INSERT OR REPLACE INTO guide_cache VALUES(?,?,?)",arrayOf(digest(source),root.toString(),now))
+    }
+    fun guideChecked(source: String): Long = helper.readableDatabase.rawQuery("SELECT updated FROM guide_cache WHERE source_key=?",arrayOf(digest(source))).use { if(it.moveToFirst())it.getLong(0)else 0L }
+    fun savedGuide(source: String): Guide = runCatching {
+        val raw=helper.readableDatabase.rawQuery("SELECT data FROM guide_cache WHERE source_key=?",arrayOf(digest(source))).use { if(it.moveToFirst())it.getString(0)else "" }
+        if(raw.isBlank()) return Guide()
+        val root=JSONObject(raw)
+        fun programme(p: JSONObject)=Programme(p.getString("title"),p.getLong("start"),p.getLong("end"),p.optString("image"))
+        val names=root.getJSONObject("names");val shows=root.getJSONObject("shows");val matches=root.getJSONArray("matches")
+        Guide(names=names.keys().asSequence().associateWith { names.getString(it) },programmes=shows.keys().asSequence().associateWith { key->
+            val list=shows.getJSONArray(key);(0 until list.length()).map { programme(list.getJSONObject(it)) }
+        },matches=(0 until matches.length()).map { val entry=matches.getJSONObject(it);GuideMatch(entry.getString("id"),programme(entry.getJSONObject("show"))) })
+    }.getOrDefault(Guide())
     fun close() = helper.close()
     companion object {
-        private const val RAW_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,c.series_image,c.season,c.episode,c.kind"
-        private const val CHANNEL_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,COALESCE(NULLIF(p.image,''),c.series_image),c.season,c.episode,c.kind"
+        private const val RAW_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,c.series_image,c.season,c.episode,c.kind,c.adult"
+        private const val CHANNEL_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,CASE WHEN lower(c.group_name) LIKE '%crunchyroll%' OR lower(c.group_name) LIKE '%anime%' OR lower(c.group_name) LIKE '%funimation%' THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.series_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.series_image) END,c.season,c.episode,c.kind,c.adult"
         fun validUrl(value: String): Boolean = runCatching { val u=URL(value);(u.protocol=="http"||u.protocol=="https")&&u.host.isNotBlank() }.getOrDefault(false)
         fun digest(value: String)=MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString(""){"%02x".format(it)}
         private fun ensureSource(db: SQLiteDatabase,key: String){db.execSQL("INSERT OR IGNORE INTO playlists(source_key) VALUES(?)",arrayOf(key))}
@@ -443,15 +466,27 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,2){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,3){
     init{setWriteAheadLoggingEnabled(true)}
     override fun onConfigure(db: SQLiteDatabase){db.setForeignKeyConstraintsEnabled(true);db.execSQL("PRAGMA synchronous=FULL")}
     override fun onCreate(db: SQLiteDatabase){
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
-        upgrade(db)
+        upgrade(db); upgradePreferences(db)
     }
-    override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){if(oldVersion<2)upgrade(db)}
+    override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
+        if(oldVersion<2)upgrade(db)
+        if(oldVersion<3)upgradePreferences(db)
+    }
+    private fun upgradePreferences(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE channels ADD COLUMN adult INTEGER NOT NULL DEFAULT -1")
+        db.execSQL("ALTER TABLE series_directory ADD COLUMN adult INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE series_posters ADD COLUMN verified_anime INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE playlists SET metadata_ready=0,metadata_checked=0")
+        db.execSQL("CREATE INDEX channel_adult_order ON channels(source_key,kind,adult,position)")
+        db.execSQL("CREATE TABLE anime_covers(source_key TEXT NOT NULL,name_norm TEXT NOT NULL,image TEXT NOT NULL,verified INTEGER NOT NULL,checked INTEGER NOT NULL,PRIMARY KEY(source_key,name_norm))")
+        db.execSQL("CREATE TABLE guide_cache(source_key TEXT PRIMARY KEY,data TEXT NOT NULL,updated INTEGER NOT NULL)")
+    }
     private fun upgrade(db: SQLiteDatabase){
         listOf("kind INTEGER NOT NULL DEFAULT -1","search_text TEXT NOT NULL DEFAULT ''","series_key TEXT NOT NULL DEFAULT ''","series_norm TEXT NOT NULL DEFAULT ''",
             "episode_title TEXT NOT NULL DEFAULT ''","seen_generation INTEGER NOT NULL DEFAULT 0").forEach { db.execSQL("ALTER TABLE channels ADD COLUMN "+it) }
