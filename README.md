@@ -2,7 +2,15 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.4.0
+## Versão 1.5.0
+
+- Atualização com porcentagem baseada nos bytes recebidos e importados. Os 100% só aparecem após a gravação completa no SQLite; quando o servidor não informa o tamanho do download, aparece o volume recebido até ser possível calcular a porcentagem da importação.
+- Controles do vídeo visíveis por 3 segundos, com desaparecimento gradual até 5 segundos. Um toque volta a mostrá-los. Áudio e legendas disponíveis no título aparecem abaixo do tempo, com seleção efetiva das faixas.
+- Cartazes de anime recuperados pelo título no catálogo Kitsu, com correspondência de nomes, proteção contra imagens de outra série e cache para reabertura. A imagem do provedor recebe uma alternativa quando falha.
+- Categorias equivalentes de filmes reunidas sem excluir conteúdos. Ordem: Adicionado recentemente, Top Lançamentos 2026, 4K, demais categorias em ordem alfabética e +18 por último. Recentes reúne o grupo Update e os filmes novos recebidos nas atualizações dos últimos 30 dias, sem tratar o catálogo inicial inteiro como novo.
+- Futebol mostra apenas confrontos com os dois times identificados. Cada cartão separa campeonato, times, horário e canal. Escudos são consultados pelo nome exato no catálogo da competição e ficam em cache; nomes ambíguos usam iniciais até haver identificação segura. Os horários e canais continuam vindo do guia da playlist.
+
+## Recursos preservados
 
 - Cartão **Futebol** na tela inicial com os jogos atuais e futuros informados pelo guia dos canais da playlist. O toque abre um canal disponível; transmissões alternativas aparecem no menu do jogo. A agenda e o guia ficam salvos localmente.
 - Guia XMLTV automático para provedores compatíveis, com endereço alternativo em **Configurações → Programação**. Horários e cobertura dependem do guia fornecido, sem inventar jogos ou canais.

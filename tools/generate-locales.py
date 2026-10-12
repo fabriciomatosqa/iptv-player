@@ -45,10 +45,36 @@ units={
 'tr':'kanal,kanal,film,film,dizi,dizi,sezon,sezon,bölüm,bölüm,öğe,öğe,kullanılabilir içerik,kayıtlı içerik,Sezon',
 'vi':'kênh,kênh,phim,phim,phim bộ,phim bộ,mùa,mùa,tập,tập,mục,mục,nội dung có sẵn,nội dung đã lưu,Mùa',
 'id':'saluran,saluran,film,film,serial,serial,musim,musim,episode,episode,item,item,konten tersedia,konten tersimpan,Musim'}
+
+extra_keys = 'recently_added top_releases finalizing audio_language subtitles subtitles_off automatic track rewind pause forward'.split()
+extras = {
+'pt': 'Adicionado recentemente|Top Lançamentos %1$d|Finalizando…|Áudio|Legendas|Desativadas|Automático|Faixa %1$d|Voltar 10 segundos|Pausar|Avançar 10 segundos',
+'en': 'Recently added|Top releases %1$d|Finishing…|Audio|Subtitles|Off|Automatic|Track %1$d|Rewind 10 seconds|Pause|Forward 10 seconds',
+'es': 'Añadido recientemente|Estrenos destacados %1$d|Finalizando…|Audio|Subtítulos|Desactivados|Automático|Pista %1$d|Retroceder 10 segundos|Pausar|Avanzar 10 segundos',
+'fr': 'Ajouté récemment|Sorties phares %1$d|Finalisation…|Audio|Sous-titres|Désactivés|Automatique|Piste %1$d|Reculer de 10 secondes|Pause|Avancer de 10 secondes',
+'de': 'Kürzlich hinzugefügt|Top-Neuerscheinungen %1$d|Wird abgeschlossen…|Audio|Untertitel|Aus|Automatisch|Spur %1$d|10 Sekunden zurück|Pause|10 Sekunden vor',
+'it': 'Aggiunti di recente|Uscite principali %1$d|Completamento…|Audio|Sottotitoli|Disattivati|Automatico|Traccia %1$d|Indietro di 10 secondi|Pausa|Avanti di 10 secondi',
+'nl': 'Recent toegevoegd|Topreleases %1$d|Afronden…|Audio|Ondertitels|Uit|Automatisch|Track %1$d|10 seconden terug|Pauzeren|10 seconden vooruit',
+'pl': 'Ostatnio dodane|Najlepsze premiery %1$d|Kończenie…|Dźwięk|Napisy|Wyłączone|Automatycznie|Ścieżka %1$d|Cofnij o 10 sekund|Pauza|Przewiń o 10 sekund',
+'ru': 'Недавно добавлено|Главные премьеры %1$d|Завершение…|Аудио|Субтитры|Выключены|Автоматически|Дорожка %1$d|Назад на 10 секунд|Пауза|Вперёд на 10 секунд',
+'uk': 'Нещодавно додано|Головні прем’єри %1$d|Завершення…|Аудіо|Субтитри|Вимкнені|Автоматично|Доріжка %1$d|Назад на 10 секунд|Пауза|Вперед на 10 секунд',
+'ar': 'أضيف مؤخراً|أبرز إصدارات %1$d|جارٍ الإنهاء…|الصوت|الترجمة|متوقفة|تلقائي|المسار %1$d|الرجوع 10 ثوانٍ|إيقاف مؤقت|التقديم 10 ثوانٍ',
+'hi': 'हाल ही में जोड़ा गया|प्रमुख रिलीज़ %1$d|पूरा हो रहा है…|ऑडियो|उपशीर्षक|बंद|स्वचालित|ट्रैक %1$d|10 सेकंड पीछे|रोकें|10 सेकंड आगे',
+'bn': 'সম্প্রতি যোগ করা|সেরা মুক্তি %1$d|শেষ হচ্ছে…|অডিও|সাবটাইটেল|বন্ধ|স্বয়ংক্রিয়|ট্র্যাক %1$d|10 সেকেন্ড পেছনে|বিরতি|10 সেকেন্ড সামনে',
+'zh-rCN': '最近添加|%1$d 年热门新片|正在完成…|音频|字幕|关闭|自动|音轨 %1$d|后退 10 秒|暂停|前进 10 秒',
+'zh-rTW': '最近新增|%1$d 年熱門新片|正在完成…|音訊|字幕|關閉|自動|音軌 %1$d|倒退 10 秒|暫停|快轉 10 秒',
+'ja': '最近追加|%1$d 年の注目新作|完了処理中…|音声|字幕|オフ|自動|トラック %1$d|10秒戻る|一時停止|10秒進む',
+'ko': '최근 추가|%1$d년 주요 신작|마무리 중…|오디오|자막|꺼짐|자동|트랙 %1$d|10초 뒤로|일시정지|10초 앞으로',
+'tr': 'Son eklenenler|En iyi yeni filmler %1$d|Tamamlanıyor…|Ses|Altyazılar|Kapalı|Otomatik|Parça %1$d|10 saniye geri|Duraklat|10 saniye ileri',
+'vi': 'Mới thêm|Phim mới nổi bật %1$d|Đang hoàn tất…|Âm thanh|Phụ đề|Tắt|Tự động|Bản %1$d|Lùi 10 giây|Tạm dừng|Tiến 10 giây',
+'id': 'Baru ditambahkan|Rilis unggulan %1$d|Menyelesaikan…|Audio|Subtitel|Nonaktif|Otomatis|Trek %1$d|Mundur 10 detik|Jeda|Maju 10 detik'}
+
 root=Path(__file__).resolve().parents[1]/'app/src/main/res'
 for lang,row in rows.items():
     values=row.split('|'); assert len(values)==len(keys),(lang,len(values),len(keys))
     data=dict(zip(keys,values)); u=units[lang].split(',')
+    translated=extras[lang].split('|');assert len(translated)==len(extra_keys)
+    data.update(zip(extra_keys,translated))
     for index,noun in enumerate(['channel','movie','series','season','episode','item']):
         data['one_'+noun]='1 '+u[index*2];data[noun+'_count']='%1$s '+u[index*2+1]
     data['total_count']='%1$s '+u[12];data['saved_count']='%1$s '+u[13];data['season']=u[14]+' %1$d'

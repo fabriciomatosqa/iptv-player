@@ -19,7 +19,8 @@ data class Episode(val channel: Channel, val season: Int, val number: Int, val t
 }
 
 data class SeriesEntry(val id: String, val title: String, val imageUrl: String, val groups: Set<String>, val episodes: List<Episode>,
-    val episodeCount: Int = episodes.size, val seasons: List<Int> = episodes.map { it.season }.distinct().sorted(), val adult: Boolean = episodes.any { it.channel.adult }) {
+    val episodeCount: Int = episodes.size, val seasons: List<Int> = episodes.map { it.season }.distinct().sorted(), val adult: Boolean = episodes.any { it.channel.adult },
+    val anime: Boolean = groups.any(::isAnimeGroup)) {
     val searchText = normalized("$title ${groups.joinToString(" ")}")
 }
 

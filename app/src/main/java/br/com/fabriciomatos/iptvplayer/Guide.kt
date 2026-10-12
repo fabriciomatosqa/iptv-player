@@ -11,9 +11,9 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.zip.GZIPInputStream
 
-data class Programme(val title: String, val start: Long, val end: Long, val image: String = "")
+data class Programme(val title: String, val start: Long, val end: Long, val image: String = "", val category: String = "")
 data class GuideMatch(val channelId: String, val programme: Programme)
-data class FootballMatch(val id: String, val programme: Programme, val channels: List<Channel>)
+data class FootballMatch(val id: String, val programme: Programme, val channels: List<Channel>, val details: FootballDetails)
 fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.currentTimeMillis()): List<FootballMatch> {
     val live = channels.filter { it.kind == MediaKind.LIVE && !it.adult }
     val byId = live.filter { it.tvgId.isNotBlank() }.groupBy { it.tvgId }
@@ -21,13 +21,13 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
     val epgNames = guide.names.entries.groupBy({ it.value }, { guideChannelName(it.key) })
     val result = linkedMapOf<String, FootballMatch>()
     guide.matches.filter { it.programme.end > now }.forEach { entry ->
+        val details = footballDetails(entry.programme.title, entry.programme.category) ?: return@forEach
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
         if (available.isNotEmpty()) {
-            val specific=Regex("(?i)\\s+(?:x|vs\\.?|versus)\\s+").containsMatchIn(entry.programme.title)
-            val id = normalized(entry.programme.title) + ":" + entry.programme.start + if(specific)"" else ":"+entry.channelId
+            val id = normalized("${details.competition}:${details.home}:${details.away}") + ":" + entry.programme.start
             val previous = result[id]
-            result[id] = FootballMatch(id, entry.programme, (previous?.channels.orEmpty() + available).distinctBy { it.url })
+            result[id] = FootballMatch(id, entry.programme, (previous?.channels.orEmpty() + available).distinctBy { it.url }, details)
         }
     }
     return result.values.sortedWith(compareBy<FootballMatch> { it.programme.start }.thenBy { it.programme.title })
@@ -52,7 +52,7 @@ suspend fun loadGuide(source: String, channelIds: Set<String>, now: Long = Syste
     val connection = (URL(source).openConnection() as HttpURLConnection).apply {
         connectTimeout = 10000; readTimeout = 20000
         instanceFollowRedirects = true
-        setRequestProperty("User-Agent", "AuroraIPTV/1.4 Android")
+        setRequestProperty("User-Agent", "AuroraIPTV/1.5 Android")
     }
     try {
         if (connection.responseCode !in 200..299) return Guide()
@@ -103,7 +103,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                     }
                 } else if (parser.eventType == XmlPullParser.END_TAG) {
                     if (parser.name == "programme" && accepted && title.isNotBlank() && end > start) {
-                        val programme = Programme(title, start, end, image)
+                        val programme = Programme(title, start, end, image, category.trim())
                         if (isFootballProgramme(title, category)) matches.add(GuideMatch(id, programme))
                         if ((channelIds.isEmpty() || id in acceptedIds) && start < now + 86400000L) {
                             val items = programmes.getOrPut(id) { ArrayList() }
