@@ -35,7 +35,7 @@ class FootballUiTest {
             p("Chelsea x Arsenal - Premier League",now+5*3600000L),p("Brasil x Argentina - Amistoso de Futebol",now+6*3600000L))
         val guide=Guide(matches=programmes.mapIndexed {i,p->GuideMatch("sport$i",p)})
         val repository=PlaylistRepository(context)
-        repository.saveSource(source,"Futebol");repository.appendCache(source,Download(Playlist(channels,"https://example.test/guide.xml"),"",""));repository.saveGuide(source,guide)
+        repository.saveSource(source,"Agenda de teste");repository.appendCache(source,Download(Playlist(channels,"https://example.test/guide.xml"),"",""));repository.saveGuide(source,guide)
         val json=JSONObject(instrumentation.context.assets.open("scores-afc-final.json").bufferedReader().use {it.readText()})
         val final=parseFootballScoreboard(json,"afc.champions",now).single().copy(kickoff=now-4*3600000L)
         val live=FootballScore("live-test","bra.1","Campeonato Brasileiro",programmes.first().start,ScoreTeam("flu",listOf("Fluminense")),
@@ -52,15 +52,15 @@ class FootballUiTest {
             lateinit var model: AuroraViewModel
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(15000) {model.initialized && model.football.size==4}
-            compose.onNodeWithText("Futebol").performScrollTo().performClick()
+            compose.onNode(hasText("Futebol") and hasClickAction()).performScrollTo().performClick()
             compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
             compose.onNodeWithText("83:21").assertExists()
             compose.onNodeWithTag("football_search").performTextInput("Fluminense")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Brasileirão").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
-            compose.onNodeWithTag("football_home_goals").assertTextEquals("2")
-            compose.onNodeWithTag("football_away_goals").assertTextEquals("1")
+            compose.onNodeWithTag("football_home_goals",useUnmergedTree=true).assertTextEquals("2")
+            compose.onNodeWithTag("football_away_goals",useUnmergedTree=true).assertTextEquals("1")
             compose.onNodeWithText("Al Nassr").assertDoesNotExist()
             screenshot("football-live-score")
             compose.onNodeWithTag("football_match").performClick()
