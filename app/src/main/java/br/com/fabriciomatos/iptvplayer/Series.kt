@@ -3,13 +3,13 @@ package br.com.fabriciomatos.iptvplayer
 import java.util.Locale
 
 private val seasonEpisodePatterns = listOf(
-    Regex("""(?i)\bS\s*(\d{1,3})\s*[.\- ]*E\s*(\d{1,4})\b"""),
-    Regex("""(?i)\b(\d{1,3})\s*x\s*(\d{1,4})\b"""),
-    Regex("""(?i)\b(?:temporada|season|temp\.?|t)\s*(\d{1,3})\s*[.\-: ]*(?:epis[oó]dio|episode|ep\.?|cap[ií]tulo|cap\.?|e)\s*(\d{1,4})\b""")
+    Regex("""(?iu)\bS\s*(\d{1,3})\s*[.\- ]*E\s*(\d{1,4})\b"""),
+    Regex("""(?iu)\b(\d{1,3})\s*x\s*(\d{1,4})\b"""),
+    Regex("""(?iu)\b(?:temporada|season|temp\.?|t)\s*(\d{1,3})\s*[.\-: ]*(?:epis[oó]dio|episode|ep\.?|cap[ií]tulo|cap\.?|e)\s*(\d{1,4})\b""")
 )
-private val episodeOnly = Regex("""(?i)\b(?:epis[oó]dio|episode|ep\.?|cap[ií]tulo|cap\.?)\s*(\d{1,4})\b""")
-private val qualityTag = Regex("""(?i)[\[(]\s*(?:br|pt|hd|fhd|sd|uhd|4k|720p|1080p|2160p|dublado|dub|legendado|leg|dual audio)\s*[\])]""")
-private val trailingQuality = Regex("""(?i)\s*[-|]?\s*(?:hd|fhd|sd|uhd|4k|720p|1080p|2160p|dublado|dub|legendado|leg|dual audio)\s*$""")
+private val episodeOnly = Regex("""(?iu)\b(?:epis[oó]dio|episode|ep\.?|cap[ií]tulo|cap\.?)\s*(\d{1,4})\b""")
+private val qualityTag = Regex("""(?iu)[\[(]\s*(?:br|pt|hd|fhd|sd|uhd|4k|720p|1080p|2160p|dublado|dub|legendado|leg|dual audio)\s*[\])]""")
+private val trailingQuality = Regex("""(?iu)\s*[-|]?\s*(?:hd|fhd|sd|uhd|4k|720p|1080p|2160p|dublado|dub|legendado|leg|dual audio)\s*$""")
 private val spaces = Regex("\\s+")
 
 fun hasEpisodeMarker(name: String) = seasonEpisodePatterns.any { it.containsMatchIn(name) } || episodeOnly.containsMatchIn(name)
