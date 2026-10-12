@@ -57,7 +57,7 @@ class AuroraUiTest {
         val playlist = AtomicReference(initial)
         val now = System.currentTimeMillis()
         val date = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.ROOT).apply { timeZone = TimeZone.getTimeZone("UTC") }
-        val guide = """<tv><channel id="aurora"><display-name>TV Aurora</display-name></channel><programme channel="aurora" start="${date.format(Date(now - 3600000))}" stop="${date.format(Date(now + 3600000))}"><title>Paisagens da aurora</title></programme><programme channel="aurora" start="${date.format(Date(now + 3600000))}" stop="${date.format(Date(now + 7200000))}"><title>Viagem ao norte</title></programme></tv>"""
+        val guide = """<tv><channel id="aurora"><display-name>TV Aurora</display-name></channel><programme channel="aurora" start="${date.format(Date(now - 3600000))}" stop="${date.format(Date(now + 3600000))}"><title>Futebol: Aurora x Norte</title></programme><programme channel="aurora" start="${date.format(Date(now + 3600000))}" stop="${date.format(Date(now + 7200000))}"><title>Viagem ao norte</title></programme><programme channel="aurora" start="${date.format(Date(now + 2 * 86400000L))}" stop="${date.format(Date(now + 2 * 86400000L + 7200000L))}"><title>Champions League: Leste vs Oeste</title></programme></tv>"""
         thread(isDaemon = true, name = "aurora-test-http") {
             while (!server.isClosed) {
                 try {
@@ -95,13 +95,21 @@ class AuroraUiTest {
         try {
             scenario.onActivity { model = ViewModelProvider(it)[AuroraViewModel::class.java]; it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
             compose.waitUntil(15000) { model.initialized }
-            compose.onNodeWithContentDescription("Configurações").performClick()
+            compose.onNodeWithTag("settings_gear").performClick()
+            compose.onNodeWithText("Minha playlist").performClick()
             compose.onNodeWithText("Endereço M3U / M3U8").performTextInput("$base/list.m3u")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Salvar playlist").performScrollTo().performClick()
             compose.waitUntil(15000) { model.catalog.total == 6 && !model.loading }
             PlaylistRepository(context).also { assertEquals(6, it.readCache("$base/list.m3u").channels.size); it.close() }
             screenshot("portrait-home")
+            compose.waitUntil(15000) { model.football.size == 2 }
+            compose.onNodeWithText("Futebol").performScrollTo().performClick()
+            compose.onNodeWithText("Champions League: Leste vs Oeste").assertExists()
+            screenshot("football-agenda")
+            compose.onNodeWithText("Futebol: Aurora x Norte").performClick()
+            compose.waitUntil(20000) { model.isPlaying && model.current?.name == "TV Aurora" }
+            compose.onNodeWithContentDescription("Voltar ao início").performClick()
 
             compose.onNode(hasText("Filmes") and hasText("1 filme")).performClick()
             compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }

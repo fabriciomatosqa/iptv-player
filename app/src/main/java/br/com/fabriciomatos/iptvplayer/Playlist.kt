@@ -58,7 +58,8 @@ data class Channel(
     val seriesImageUrl: String = "",
     val seasonNumber: Int = 0,
     val episodeNumber: Int = 0,
-    val kind: MediaKind = if (seriesId.isNotBlank() || seriesTitle.isNotBlank() || episodeNumber > 0) MediaKind.SERIES else classifyContent(name, group, url, typeHint)
+    val kind: MediaKind = if (seriesId.isNotBlank() || seriesTitle.isNotBlank() || episodeNumber > 0) MediaKind.SERIES else classifyContent(name, group, url, typeHint),
+    val adult: Boolean = isAdultGroup(group)
 ) {
     val searchText = normalized("$name $group")
 }

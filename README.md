@@ -2,7 +2,18 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.3.0
+## Versão 1.4.0
+
+- Cartão **Futebol** na tela inicial com os jogos atuais e futuros informados pelo guia dos canais da playlist. O toque abre um canal disponível; transmissões alternativas aparecem no menu do jogo. A agenda e o guia ficam salvos localmente.
+- Guia XMLTV automático para provedores compatíveis, com endereço alternativo em **Configurações → Programação**. Horários e cobertura dependem do guia fornecido, sem inventar jogos ou canais.
+- Conteúdo adulto separado em **Conteúdo +18**, no fim das categorias. A primeira abertura exige cadastrar uma senha; busca, favoritos, reprodução e últimos conteúdos respeitam o bloqueio. Sair do app bloqueia a sessão novamente. Alterar a senha exige a atual.
+- Senha armazenada como hash com salt aleatório e PBKDF2; tentativas incorretas repetidas têm espera de 30 segundos.
+- **Configurações → Idioma** com 20 idiomas e traduções para toda a interface, incluindo suporte a escrita da direita para a esquerda. Os títulos dos conteúdos continuam na língua da playlist.
+- Associação segura de cartazes com títulos que incluem ano, correções para cartazes conhecidos de anime e placeholder para imagens de anime sem identificação confiável.
+
+Idiomas: português brasileiro, inglês, espanhol, francês, alemão, italiano, neerlandês, polonês, russo, ucraniano, árabe, hindi, bengali, chinês simplificado, chinês tradicional, japonês, coreano, turco, vietnamita e indonésio.
+
+## Catálogo e reprodução
 
 - Importação de M3U em fluxo, diretamente para SQLite; download temporário validado e recuperável antes da importação. Catálogos grandes não ficam inteiros na memória.
 - Navegação paginada, totais calculados no banco e busca em todo o catálogo, inclusive conteúdo fora das páginas já abertas.
@@ -44,4 +55,4 @@ gradle testDebugUnitTest lintDebug assembleDebug
 
 O GitHub Actions executa testes de classificação, séries e calendário, testes de banco/migração/rollback, navegação e reprodução HTTP em um emulador. A verificação também encerra o processo com `am force-stop` duas vezes e confirma que o catálogo e os favoritos reaparecem.
 
-O APK fica em **Actions → Build AURORA IPTV APK → execução concluída → Artifacts → aurora-iptv-apk**. O pacote `br.com.fabriciomatos.iptvplayer` e a chave de teste em cache foram preservados para instalação sobre as versões 1.1.0 e 1.2.0.
+O APK fica em **Actions → Build AURORA IPTV APK → execução concluída → Artifacts → aurora-iptv-apk**. O pacote `br.com.fabriciomatos.iptvplayer` e a chave de teste em cache foram preservados para instalação sobre as versões anteriores.
