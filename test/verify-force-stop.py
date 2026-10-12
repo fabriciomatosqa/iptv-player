@@ -21,6 +21,8 @@ def phase(name):
 adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
 adb("install", "-r", "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk")
 phase("seed")
+adb("shell", "settings", "put", "system", "accelerometer_rotation", "0")
+adb("shell", "settings", "put", "system", "user_rotation", "0")
 for attempt in range(2):
     adb("shell", "am", "force-stop", PACKAGE)
     adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")

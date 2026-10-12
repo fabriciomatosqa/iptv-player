@@ -86,9 +86,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            gradle --no-daemon connectedDebugAndroidTest
-            python3 test/verify-force-stop.py
-            adb pull /sdcard/Download/aurora-ui app/build/aurora-ui
+            bash test/run-android-checks.sh
 
       - name: Upload UI verification
         if: always() && github.event_name == 'pull_request'

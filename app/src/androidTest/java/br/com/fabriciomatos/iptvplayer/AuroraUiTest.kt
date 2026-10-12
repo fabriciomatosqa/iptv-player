@@ -130,7 +130,7 @@ class AuroraUiTest {
             screenshot("portrait-player")
             compose.onNodeWithContentDescription("Voltar ao início").performClick()
 
-            compose.onNodeWithText("Séries").performClick()
+            compose.onNode(hasText("Séries") and hasText("Suas séries e temporadas")).performClick()
             compose.waitUntil { model.visibleSeries.size == 2 }
             compose.onAllNodesWithText("Rick e Morty").assertCountEquals(1)
             compose.onNodeWithText("Rick e Morty S01E01").assertDoesNotExist()
@@ -153,7 +153,7 @@ class AuroraUiTest {
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
             screenshot("landscape-home")
-            compose.onNodeWithText("Séries").performClick()
+            compose.onNode(hasText("Séries") and hasText("Suas séries e temporadas")).performClick()
             compose.waitUntil { model.visibleSeries.size == 2 }
             screenshot("landscape-series")
             compose.onNodeWithText("Rick e Morty").performClick()
@@ -184,8 +184,12 @@ class AuroraUiTest {
             """.trimIndent())
             ActivityScenario.launch(MainActivity::class.java).use { daily ->
                 lateinit var next: AuroraViewModel
-                daily.onActivity { next = ViewModelProvider(it)[AuroraViewModel::class.java] }
+                daily.onActivity {
+                    next = ViewModelProvider(it)[AuroraViewModel::class.java]
+                    it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
                 compose.waitUntil(15000) { next.initialized && dailyStarted.count == 0L }
+                compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
                 assertEquals(6, next.catalog.channels.size)
                 assertFalse("Background update must not show loading", next.loading)
                 compose.onNodeWithText("6 conteúdos disponíveis").assertExists()
