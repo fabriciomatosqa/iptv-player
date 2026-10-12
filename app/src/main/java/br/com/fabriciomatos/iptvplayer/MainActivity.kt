@@ -172,7 +172,12 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
                 item {
                     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("O que vamos assistir?", fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                        Text(if (model.catalog.channels.isEmpty()) "Cadastre sua playlist para começar" else "${model.catalog.channels.size} conteúdos disponíveis",
+                        Text(when {
+                            model.catalog.channels.isNotEmpty() -> "${model.catalog.channels.size} conteúdos disponíveis"
+                            model.loading -> "Carregando sua playlist…"
+                            model.playlistUrl.isNotBlank() -> "Sua playlist está salva. Toque em Atualizar."
+                            else -> "Cadastre sua playlist para começar"
+                        },
                             fontSize = 13.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
@@ -352,7 +357,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
                 }
                 Column(Modifier.padding(10.dp)) {
                     Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text("${series.seasons.size} temporada(s) • ${series.episodes.size} episódios", fontSize = 10.sp, color = Muted,
+                    Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodes.size)}", fontSize = 10.sp, color = Muted,
                         modifier = Modifier.padding(top = 4.dp), maxLines = 2)
                 }
             }
@@ -369,7 +374,7 @@ private fun SeriesHeader(series: SeriesEntry, modifier: Modifier = Modifier) {
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text("Escolha um episódio", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            Text("${series.episodes.size} episódios em ${series.seasons.size} temporada(s)", color = Muted, fontSize = 12.sp)
+            Text("${episodeCount(series.episodes.size)} em ${seasonCount(series.seasons.size)}", color = Muted, fontSize = 12.sp)
         }
     }
 }
@@ -394,7 +399,8 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
         Column(Modifier.weight(1f)) {
             Text(series?.title ?: if (model.favoritesOnly) "Favoritos" else model.selectedKind?.title ?: "Todos os conteúdos",
                 fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 19.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(if (seriesRoot) "${model.visibleSeries.size} séries" else if (series != null) "${model.visible.size} episódios" else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
+            Text(if (seriesRoot) if (model.visibleSeries.size == 1) "1 série" else "${model.visibleSeries.size} séries"
+                else if (series != null) episodeCount(model.visible.size) else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
         }
         IconButton(onClick = { model.refresh() }) { Icon(Icons.Default.Refresh, "Atualizar lista", tint = Cyan, modifier = Modifier.size(22.dp)) }
         if (!compact) IconButton(onClick = { model.settingsOpen = true }) { Icon(Icons.Default.Settings, "Minha playlist", tint = Muted) }
@@ -449,8 +455,14 @@ private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun SearchBox(model: AuroraViewModel, modifier: Modifier = Modifier) {
+    val hint = when (model.selectedKind) {
+        MediaKind.LIVE -> "Buscar canal"
+        MediaKind.MOVIES -> "Buscar filme"
+        MediaKind.SERIES -> if (model.openedSeries == null) "Buscar série" else "Buscar episódio"
+        else -> "Buscar nos seus conteúdos"
+    }
     OutlinedTextField(value = model.search, onValueChange = model::search, modifier = modifier.fillMaxWidth(),
-        placeholder = { Text("Buscar canal, filme ou série", fontSize = 13.sp, color = Muted) },
+        placeholder = { Text(hint, fontSize = 13.sp, color = Muted) },
         leadingIcon = { Icon(Icons.Default.Search, "Buscar", tint = Muted) },
         trailingIcon = { if (model.search.isNotEmpty()) IconButton(onClick = { model.search("") }) { Icon(Icons.Default.Close, "Limpar busca") } },
         singleLine = true, shape = RoundedCornerShape(14.dp), textStyle = LocalTextStyle.current.copy(fontSize = 14.sp))
@@ -562,6 +574,8 @@ private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
 }
 
 private fun time(value: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(value))
+private fun seasonCount(value: Int) = if (value == 1) "1 temporada" else "$value temporadas"
+private fun episodeCount(value: Int) = if (value == 1) "1 episódio" else "$value episódios"
 
 @Composable
 private fun guideClock(): Long {

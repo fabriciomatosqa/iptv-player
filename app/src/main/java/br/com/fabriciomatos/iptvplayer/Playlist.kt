@@ -21,7 +21,7 @@ private val movieWords = Regex("""\b(filmes?|movies?|cinema|lancamentos|film)\b"
 fun classifyContent(name: String, group: String, url: String, typeHint: String = ""): MediaKind {
     when (normalized(typeHint)) {
         "live", "tv", "ao vivo", "channel" -> return MediaKind.LIVE
-        "movie", "movies", "filme", "filmes", "vod" -> return MediaKind.MOVIES
+        "movie", "movies", "filme", "filmes" -> return MediaKind.MOVIES
         "series", "serie", "episode", "episodio", "tv show" -> return MediaKind.SERIES
     }
     val path = runCatching { URI(url).path.orEmpty().lowercase(Locale.ROOT) }.getOrDefault("")
@@ -33,6 +33,7 @@ fun classifyContent(name: String, group: String, url: String, typeHint: String =
     if (episodes.containsMatchIn(title) || hasEpisodeMarker(name)) return MediaKind.SERIES
     if (category.startsWith("canais ") || category.contains("ao vivo")) return MediaKind.LIVE
     if (seriesWords.containsMatchIn(category)) return MediaKind.SERIES
+    if (normalized(typeHint) == "vod") return MediaKind.MOVIES
     if (path.contains("/movie/") || path.contains("/movies/") || path.contains("/vod/")) return MediaKind.MOVIES
     if (movieWords.containsMatchIn(category)) return MediaKind.MOVIES
     if (vodFiles.containsMatchIn(url)) return MediaKind.MOVIES

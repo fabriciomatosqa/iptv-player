@@ -18,6 +18,9 @@ class SeriesTest {
         assertEquals(listOf(movie), filterChannels(catalog, MediaKind.MOVIES, false, emptySet(), null, ""))
         assertEquals(listOf(episode, portuguese), catalog.byKind[MediaKind.SERIES])
         assertTrue(filterChannels(catalog, MediaKind.LIVE, true, setOf(movie.url), null, "").isEmpty())
+        assertEquals(MediaKind.SERIES, classifyContent("Rick e Morty S01E01", "VOD", "https://example.test/456.mp4", "vod"))
+        assertEquals(MediaKind.SERIES, classifyContent("Episódio", "VOD", "https://example.test/series/456.mp4", "vod"))
+        assertEquals(MediaKind.MOVIES, classifyContent("Filme", "VOD", "https://example.test/456", "vod"))
     }
 
     @Test fun onePosterPerSeriesWithSeasonsAndNumericEpisodeOrder() {
