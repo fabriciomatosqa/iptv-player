@@ -29,5 +29,9 @@ class OrganizationTest {
         assertEquals(0,animeTitleScore("Black Clover","Black Mirror"))
         assertEquals(teamKey("Operário PR"),teamKey("Operário-PR"))
         assertEquals(teamKey("Bournemouth"),teamKey("AFC Bournemouth"))
+        assertEquals("eng.2",footballLeagueSlug("Campeonato Inglês - Segunda Divisão"))
+        assertEquals("afc.champions",footballLeagueSlug("AFC Champions League Elite"))
+        assertEquals("conmebol.sudamericana",footballLeagueSlug("Copa Sul-Americana"))
+        assertNull(footballLeagueSlug("Eliminatórias para a Copa do Mundo Feminina da FIFA 2027"))
     }
 }

@@ -83,7 +83,7 @@ class NewFeaturesTest {
             compose.onNodeWithTag("settings_gear").performClick()
             compose.onNodeWithText("Idioma").performClick()
             compose.onNodeWithText("English").performClick()
-            compose.waitUntil(15000){compose.onAllNodesWithText("Language").fetchSemanticsNodes().isNotEmpty()}
+            waitForTranslation("Language")
             assertEquals("en",AppSettings(context).language())
         }
         ActivityScenario.launch(MainActivity::class.java).use {scenario ->
@@ -92,9 +92,18 @@ class NewFeaturesTest {
             compose.waitUntil(15000){model.initialized}
             compose.onNodeWithText("Movies").assertExists()
             scenario.onActivity {model.chooseLanguage("ar")}
-            compose.waitUntil(15000){compose.onAllNodesWithText("أفلام").fetchSemanticsNodes().isNotEmpty()}
+            waitForTranslation("أفلام")
             scenario.onActivity {assertEquals(android.view.View.LAYOUT_DIRECTION_RTL,it.resources.configuration.layoutDirection);model.chooseLanguage("pt-BR")}
-            compose.waitUntil(15000){compose.onAllNodesWithText("Filmes").fetchSemanticsNodes().isNotEmpty()}
+            waitForTranslation("Filmes")
+        }
+    }
+    private fun waitForTranslation(text: String) {
+        compose.waitUntil(15000) {
+            try {compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()}
+            catch(e: IllegalStateException) {
+                // Locale changes recreate the Activity; the composition can briefly be absent.
+                if(e.message?.contains("No compose hierarchies found")==true)false else throw e
+            }
         }
     }
     @Test fun passwordsAreHashedAndRepeatedWrongAttemptsAreThrottled() {
