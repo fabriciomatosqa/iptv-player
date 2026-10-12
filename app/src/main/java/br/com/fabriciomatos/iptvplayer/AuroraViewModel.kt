@@ -231,9 +231,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
     fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
-    fun dismissParental() { parentalDialog=false;protectedAction=null;parentalError=null }
+    fun dismissParental() { parentalRequestId++;parentalDialog=false;protectedAction=null;parentalError=null }
     fun submitParental(password: String, newPassword: String = "", confirmation: String = "") {
         if(parentalBusy)return
+        val requestId=parentalRequestId
         viewModelScope.launch {
             parentalBusy=true
             try {
@@ -242,6 +243,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     parentalError=preferences.text(R.string.password_mismatch);return@launch
                 }
                 val ok=withContext(Dispatchers.IO) { if(setting)preferences.setPassword(password,newPassword)else preferences.verifyPassword(password) }
+                parentalConfigured=preferences.hasPassword()
+                if(requestId!=parentalRequestId || !parentalDialog)return@launch
                 if(!ok) { parentalError=preferences.text(if(preferences.blockedUntil()>System.currentTimeMillis())R.string.password_wait else R.string.wrong_password);return@launch }
                 parentalConfigured=preferences.hasPassword();adultUnlocked=!changePassword
                 val action=protectedAction;parentalDialog=false;protectedAction=null;parentalError=null;changePassword=false

@@ -62,6 +62,14 @@ class NewFeaturesTest {
             compose.waitUntil(10000){model.current?.adult==true}
             scenario.onActivity {model.foreground(false)}
             assertNull(model.current)
+            // A password result that arrives after leaving the app cannot reopen the session.
+            scenario.onActivity {
+                model.play(Channel("Filme privado","https://example.test/movie/adult","Adultos"))
+                model.submitParental("2580")
+                model.foreground(false)
+            }
+            compose.waitUntil(10000){!model.parentalBusy}
+            assertFalse(model.adultUnlocked);assertNull(model.current)
         }
         assertTrue(AppSettings(context).hasPassword())
     }
