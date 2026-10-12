@@ -25,16 +25,22 @@ adb("shell", "settings", "put", "system", "accelerometer_rotation", "0")
 adb("shell", "settings", "put", "system", "user_rotation", "0")
 for attempt in range(2):
     adb("shell", "am", "force-stop", PACKAGE)
-    adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
+    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivity")
     found = False
+    texts = set()
     for _ in range(12):
-        adb("shell", "uiautomator", "dump", "/sdcard/aurora-cache.xml")
-        document = ET.fromstring(adb("shell", "cat", "/sdcard/aurora-cache.xml"))
+        try:
+            adb("shell", "uiautomator", "dump", "/sdcard/aurora-cache.xml")
+            document = ET.fromstring(adb("shell", "cat", "/sdcard/aurora-cache.xml"))
+        except (subprocess.CalledProcessError, ET.ParseError):
+            time.sleep(0.5)
+            continue
         texts = {node.get("text") for node in document.iter("node")}
         if "Lista persistente" in texts and "3 conteúdos disponíveis" in texts:
             found = True
             break
         time.sleep(0.5)
+    adb("shell", "screencap", "-p", "/sdcard/Download/aurora-ui/force-stop-" + str(attempt) + ".png")
     assert found, "Saved catalog was missing after force-stop: " + str(texts)
 adb("shell", "am", "force-stop", PACKAGE)
 phase("verify")
