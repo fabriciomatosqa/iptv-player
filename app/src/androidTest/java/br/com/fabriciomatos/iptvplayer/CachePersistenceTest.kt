@@ -95,6 +95,28 @@ class CachePersistenceTest {
             assertEquals("old", repository.state(source).etag)
         } finally { db.close(); repository.close() }
     }
+
+    @Test fun upgradesVersion12DatabaseWithoutLosingRows() {
+        val path = context.getDatabasePath("aurora_catalog.db")
+        path.parentFile!!.mkdirs()
+        SQLiteDatabase.openOrCreateDatabase(path, null).use { db ->
+            db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
+            db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url))")
+            val key = PlaylistRepository.digest(source)
+            db.execSQL("INSERT INTO playlists(source_key,etag) VALUES(?,?)", arrayOf(key, "saved-validator"))
+            listOf(a, b, c).forEachIndexed { index, row ->
+                db.execSQL("INSERT INTO channels VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", arrayOf(key,row.url,index,row.name,row.group,"","","","","","","","","",0,0))
+            }
+            db.version = 1
+        }
+        val repository = PlaylistRepository(context)
+        repository.restore(source)
+        assertEquals(3, repository.overview(source).total)
+        assertEquals(1, repository.overview(source).series)
+        assertSaved(listOf(a, b, c), repository.channels(BrowseQuery(source, kind = null)))
+        assertEquals("saved-validator", repository.state(source).etag)
+        repository.close()
+    }
 }
 
 internal fun resetCatalog(context: android.content.Context) {
