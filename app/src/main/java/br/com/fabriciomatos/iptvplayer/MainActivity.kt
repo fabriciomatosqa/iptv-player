@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +12,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -94,6 +95,7 @@ internal fun AuroraApp(model: AuroraViewModel) {
     BackHandler(enabled = model.settingsOpen || model.fullscreen || model.page != Page.HOME || model.current != null) {
         when { model.settingsOpen -> model.settingsOpen = false
             model.fullscreen -> model.fullscreen = false
+            model.openedSeries != null -> model.closeSeries()
             model.page != Page.HOME -> model.page = Page.HOME
             else -> model.stop() }
     }
@@ -117,7 +119,9 @@ internal fun AuroraApp(model: AuroraViewModel) {
 
 @Composable
 private fun Logo(modifier: Modifier = Modifier) {
-    Image(painterResource(R.mipmap.aurora_launcher), "Logo do AURORA IPTV", modifier.clip(RoundedCornerShape(16.dp)))
+    AsyncImage(R.drawable.aurora_brand, "Logo do AURORA IPTV",
+        modifier.clip(RoundedCornerShape(16.dp)).border(1.dp, Cyan.copy(alpha = 0.18f), RoundedCornerShape(16.dp)),
+        contentScale = ContentScale.Fit)
 }
 
 @Composable
@@ -125,7 +129,7 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(60000) } }
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = if (wide) 8.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Logo(Modifier.size(if (wide) 50.dp else 54.dp))
+        Logo(Modifier.size(if (wide) 54.dp else 60.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text("AURORA IPTV", fontWeight = FontWeight.Black, fontSize = if (wide) 19.sp else 21.sp, letterSpacing = 1.sp)
@@ -153,8 +157,8 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
                 Column(Modifier.weight(1.45f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)),
                         model.catalog.byKind[MediaKind.MOVIES].orEmpty().size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.MOVIES) }
-                    CategoryCard("Séries", "Escolha o próximo episódio", Icons.Default.VideoLibrary, listOf(Mint, Cyan),
-                        model.catalog.byKind[MediaKind.SERIES].orEmpty().size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.SERIES) }
+                    CategoryCard("Séries", "Suas séries e temporadas", Icons.Default.VideoLibrary, listOf(Mint, Cyan),
+                        model.catalog.series.size, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.SERIES) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SmallAction("Favoritos", Icons.Default.Star, Modifier.weight(1f)) { model.browse(null, true) }
                         SmallAction("Minha playlist", Icons.AutoMirrored.Filled.List, Modifier.weight(1f)) { model.settingsOpen = true }
@@ -167,16 +171,19 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
                     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Logo(Modifier.size(90.dp))
-                        Spacer(Modifier.height(12.dp))
                         Text("O que vamos assistir?", fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                        Text(if (model.catalog.channels.isEmpty()) "Cadastre sua playlist para começar" else "${model.catalog.channels.size} conteúdos disponíveis",
+                        Text(when {
+                            model.catalog.channels.isNotEmpty() -> "${model.catalog.channels.size} conteúdos disponíveis"
+                            model.loading -> "Carregando sua playlist…"
+                            model.playlistUrl.isNotBlank() -> "Sua playlist está salva. Toque em Atualizar."
+                            else -> "Cadastre sua playlist para começar"
+                        },
                             fontSize = 13.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
                 item { CategoryCard("Ao vivo", "Canais em tempo real", Icons.Default.LiveTv, listOf(Cyan, Mint), model.catalog.byKind[MediaKind.LIVE].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.LIVE) } }
                 item { CategoryCard("Filmes", "Seu cinema, sempre perto", Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)), model.catalog.byKind[MediaKind.MOVIES].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.MOVIES) } }
-                item { CategoryCard("Séries", "Escolha o próximo episódio", Icons.Default.VideoLibrary, listOf(Mint, Cyan), model.catalog.byKind[MediaKind.SERIES].orEmpty().size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.SERIES) } }
+                item { CategoryCard("Séries", "Suas séries e temporadas", Icons.Default.VideoLibrary, listOf(Mint, Cyan), model.catalog.series.size, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.SERIES) } }
                 item { PlaylistSummary(model) }
                 if (model.current != null || model.recent != null) item { RecentCard(model, Modifier.fillMaxWidth().height(130.dp)) }
                 model.message?.let { message -> item { Text(message, fontSize = 12.sp, color = Gold) } }
@@ -272,6 +279,9 @@ private fun NavigationItem(title: String, icon: ImageVector, selected: Boolean =
 
 @Composable
 private fun Library(model: AuroraViewModel, wide: Boolean) {
+    val live = model.selectedKind == MediaKind.LIVE
+    val series = model.openedSeries
+    val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     if (wide) {
         Row(Modifier.fillMaxSize()) {
             NavigationRail(model, Modifier.width(102.dp).fillMaxHeight())
@@ -286,12 +296,14 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                         CurrentProgramme(model, Modifier.weight(1f).fillMaxHeight())
                     }
                     Spacer(Modifier.height(8.dp))
-                    GuideHeading()
-                    ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = true)
+                    if (live) GuideHeading() else if (series != null) SeasonChips(model, series)
+                    ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = live)
                 } else {
+                    if (series != null) SeriesHeader(series)
                     SearchBox(model)
                     if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
-                    ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = true)
+                    if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth())
+                    else ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = live)
                 }
             }
         }
@@ -307,24 +319,95 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
             }
             SearchBox(model, Modifier.padding(horizontal = 16.dp))
             TypeChips(model)
+            if (series != null) {
+                if (model.current == null) SeriesHeader(series, Modifier.padding(horizontal = 16.dp))
+                SeasonChips(model, series)
+            }
             val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
-            if (groups.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (series == null && groups.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { GroupChip("Todos", model.group == null) { model.selectGroup(null) } }
                 items(groups, key = { it }) { group -> GroupChip(group, model.group == group) { model.selectGroup(group) } }
             }
             if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = Mint)
-            ChannelList(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), guideMode = model.current != null)
+            if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp))
+            else ChannelList(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), guideMode = live && model.current != null)
+        }
+    }
+}
+
+@Composable
+private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
+    if (model.visibleSeries.isEmpty()) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Text(if (model.loading || !model.initialized) "Preparando suas séries…" else "Nenhuma série encontrada", color = Muted)
+        }
+        return
+    }
+    BoxWithConstraints(modifier) {
+        val compact = maxWidth > maxHeight
+        // Keep a full poster and its caption visible on short landscape screens.
+        val targetWidth = ((maxHeight - 82.dp).coerceAtLeast(48.dp) * (2f / 3f)).coerceAtMost(138.dp)
+        val columns = if (compact) GridCells.Fixed(kotlin.math.ceil((maxWidth.value + 12f) / (targetWidth.value + 12f)).toInt().coerceAtLeast(1))
+            else GridCells.Adaptive(138.dp)
+        LazyVerticalGrid(columns = columns, modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            gridItems(model.visibleSeries, key = { it.id }) { series ->
+                Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { model.showSeries(series) }) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, Color(0xFF28234A)))),
+                        contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.VideoLibrary, null, tint = Cyan, modifier = Modifier.size(36.dp))
+                        }
+                        if (series.imageUrl.isNotBlank()) AsyncImage(series.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    }
+                    Column(Modifier.padding(if (compact) 8.dp else 10.dp)) {
+                        Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodes.size)}", fontSize = if (compact) 9.sp else 10.sp, color = Muted,
+                            modifier = Modifier.padding(top = 4.dp), maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeriesHeader(series: SeriesEntry, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(54.dp, 76.dp).clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.VideoLibrary, null, tint = Cyan)
+            if (series.imageUrl.isNotBlank()) AsyncImage(series.imageUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        }
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text("Escolha um episódio", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text("${episodeCount(series.episodes.size)} em ${seasonCount(series.seasons.size)}", color = Muted, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun SeasonChips(model: AuroraViewModel, series: SeriesEntry) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(series.seasons, key = { it }) { season ->
+            GroupChip("Temporada $season", model.selectedSeason == season) { model.selectSeason(season) }
         }
     }
 }
 
 @Composable
 private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
+    val series = model.openedSeries
+    val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = if (compact) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!compact) IconButton(onClick = { model.page = Page.HOME }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar ao início") }
+        if (!compact || series != null) IconButton(onClick = { if (series != null) model.closeSeries() else model.page = Page.HOME }) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, if (series != null) "Voltar às séries" else "Voltar ao início")
+        }
         Column(Modifier.weight(1f)) {
-            Text(if (model.favoritesOnly) "Favoritos" else model.selectedKind?.title ?: "Todos os conteúdos", fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 19.sp)
-            Text(if (model.visible.size == 1) "1 item" else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
+            Text(series?.title ?: if (model.favoritesOnly) "Favoritos" else model.selectedKind?.title ?: "Todos os conteúdos",
+                fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 19.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (seriesRoot) if (model.visibleSeries.size == 1) "1 série" else "${model.visibleSeries.size} séries"
+                else if (series != null) episodeCount(model.visible.size) else "${model.visible.size} itens", color = Muted, fontSize = 10.sp)
         }
         IconButton(onClick = { model.refresh() }) { Icon(Icons.Default.Refresh, "Atualizar lista", tint = Cyan, modifier = Modifier.size(22.dp)) }
         if (!compact) IconButton(onClick = { model.settingsOpen = true }) { Icon(Icons.Default.Settings, "Minha playlist", tint = Muted) }
@@ -357,11 +440,16 @@ private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClic
 
 @Composable
 private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
+    val series = model.openedSeries
     val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
     LazyColumn(modifier, contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        item { Text("CATEGORIAS", color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
-        item { GroupRow("Todos", model.group == null) { model.selectGroup(null) } }
-        items(groups, key = { it }) { category -> GroupRow(category, model.group == category) { model.selectGroup(category) } }
+        item { Text(if (series == null) "CATEGORIAS" else "TEMPORADAS", color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
+        if (series == null) {
+            item { GroupRow("Todos", model.group == null) { model.selectGroup(null) } }
+            items(groups, key = { it }) { category -> GroupRow(category, model.group == category) { model.selectGroup(category) } }
+        } else {
+            items(series.seasons, key = { it }) { season -> GroupRow("Temporada $season", model.selectedSeason == season) { model.selectSeason(season) } }
+        }
     }
 }
 
@@ -374,8 +462,14 @@ private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun SearchBox(model: AuroraViewModel, modifier: Modifier = Modifier) {
+    val hint = when (model.selectedKind) {
+        MediaKind.LIVE -> "Buscar canal"
+        MediaKind.MOVIES -> "Buscar filme"
+        MediaKind.SERIES -> if (model.openedSeries == null) "Buscar série" else "Buscar episódio"
+        else -> "Buscar nos seus conteúdos"
+    }
     OutlinedTextField(value = model.search, onValueChange = model::search, modifier = modifier.fillMaxWidth(),
-        placeholder = { Text("Buscar canal, filme ou série", fontSize = 13.sp, color = Muted) },
+        placeholder = { Text(hint, fontSize = 13.sp, color = Muted) },
         leadingIcon = { Icon(Icons.Default.Search, "Buscar", tint = Muted) },
         trailingIcon = { if (model.search.isNotEmpty()) IconButton(onClick = { model.search("") }) { Icon(Icons.Default.Close, "Limpar busca") } },
         singleLine = true, shape = RoundedCornerShape(14.dp), textStyle = LocalTextStyle.current.copy(fontSize = 14.sp))
@@ -384,7 +478,6 @@ private fun SearchBox(model: AuroraViewModel, modifier: Modifier = Modifier) {
 @Composable
 private fun TypeChips(model: AuroraViewModel) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { GroupChip("Todos", model.selectedKind == null && !model.favoritesOnly) { model.browse(null) } }
         items(listOf(MediaKind.LIVE, MediaKind.MOVIES, MediaKind.SERIES)) { kind ->
             GroupChip(kind.title, model.selectedKind == kind && !model.favoritesOnly) { model.browse(kind) }
         }
@@ -411,7 +504,7 @@ private fun GuideHeading() {
 private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
     val now = guideClock()
     val scroll = rememberLazyListState()
-    LaunchedEffect(model.selectedKind, model.favoritesOnly, model.group, model.search) { scroll.scrollToItem(0) }
+    LaunchedEffect(model.selectedKind, model.favoritesOnly, model.group, model.search, model.openedSeriesId, model.selectedSeason) { scroll.scrollToItem(0) }
     if (model.visible.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.Center) {
             Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -448,7 +541,8 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(if (guideMode) 1.2f else 1f)) {
             Text(channel.name, fontSize = if (guideMode) 11.sp else 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = if (selected) Mint else Txt)
-            if (!guideMode) Text(channel.group, fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) model.openedSeries?.episodes?.firstOrNull { it.channel.url == channel.url }?.label ?: channel.group else channel.group,
+                fontSize = 11.sp, color = if (channel.kind == MediaKind.SERIES) Cyan else Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (guideMode) {
             val shows = model.guide.forChannel(channel)
@@ -481,11 +575,14 @@ private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
     LazyColumn(modifier.clip(RoundedCornerShape(12.dp)).background(Panel), contentPadding = PaddingValues(10.dp)) {
         item { Text(channel.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2) }
         item { Text(show?.let { "${time(it.start)} – ${time(it.end)}" } ?: channel.group, color = Mint, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp)) }
-        item { Text(show?.title ?: "Programação não informada pela lista", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp)) }
+        item { Text(if (channel.kind == MediaKind.LIVE) show?.title ?: "Programação não informada pela lista" else model.openedSeries?.title ?: "Filme",
+            color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp)) }
     }
 }
 
 private fun time(value: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(value))
+private fun seasonCount(value: Int) = if (value == 1) "1 temporada" else "$value temporadas"
+private fun episodeCount(value: Int) = if (value == 1) "1 episódio" else "$value episódios"
 
 @Composable
 private fun guideClock(): Long {

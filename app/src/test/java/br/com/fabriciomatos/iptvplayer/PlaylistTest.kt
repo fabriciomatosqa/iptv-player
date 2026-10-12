@@ -79,13 +79,16 @@ class PlaylistTest {
         assertTrue(filterChannels(catalog, MediaKind.MOVIES, false, emptySet(), "Brasil", "").isEmpty())
     }
 
-    @Test fun refreshReusesUnchangedObjectsRemovesOldAndAddsNew() {
+    @Test fun refreshPreservesSavedObjectsAndAddsOnlyNewUrls() {
         val old = Channel("Original", "https://example.test/1")
         val removed = Channel("Removido", "https://example.test/2")
         val added = Channel("Novo", "https://example.test/3")
         val result = mergePlaylist(listOf(old, removed), listOf(old.copy(), added))
         assertSame(old, result[0])
-        assertEquals(listOf(old, added), result)
+        assertEquals(listOf(old, removed, added), result)
+        assertSame(removed, result[1])
+        assertSame(result, mergePlaylist(result, emptyList()))
+        assertSame(result, mergePlaylist(result, listOf(old.copy(name = "Renomeado"))))
     }
 
     @Test fun streamsLargeCatalogAndSupportsCancellation() {
