@@ -47,6 +47,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var parentalConfigured by mutableStateOf(preferences.hasPassword()); private set
     var adultUnlocked by mutableStateOf(false); private set
     var parentalDialog by mutableStateOf(false); private set
+    var parentalRequestId by mutableStateOf(0); private set
     var changePassword by mutableStateOf(false); private set
     var parentalError by mutableStateOf<String?>(null); private set
     var parentalBusy by mutableStateOf(false); private set
@@ -228,8 +229,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val raw=if(selectedKind==null)catalog.groups.values.flatten().distinct() else catalog.groups[selectedKind].orEmpty()
         return raw.filterNot(::isAdultGroup).sorted() + if(raw.any(::isAdultGroup))listOf(ADULT_GROUP)else emptyList()
     }
-    private fun requireParental(action: () -> Unit) { protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
-    fun editParental() { protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
+    private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
+    fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
     fun dismissParental() { parentalDialog=false;protectedAction=null;parentalError=null }
     fun submitParental(password: String, newPassword: String = "", confirmation: String = "") {
         if(parentalBusy)return

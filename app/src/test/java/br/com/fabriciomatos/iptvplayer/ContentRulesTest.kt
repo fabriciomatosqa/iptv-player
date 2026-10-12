@@ -3,7 +3,7 @@ import org.junit.Assert.*
 import org.junit.Test
 class ContentRulesTest {
     @Test fun adultGroupsDoNotConfuseOrdinaryMovieTitles() {
-        assertTrue(isAdultGroup("🔞 Filmes +18"));assertTrue(isAdultGroup("Adultos"));assertTrue(isAdultGroup("XXX"))
+        assertTrue(isAdultGroup("🔞 Filmes +18"));assertTrue(isAdultGroup("Adultos"));assertTrue(isAdultGroup("XXX"));assertTrue(isAdultGroup("Hentais"));assertTrue(isAdultGroup("🔞 Restrito"))
         assertFalse(isAdultGroup("Drama"));assertFalse(isAdultGroup("Lançamentos 2018"))
     }
     @Test fun gamesExcludeFootballNewsAndUnrelatedBrazilianTitles() {

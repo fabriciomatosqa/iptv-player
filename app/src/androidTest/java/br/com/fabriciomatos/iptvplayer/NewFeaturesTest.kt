@@ -55,6 +55,7 @@ class NewFeaturesTest {
             scenario.onActivity {model.play(Channel("Filme privado","https://example.test/movie/adult","Adultos"))}
             compose.waitUntil(5000){model.parentalDialog}
             assertNull(model.current)
+            compose.onNodeWithText("Senha atual").performTextClearance()
             compose.onNodeWithText("Senha atual").performTextInput("2580")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Desbloquear").performClick()

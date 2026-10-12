@@ -126,7 +126,7 @@ internal fun AuroraApp(model: AuroraViewModel) {
                 }
             }
             if (model.settingsOpen) SettingsPanel(model)
-            if(model.parentalDialog)ParentalDialog(model)
+            if(model.parentalDialog)key(model.parentalRequestId){ParentalDialog(model)}
         }
     }
 }

@@ -1,8 +1,8 @@
 package br.com.fabriciomatos.iptvplayer
 
 const val ADULT_GROUP = "__aurora_adult__"
-fun isAdultGroup(group: String): Boolean = Regex("\\b(adultos?|adults?|xxx|porn[oô]?|pornografia|hentai|erotico|erotica)\\b").containsMatchIn(normalized(group)) ||
-    Regex("(?i)(?:\\+\\s*18|18\\s*\\+|\\bnsfw\\b)").containsMatchIn(group)
+fun isAdultGroup(group: String): Boolean = Regex("\\b(adultos?|adults?|xxx|porn[oô]?|pornografia|hentais?|erotico|erotica)\\b").containsMatchIn(normalized(group)) ||
+    Regex("(?i)(?:\\+\\s*18|18\\s*\\+|\\bnsfw\\b)").containsMatchIn(group) || group.contains("🔞")
 fun isAnimeGroup(group: String) = Regex("\\b(crunchyroll|animes?|funimation|hidive)\\b").containsMatchIn(normalized(group))
 fun canonicalAnimeTitle(title: String): String = normalized(title.replace(Regex("\\s*[\\[(](?:19|20)\\d{2}[\\])]\\s*$"), "")
     .replace(Regex("(?i)\\s*[\\[(](?:l|leg|dub|hd|fhd|4k)[\\])]\\s*$"), ""))
