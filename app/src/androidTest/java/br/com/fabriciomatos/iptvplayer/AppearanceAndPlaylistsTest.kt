@@ -126,8 +126,14 @@ class AppearanceAndPlaylistsTest {
                 screenshot("aurora-light-landscape")
                 scenario.onActivity {model.chooseAppearance(AppAppearance.SYSTEM)}
                 compose.waitUntil(10000) {model.appearance==AppAppearance.SYSTEM}
-                device.executeShellCommand("cmd uimode night yes")
-                compose.waitUntil(10000) {context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK==Configuration.UI_MODE_NIGHT_YES}
+                println("System night request: "+device.executeShellCommand("cmd uimode night yes"))
+                device.sleep();device.wakeUp();device.executeShellCommand("wm dismiss-keyguard")
+                // Query the Activity receiving configuration changes, rather than the cached instrumentation context.
+                compose.waitUntil(10000) {
+                    var dark=false
+                    scenario.onActivity {dark=it.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK==Configuration.UI_MODE_NIGHT_YES && it.window.statusBarColor==android.graphics.Color.rgb(8,13,25)}
+                    dark
+                }
                 compose.waitForIdle()
                 scenario.onActivity {assertEquals(android.graphics.Color.rgb(8,13,25),it.window.statusBarColor)}
                 screenshot("aurora-system-dark-landscape")
@@ -140,7 +146,10 @@ class AppearanceAndPlaylistsTest {
                 assertEquals(AppAppearance.SYSTEM,model.appearance)
                 scenario.onActivity {assertEquals(android.graphics.Color.rgb(8,13,25),it.window.statusBarColor)}
             }
-        } finally {device.executeShellCommand("cmd uimode night no")}
+        } finally {
+            device.executeShellCommand("cmd uimode night no")
+            device.sleep();device.wakeUp();device.executeShellCommand("wm dismiss-keyguard")
+        }
     }
 
     private fun assertHomeFits() {
