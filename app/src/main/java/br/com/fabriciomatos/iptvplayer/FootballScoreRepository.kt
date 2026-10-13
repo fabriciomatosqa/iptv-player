@@ -64,9 +64,7 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
         val event=matchFootballScore(match,feed)?.event
         val fresh=event!=null && event.checked>0 && now-event.checked in 0..2*FOOTBALL_REFRESH_MS
         val inProgress=event?.state in listOf(MatchState.LIVE,MatchState.HALFTIME)
-        val canConfirm=fresh && event!=null && kotlin.math.abs(event.kickoff-match.programme.start)<=86400000L &&
-            (inProgress || event.state==MatchState.SCHEDULED &&
-                (match.programme.broadcast==BroadcastHint.LIVE || kotlin.math.abs(event.kickoff-match.programme.start)<=3*3600000L))
+        val canConfirm=footballTimeCanBeConfirmed(match.programme,event,now)
         val same=cached!=null && (event==null || cached.optLong("start")==event.kickoff)
         val timing=if(same)JSONObject(cached!!.toString()) else if(canConfirm && event!=null)JSONObject().put("start",event.kickoff)
             .put("duration",(match.programme.end-match.programme.start).coerceAtLeast(60000L)).put("finished",0L).put("observed_live",inProgress) else null
