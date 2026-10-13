@@ -78,7 +78,7 @@ class SynopsisTest {
             compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História do filme de teste.").fetchSemanticsNodes().isNotEmpty()}
             assertNull(model.current);screenshot("movie-synopsis")
-            compose.onNodeWithText("Fechar").performClick()
+            closeSynopsis(scenario)
             scenario.onActivity {model.browse(MediaKind.SERIES)}
             compose.waitUntil(10000) {compose.onAllNodesWithText("Série de teste").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Série de teste").performClick()
@@ -87,11 +87,23 @@ class SynopsisTest {
             compose.waitUntil(10000) {compose.onAllNodesWithText("História do episódio piloto.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("História da série de teste.").assertExists()
             assertNull(model.current);screenshot("series-episode-synopsis")
-            compose.onNodeWithText("Fechar").performClick()
+            closeSynopsis(scenario)
             compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História da série de teste.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
         }
+    }
+    private fun closeSynopsis(scenario: ActivityScenario<MainActivity>) {
+        compose.onNodeWithText("Fechar").performClick()
+        // The native dialog window can still own input after its Compose nodes disappear.
+        compose.waitUntil(5000) {
+            var focused=false
+            scenario.onActivity {focused=it.window.decorView.hasWindowFocus()}
+            focused && compose.onAllNodesWithTag("synopsis_dialog").fetchSemanticsNodes().isEmpty()
+        }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        androidx.test.uiautomator.UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(1000)
+        compose.waitForIdle()
     }
     private fun screenshot(name: String) {
         val device=androidx.test.uiautomator.UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
