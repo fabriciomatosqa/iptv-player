@@ -55,7 +55,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                             start = xmltvTime(parser.getAttributeValue(null, "start").orEmpty())
                             end = xmltvTime(parser.getAttributeValue(null, "stop").orEmpty())
                             title = ""; image = ""; category = "";broadcast=BroadcastHint.UNKNOWN
-                            accepted = end > now
+                            accepted = end > now-FOOTBALL_RETENTION_MS
                         }
                         "title" -> if (entry == "programme" && accepted && title.isEmpty()) title = parser.nextText().take(300)
                         "category" -> if (entry == "programme" && accepted) category += " " + parser.nextText().take(100)
@@ -72,7 +72,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                         val hint=programmeBroadcastHint(title,category)
                         val programme = Programme(title, start, end, image, category.trim(),if(hint==BroadcastHint.REPLAY || broadcast==BroadcastHint.UNKNOWN)hint else broadcast)
                         if (isFootballProgramme(title, category)) matches.add(GuideMatch(id, programme))
-                        if ((channelIds.isEmpty() || id in acceptedIds) && start < now + 86400000L) {
+                        if (end>now && (channelIds.isEmpty() || id in acceptedIds) && start < now + 86400000L) {
                             val items = programmes.getOrPut(id) { ArrayList() }
                             items.add(programme)
                             items.sortBy { p -> p.start }

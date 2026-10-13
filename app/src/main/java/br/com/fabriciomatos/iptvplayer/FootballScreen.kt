@@ -34,8 +34,8 @@ import androidx.compose.animation.core.*
 @Composable internal fun FootballScreen(model: AuroraViewModel) {
     var now by remember {mutableLongStateOf(System.currentTimeMillis())}
     LaunchedEffect(Unit) {while(true) {delay(1000);now=System.currentTimeMillis()}}
-    val matches=remember(model.football,model.footballTab,model.footballSearch,now/60000) {
-        filterFootball(model.football,model.footballTab,model.footballSearch,now)
+    val matches=remember(model.football,model.footballFeed,model.footballTab,model.footballSearch,now/1000) {
+        filterFootball(model.football,model.footballTab,model.footballSearch,now,model.footballFeed)
     }
     val tabs=remember(model.football) {footballTabs(model.football)}
     val key=model.footballTab to model.footballSearch

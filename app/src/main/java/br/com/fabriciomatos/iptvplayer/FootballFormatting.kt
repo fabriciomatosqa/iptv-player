@@ -13,10 +13,10 @@ fun footballDay(value: Long, locale: Locale, zone: TimeZone = TimeZone.getDefaul
     return "$weekday - $date"
 }
 fun footballTime(value: Long, locale: Locale, zone: TimeZone = TimeZone.getDefault()) =
-    SimpleDateFormat("HH-mm",locale).apply {timeZone=zone}.format(Date(value))
+    SimpleDateFormat("HH:mm",locale).apply {timeZone=zone}.format(Date(value))
 
 fun transmissionIsLive(programme: Programme, score: FootballScore?, now: Long): Boolean {
-    if(programme.start>now || programme.end<=now || broadcastMode(programme,score)==BroadcastMode.REPLAY)return false
+    if(programme.start>now || broadcastMode(programme,score)==BroadcastMode.REPLAY)return false
     return if(score!=null)score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) && scoreIsFresh(score,now)
-        else programme.broadcast==BroadcastHint.LIVE
+        else programme.broadcast==BroadcastHint.LIVE && programme.end>now
 }

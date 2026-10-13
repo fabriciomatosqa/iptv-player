@@ -8,6 +8,7 @@ const val FOOTBALL_BRAZIL = "__brazil__"
 const val FOOTBALL_LIBERTADORES = "__libertadores__"
 const val FOOTBALL_SUDAMERICANA = "__sudamericana__"
 const val FOOTBALL_REFRESH_MS = 60000L
+const val FOOTBALL_RETENTION_MS = 3600000L
 
 enum class MatchState { SCHEDULED, LIVE, FINISHED, HALFTIME, POSTPONED, CANCELLED, UNKNOWN }
 enum class BroadcastMode { LIVE, REPLAY, UNCONFIRMED }
@@ -67,11 +68,12 @@ fun footballTabs(matches: List<FootballMatch>): List<FootballTab> {
     return leading.map(::FootballTab)+matches.map {FootballTab(footballTabKey(it.details),it.details.competition)}
         .filterNot {it.key in leading}.distinctBy {it.key}.sortedBy {normalized(it.title)}
 }
-fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, now: Long): List<FootballMatch> {
+fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, now: Long, feed: FootballFeed = FootballFeed()): List<FootballMatch> {
     val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
     return matches.filter {match ->
         val teams=normalized("${match.details.home} ${match.details.away}")
-        match.programme.end>now && (tab==FOOTBALL_GAMES || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
+        (match.programme.end>now-FOOTBALL_RETENTION_MS || transmissionIsLive(match.programme,matchFootballScore(match,feed)?.event,now)) &&
+            (tab==FOOTBALL_GAMES || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
     }
 }
 fun footballScoreTeamKey(name: String): String {
@@ -93,7 +95,7 @@ fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? 
         event.league in leagues && event.kickoff in (match.programme.start-7*86400000L)..(match.programme.start+90*60000L) &&
             ((matchesScoreTeam(match.details.home,event.home) && matchesScoreTeam(match.details.away,event.away)) ||
                 (matchesScoreTeam(match.details.home,event.away) && matchesScoreTeam(match.details.away,event.home))) &&
-            (match.programme.broadcast!=BroadcastHint.REPLAY || event.kickoff<=match.programme.start)
+            (match.programme.broadcast!=BroadcastHint.REPLAY || event.state==MatchState.FINISHED && event.kickoff<=match.programme.start)
     }.distinctBy {it.league+":"+it.id}
     // Prefer the new source without treating two providers' IDs as two different matches.
     val preferred=compatible.filter {it.id.startsWith("fotmob:") && scoreIsFresh(it,feed.checked)}
