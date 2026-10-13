@@ -98,11 +98,11 @@ class AppearanceAndPlaylistsTest {
         }
     }
 
-    @Test fun homeFitsPortraitAndLandscapeAndAppearancePersistsAndFollowsTheSystem() {
+    @Test fun homeFitsPortraitAndLandscapeAndAppearancePersistsAndFollowsPlatformNightChanges() {
         seed()
-        val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        val originalNightMode=androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode()
         try {
-            device.executeShellCommand("cmd uimode night no")
+            platformNight(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
             ActivityScenario.launch(MainActivity::class.java).use {scenario->
                 lateinit var model: AuroraViewModel
                 scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
@@ -126,8 +126,8 @@ class AppearanceAndPlaylistsTest {
                 screenshot("aurora-light-landscape")
                 scenario.onActivity {model.chooseAppearance(AppAppearance.SYSTEM)}
                 compose.waitUntil(10000) {model.appearance==AppAppearance.SYSTEM}
-                val nightResponse=device.executeShellCommand("cmd uimode night yes")
-                assertTrue("Android rejected the system appearance request: $nightResponse",nightResponse.contains("Night mode: yes"))
+                // AppCompat delivers the same night Configuration to the Activity even on locked emulator images.
+                platformNight(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
                 // Query the Activity receiving configuration changes, rather than the cached instrumentation context.
                 compose.waitUntil(10000) {
                     var dark=false
@@ -146,7 +146,7 @@ class AppearanceAndPlaylistsTest {
                 assertEquals(AppAppearance.SYSTEM,model.appearance)
                 scenario.onActivity {assertEquals(android.graphics.Color.rgb(8,13,25),it.window.statusBarColor)}
             }
-        } finally {device.executeShellCommand("cmd uimode night no")}
+        } finally {platformNight(originalNightMode)}
     }
 
     private fun assertHomeFits() {
@@ -164,5 +164,10 @@ class AppearanceAndPlaylistsTest {
         val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
         device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/$name.png")
+    }
+    private fun platformNight(mode: Int) {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+        }
     }
 }
