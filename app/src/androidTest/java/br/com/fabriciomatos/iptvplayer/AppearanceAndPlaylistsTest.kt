@@ -149,4 +149,10 @@ class AppearanceAndPlaylistsTest {
         val range=compose.onNodeWithTag("home_content").fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
         assertEquals(0f,range.maxValue(),.1f)
     }
+    private fun screenshot(name: String) {
+        compose.waitForIdle()
+        val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
+        device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/$name.png")
+    }
 }
