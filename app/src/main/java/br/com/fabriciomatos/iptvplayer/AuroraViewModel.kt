@@ -501,12 +501,13 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         playbackError = null; buffering = true; current = channel; recent = channel; page = Page.LIBRARY
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         val source=playlistUrl
+        val instance=try {playerInstance ?: createPlayer().also {playerInstance=it}}
+            catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.load_failed);return}
         playJob=viewModelScope.launch { try {
             val saved=if(channel.kind==MediaKind.LIVE)null else playbackPositions[source to channel.url]
                 ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
             ensureActive()
             if(current?.url!=channel.url || playlistUrl!=source)return@launch
-            val instance = playerInstance ?: createPlayer().also { playerInstance = it }
             val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.7 Android" })
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setDefaultRequestProperties(if (channel.referrer.isBlank()) emptyMap() else mapOf("Referer" to channel.referrer))

@@ -72,9 +72,8 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
     val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
     return matches.filter {match ->
         val teams=normalized("${match.details.home} ${match.details.away}")
-        val score=matchFootballScore(match,feed)?.event
-        val live=transmissionIsLive(match.programme,score,now)
-        (live || match.programme.end>now-FOOTBALL_RETENTION_MS) && (tab==FOOTBALL_GAMES || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
+        (match.programme.end>now-FOOTBALL_RETENTION_MS || transmissionIsLive(match.programme,matchFootballScore(match,feed)?.event,now)) &&
+            (tab==FOOTBALL_GAMES || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
     }
 }
 fun footballScoreTeamKey(name: String): String {
