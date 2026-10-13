@@ -79,7 +79,7 @@ fun footballScoreTeamKey(name: String): String {
     val key=teamKey(name).replace(Regex("^(?:fk|cf|ec|cr|ac)\\s+|\\s+(?:fk|cf|ec|cr|ac)$"),"")
         .replace(Regex("^(?:clube de regatas|clube atletico)\\s+"),"").replace(" ","").trim()
     return when(key) {
-        "neftchifargona","neftchifargonaa","neftchifargonafootballclub"->"neftchifergana"
+        "neftchifargona"->"neftchifergana"
         "sportingcp","sportinglisbon","sportingclubeportugal","sportingclubedeportugal"->"sporting"
         else->key
     }

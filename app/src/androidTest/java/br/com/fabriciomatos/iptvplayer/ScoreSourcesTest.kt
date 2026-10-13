@@ -34,6 +34,17 @@ class ScoreSourcesTest {
         assertNotNull(secondary.optJSONArray("events"))
         parseFootballScoreboard(secondary,"afc.champions",System.currentTimeMillis())
     }
+    @Test fun womensAndYouthCompetitionsCannotSupplyASeniorMensScore() {
+        val context=InstrumentationRegistry.getInstrumentation().context
+        val json=JSONObject(context.assets.open("scores-fotmob.json").bufferedReader().use {it.readText()})
+        val league=json.getJSONArray("leagues").getJSONObject(0)
+        league.put("primaryId",293).put("ccode","INT").put("name","International Friendlies Women")
+        assertEquals("fifa.friendly.w",parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).single().league)
+        league.put("name","International Friendlies U-20")
+        assertNotEquals("fifa.friendly",parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).single().league)
+        league.put("primaryId",47).put("name","Premier League Women").put("ccode","ENG")
+        assertNotEquals("eng.1",parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).single().league)
+    }
     @Test fun anUnavailableArchiveDoesNotShowAGlobalFailureWhenCurrentScoresRefresh() = runBlocking {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         resetCatalog(context);val repository=PlaylistRepository(context)

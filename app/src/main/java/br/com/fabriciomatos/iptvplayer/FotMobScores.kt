@@ -5,6 +5,13 @@ import org.json.JSONObject
 /** Stable competition IDs; country-specific names must not collide (e.g. the many Premier Leagues). */
 private fun fotmobLeague(row: JSONObject): String {
     val name=normalized(row.optString("name"));val country=row.optString("ccode")
+    val other="fotmob:${row.optInt("primaryId",row.optInt("id"))}"
+    if(Regex("\\b(?:u|under|sub)\\s*\\d{2}\\b").containsMatchIn(name))return other
+    if(name.contains("women") || name.contains("feminin"))return when {
+        country=="INT" && name.contains("friendl")->"fifa.friendly.w"
+        country=="INT" && name=="women s world cup"->"fifa.wwc"
+        else->other
+    }
     return when(row.optInt("primaryId",row.optInt("id"))) {
         47->"eng.1";48->"eng.2";87->"esp.1";140->"esp.2";55->"ita.1";54->"ger.1";53->"fra.1"
         61->"por.1";57->"ned.1";71->"tur.1";268->"bra.1";8814->"bra.2";42->"uefa.champions"
@@ -17,9 +24,7 @@ private fun fotmobLeague(row: JSONObject): String {
             country=="BRA" && name.contains("paulista")->"bra.camp.paulista"
             country=="BRA" && name.contains("carioca")->"bra.camp.carioca"
             country=="INT" && (name=="friendlies" || name.contains("international friendl"))->"fifa.friendly"
-            country=="INT" && name.contains("women") && name.contains("friendl")->"fifa.friendly.w"
             country=="INT" && name=="world cup"->"fifa.world"
-            country=="INT" && name=="women s world cup"->"fifa.wwc"
             name.contains("world cup qualification") && !name.contains("women")->when {
                 name.contains("uefa")->"fifa.worldq.uefa";name.contains("conmebol")->"fifa.worldq.conmebol"
                 name.contains("concacaf")->"fifa.worldq.concacaf";name.contains("afc")->"fifa.worldq.afc"
