@@ -278,7 +278,7 @@ private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = M
 
 @Composable
 private fun FootballSummary(model: AuroraViewModel,modifier: Modifier=Modifier) {
-    Row(modifier.clip(Shape).background(Panel).clickable { model.showFootball() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.clip(Shape).background(Panel).clickable { model.showFootball() }.padding(horizontal=16.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.SportsSoccer, null, tint = Mint)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -296,7 +296,7 @@ private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
     if(model.current!=null && channel!=null) {
         Box(modifier.clip(Shape)) {
             VideoPane(model,Modifier.fillMaxSize())
-            TextButton(onClick={model.play(channel)},modifier=Modifier.align(Alignment.TopStart).padding(end=56.dp)) {
+            TextButton(onClick={model.page=Page.LIBRARY},modifier=Modifier.align(Alignment.TopStart).padding(end=56.dp)) {
                 Text(channel.name,color=Color.White,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp)
             }
         }
@@ -314,7 +314,7 @@ private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
         Column(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Icon(Icons.Default.PlayArrow,null,tint=accent,modifier=Modifier.size(20.dp))
-                Text(tr(if(channel!=null)R.string.last_content else R.string.playlist),fontSize=11.sp,color=accent)
+                Text(tr(if(channel!=null)R.string.last_content else R.string.playlist_add),fontSize=11.sp,color=accent)
             }
             Text(channel?.name ?: if(saved)tr(R.string.saved_list)else tr(R.string.add_m3u),color=if(photo)Color.White else Txt,
                 fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=16.sp)

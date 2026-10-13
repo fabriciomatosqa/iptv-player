@@ -50,7 +50,7 @@ class FootballUiTest {
             lateinit var model: AuroraViewModel
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(15000) {model.initialized && model.football.size==4}
-            compose.onNode(hasText("Futebol") and hasClickAction()).performScrollTo().performClick()
+            compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
             compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
             compose.onNodeWithText("83:21").assertExists()
             compose.onNodeWithTag("football_search").performTextInput("Fluminense")

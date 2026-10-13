@@ -2,7 +2,6 @@ package br.com.fabriciomatos.iptvplayer
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -146,8 +145,13 @@ class AppearanceAndPlaylistsTest {
 
     private fun assertHomeFits() {
         listOf("home_recent","home_live","home_movies","home_series","home_football","home_total").forEach {compose.onNodeWithTag(it).assertIsDisplayed()}
-        val range=compose.onNodeWithTag("home_content").fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
-        assertEquals(0f,range.maxValue(),.1f)
+        val viewport=compose.onNodeWithTag("home_content").fetchSemanticsNode().boundsInRoot
+        val total=compose.onNodeWithTag("home_total").fetchSemanticsNode().boundsInRoot
+        val before=compose.onNodeWithTag("home_recent").fetchSemanticsNode().boundsInRoot
+        assertTrue(before.top>=viewport.top);assertTrue(total.bottom<=viewport.bottom)
+        compose.onNodeWithTag("home_content").performTouchInput {swipeUp()}
+        compose.waitForIdle()
+        assertEquals(before,compose.onNodeWithTag("home_recent").fetchSemanticsNode().boundsInRoot)
     }
     private fun screenshot(name: String) {
         compose.waitForIdle()
