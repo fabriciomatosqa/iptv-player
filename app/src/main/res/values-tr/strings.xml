@@ -139,4 +139,15 @@
     <string name="season">Sezon %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">Görünüm</string>
+    <string name="theme_system">Sistem ayarı</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+    <string name="aurora_theme_help">Tercih ettiğiniz temada kutup ışığı renkleri.</string>
+    <string name="playlists_help">Kayıtlı oynatma listelerini ekleyin ve değiştirin.</string>
+    <string name="saved_playlists">Oynatma listeleri</string>
+    <string name="active_playlist">Etkin liste</string>
+    <string name="switch_playlist">Bu listeyi kullan</string>
+    <string name="edit_playlist">Listeyi düzenle</string>
+    <string name="add_playlist">Başka liste ekle</string>
 </resources>

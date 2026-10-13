@@ -139,4 +139,15 @@
     <string name="season">Seizoen %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">Weergave</string>
+    <string name="theme_system">Systeeminstelling</string>
+    <string name="theme_light">Licht</string>
+    <string name="theme_dark">Donker</string>
+    <string name="aurora_theme_help">Noorderlichtkleuren in je favoriete thema.</string>
+    <string name="playlists_help">Voeg opgeslagen afspeellijsten toe en wissel ertussen.</string>
+    <string name="saved_playlists">Afspeellijsten</string>
+    <string name="active_playlist">Actieve afspeellijst</string>
+    <string name="switch_playlist">Deze lijst gebruiken</string>
+    <string name="edit_playlist">Lijst bewerken</string>
+    <string name="add_playlist">Nog een lijst toevoegen</string>
 </resources>

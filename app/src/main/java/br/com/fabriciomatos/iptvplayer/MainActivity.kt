@@ -32,9 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,15 +62,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-internal val Bg = Color(0xFF080D19)
-private val Panel = Color(0xFF131D2D)
-private val Elevated = Color(0xFF1B293E)
-private val Cyan = Color(0xFF56D8F9)
-private val Mint = Color(0xFF51E5BE)
-private val Violet = Color(0xFFA28AFF)
-private val Txt = Color(0xFFF1F6FE)
-private val Muted = Color(0xFF99ACC6)
-private val Gold = Color(0xFFFFD378)
+internal val Bg: Color @Composable get() = LocalAuroraColors.current.background
+private val Panel: Color @Composable get() = LocalAuroraColors.current.panel
+private val Elevated: Color @Composable get() = LocalAuroraColors.current.elevated
+private val Cyan: Color @Composable get() = LocalAuroraColors.current.cyan
+private val Mint: Color @Composable get() = LocalAuroraColors.current.mint
+private val Violet: Color @Composable get() = LocalAuroraColors.current.violet
+private val Txt: Color @Composable get() = LocalAuroraColors.current.text
+private val Muted: Color @Composable get() = LocalAuroraColors.current.muted
+private val Gold: Color @Composable get() = LocalAuroraColors.current.gold
 private val Shape = RoundedCornerShape(20.dp)
 
 class MainActivity : AppCompatActivity() {
@@ -113,8 +115,20 @@ internal fun AuroraApp(model: AuroraViewModel) {
             model.page != Page.HOME -> model.page = Page.HOME
             else -> model.stop() }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Mint, secondary = Cyan, tertiary = Violet,
-        background = Bg, surface = Panel, onPrimary = Bg, onBackground = Txt, onSurface = Txt, outline = Elevated)) {
+    AuroraTheme(model.appearance) { dark ->
+        val barColor=Bg.toArgb()
+        SideEffect {
+            (context as? ComponentActivity)?.window?.let { window ->
+                @Suppress("DEPRECATION")
+                window.statusBarColor=if(model.fullscreen)android.graphics.Color.BLACK else barColor
+                @Suppress("DEPRECATION")
+                window.navigationBarColor=if(model.fullscreen)android.graphics.Color.BLACK else barColor
+                WindowInsetsControllerCompat(window,window.decorView).apply {
+                    isAppearanceLightStatusBars=!dark && !model.fullscreen
+                    isAppearanceLightNavigationBars=!dark && !model.fullscreen
+                }
+            }
+        }
         Surface(Modifier.fillMaxSize(), color = Bg) {
             if (model.fullscreen && model.current != null) {
                 Box(Modifier.fillMaxSize()) {
@@ -163,56 +177,72 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
 
 @Composable
 private fun Home(model: AuroraViewModel, wide: Boolean) {
-    Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF102A35), Bg, Color(0xFF19142E))))) {
+    val aurora=LocalAuroraColors.current
+    Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(aurora.glow, Bg, aurora.sky)))) {
         BrandHeader(model, wide)
         if (model.updating) CatalogLoadingIndicator(model)
         if (wide) {
             Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CategoryCard(kindLabel(MediaKind.LIVE), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
-                    model.catalog.live, Modifier.weight(0.9f).fillMaxHeight(), large = true) { model.browse(MediaKind.LIVE) }
-                Column(Modifier.weight(1.45f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CategoryCard(tr(R.string.movies), tr(R.string.movies), Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)),
-                        model.catalog.movies, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.MOVIES) }
-                    CategoryCard(tr(R.string.series), tr(R.string.series), Icons.Default.VideoLibrary, listOf(Mint, Cyan),
-                        model.catalog.series, Modifier.weight(1f).fillMaxWidth()) { model.browse(MediaKind.SERIES) }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SmallAction(tr(R.string.favorites), Icons.Default.Star, Modifier.weight(1f)) { model.browse(null, true) }
-                        SmallAction(tr(R.string.football), Icons.Default.SportsSoccer, Modifier.weight(1f)) { model.showFootball() }
-                    }
+                RecentCard(model, Modifier.weight(1f).fillMaxHeight().testTag("home_recent"))
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CategoryCard(tr(R.string.live), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
+                        model.catalog.live, Modifier.weight(1f).fillMaxWidth().testTag("home_live")) { model.browse(MediaKind.LIVE) }
+                    CategoryCard(tr(R.string.movies), tr(R.string.movies), Icons.Default.Movie, listOf(Violet, Cyan),
+                        model.catalog.movies, Modifier.weight(1f).fillMaxWidth().testTag("home_movies")) { model.browse(MediaKind.MOVIES) }
                 }
-                RecentCard(model, Modifier.weight(1f).fillMaxHeight())
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CategoryCard(tr(R.string.series), tr(R.string.series), Icons.Default.VideoLibrary, listOf(Mint, Cyan),
+                        model.catalog.series, Modifier.weight(1f).fillMaxWidth().testTag("home_series")) { model.browse(MediaKind.SERIES) }
+                    FootballSummary(model,Modifier.weight(1f).fillMaxWidth().testTag("home_football"))
+                    HomeTotal(model)
+                }
             }
             model.message?.let { Text(it, color = Gold, fontSize = 11.sp, maxLines = 2, modifier = Modifier.padding(horizontal = 20.dp)) }
         } else {
-            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                item {
-                    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(tr(R.string.watch_question), fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                        Text(when {
-                            model.catalog.total > 0 -> tr(R.string.total_count,formatCount(model.catalog.total))
-                            model.loading || !model.initialized -> model.progressText ?: tr(R.string.loading)
-                            model.playlistUrl.isNotBlank() -> tr(R.string.saved_text)
-                            else -> tr(R.string.playlist_add)
-                        },
-                            fontSize = 13.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
-                    }
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val scale=LocalDensity.current.fontScale
+                val gap=8.dp
+                val totalHeight=(26*scale).dp
+                val recentHeight=(maxHeight*.24f).coerceIn(92.dp,148.dp)
+                val messageHeight=if(model.message!=null)(40*scale).dp else 0.dp
+                val minimumCard=(68*scale.coerceAtLeast(1f)).dp
+                val cardHeight=((maxHeight-recentHeight-totalHeight-messageHeight-24.dp-gap*5)/4)
+                    .coerceIn(minimumCard,112.dp.coerceAtLeast(minimumCard))
+                val fits=recentHeight+totalHeight+messageHeight+cardHeight*4+24.dp+gap*5<=maxHeight
+                LazyColumn(Modifier.fillMaxSize().testTag("home_content"),userScrollEnabled=!fits,
+                    contentPadding=PaddingValues(horizontal=20.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(gap)) {
+                    item {RecentCard(model,Modifier.fillMaxWidth().height(recentHeight).testTag("home_recent"))}
+                    item {CategoryCard(tr(R.string.live),tr(R.string.live),Icons.Default.LiveTv,listOf(Cyan,Mint),model.catalog.live,
+                        Modifier.fillMaxWidth().height(cardHeight).testTag("home_live")) {model.browse(MediaKind.LIVE)}}
+                    item {CategoryCard(tr(R.string.movies),tr(R.string.movies),Icons.Default.Movie,listOf(Violet,Cyan),model.catalog.movies,
+                        Modifier.fillMaxWidth().height(cardHeight).testTag("home_movies")) {model.browse(MediaKind.MOVIES)}}
+                    item {CategoryCard(tr(R.string.series),tr(R.string.series),Icons.Default.VideoLibrary,listOf(Mint,Cyan),model.catalog.series,
+                        Modifier.fillMaxWidth().height(cardHeight).testTag("home_series")) {model.browse(MediaKind.SERIES)}}
+                    item {FootballSummary(model,Modifier.fillMaxWidth().height(cardHeight).testTag("home_football"))}
+                    item {HomeTotal(model,Modifier.height(totalHeight))}
+                    model.message?.let {message->item {Text(message,fontSize=12.sp,color=Gold,maxLines=2)}}
                 }
-                item { CategoryCard(tr(R.string.live), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint), model.catalog.live, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.LIVE) } }
-                item { CategoryCard(tr(R.string.movies), tr(R.string.movies), Icons.Default.Movie, listOf(Violet, Color(0xFF746EE8)), model.catalog.movies, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.MOVIES) } }
-                item { CategoryCard(tr(R.string.series), tr(R.string.series), Icons.Default.VideoLibrary, listOf(Mint, Cyan), model.catalog.series, Modifier.fillMaxWidth().height(94.dp)) { model.browse(MediaKind.SERIES) } }
-                item { FootballSummary(model) }
-                if (model.current != null || model.recent != null) item { RecentCard(model, Modifier.fillMaxWidth().height(130.dp)) }
-                model.message?.let { message -> item { Text(message, fontSize = 12.sp, color = Gold) } }
             }
         }
         HomeNavigation(model)
     }
 }
 
+@Composable private fun HomeTotal(model: AuroraViewModel,modifier: Modifier=Modifier) {
+    Box(modifier.fillMaxWidth().testTag("home_total"),contentAlignment=Alignment.Center) {
+        Text(when {
+            model.catalog.total>0 -> tr(R.string.total_count,formatCount(model.catalog.total))
+            model.loading || !model.initialized -> model.progressText ?: tr(R.string.loading)
+            model.playlistUrl.isNotBlank() -> tr(R.string.saved_text)
+            else -> tr(R.string.playlist_add)
+        },fontSize=12.sp,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+    }
+}
+
 @Composable
 private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, colors: List<Color>, count: Int, modifier: Modifier, large: Boolean = false, onClick: () -> Unit) {
     val card = modifier.clip(Shape).background(Brush.linearGradient(colors.map { it.copy(alpha = 0.23f) }))
-        .border(1.dp, colors.first().copy(alpha = 0.32f), Shape).clickable(onClick = onClick).padding(18.dp)
+        .border(1.dp, colors.first().copy(alpha = 0.32f), Shape).clickable(onClick = onClick).padding(horizontal=16.dp,vertical=10.dp)
     if (large) Column(card, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = colors.first(), modifier = Modifier.size(60.dp))
         Spacer(Modifier.height(16.dp))
@@ -247,13 +277,13 @@ private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = M
 }
 
 @Composable
-private fun FootballSummary(model: AuroraViewModel) {
-    Row(Modifier.fillMaxWidth().clip(Shape).background(Panel).clickable { model.showFootball() }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun FootballSummary(model: AuroraViewModel,modifier: Modifier=Modifier) {
+    Row(modifier.clip(Shape).background(Panel).clickable { model.showFootball() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.SportsSoccer, null, tint = Mint)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(tr(R.string.football), fontWeight = FontWeight.SemiBold)
-            Text(tr(R.string.football_help), color = Muted, fontSize = 12.sp)
+            Text(tr(R.string.football_help), color = Muted, fontSize = 12.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
         }
         Icon(Icons.Default.ChevronRight, null, tint = Muted)
     }
@@ -263,17 +293,32 @@ private fun FootballSummary(model: AuroraViewModel) {
 private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
     val channel = (model.current ?: model.recent)?.takeIf { !it.adult || model.adultUnlocked }
     val saved = model.playlistUrl.isNotBlank()
+    if(model.current!=null && channel!=null) {
+        Box(modifier.clip(Shape)) {
+            VideoPane(model,Modifier.fillMaxSize())
+            TextButton(onClick={model.play(channel)},modifier=Modifier.align(Alignment.TopStart).padding(end=56.dp)) {
+                Text(channel.name,color=Color.White,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp)
+            }
+        }
+        return
+    }
     Box(modifier.clip(Shape).background(Panel).clickable {
         when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.openSettings() }
     }) {
         val cover = channel?.let { if(it.kind==MediaKind.SERIES)it.seriesImageUrl.ifBlank {it.imageUrl}else it.imageUrl }
         if (!cover.isNullOrBlank()) AsyncImage(catalogImage(cover), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Bg.copy(alpha = 0.98f)))))
-        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-            Icon(if (channel == null) Icons.Default.PlayCircle else Icons.Default.PlayArrow, null, tint = Mint, modifier = Modifier.size(30.dp))
-            Text(when { channel == null -> tr(R.string.playlist); model.current != null -> tr(R.string.playing); model.recent != null -> tr(R.string.last_content); else -> tr(R.string.featured) }, fontSize = 11.sp, color = Mint)
-            Text(channel?.name ?: if (saved) tr(R.string.saved_list) else tr(R.string.add_m3u), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 16.sp)
-            Text(channel?.group ?: if (saved) tr(R.string.saved_text) else tr(R.string.saved_text), fontSize = 11.sp, color = Muted, maxLines = 1)
+        val photo=channel!=null
+        val accent=if(photo)Color(0xFF51E5BE)else Mint
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent,
+            (if(photo)Color(0xFF080D19)else Panel).copy(alpha = 0.98f)))))
+        Column(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Icon(Icons.Default.PlayArrow,null,tint=accent,modifier=Modifier.size(20.dp))
+                Text(tr(if(channel!=null)R.string.last_content else R.string.playlist),fontSize=11.sp,color=accent)
+            }
+            Text(channel?.name ?: if(saved)tr(R.string.saved_list)else tr(R.string.add_m3u),color=if(photo)Color.White else Txt,
+                fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=16.sp)
+            Text(channel?.group ?: tr(R.string.saved_text),fontSize=11.sp,color=if(photo)Color(0xFFC6D6E9)else Muted,maxLines=1)
         }
     }
 }
@@ -339,6 +384,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                     Text(model.current!!.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if(!live)SynopsisAction(model,model.current,series)
                     if(series!=null)SeriesFavoriteButton(model,series)
+                    if(model.current?.kind==MediaKind.MOVIES)ChannelFavoriteButton(model,model.current!!,"current_favorite")
                     IconButton(onClick = { model.closeVideo() }, Modifier.size(48.dp)) { Icon(Icons.Default.Close, tr(R.string.close_video), tint = Muted) }
                 }
             }
@@ -405,7 +451,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
                 val series = entries[index] ?: return@items
                 if(series.adult && !model.adultUnlocked)return@items
                 Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { model.showSeries(series) }) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, Color(0xFF28234A)))),
+                    Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, LocalAuroraColors.current.sky))),
                         contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.VideoLibrary, null, tint = Cyan, modifier = Modifier.size(36.dp))
@@ -692,11 +738,7 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
             ProgrammeCell(next, Modifier.weight(1f), Muted)
         }
         if(!isLive)SynopsisAction(model,channel,model.openedSeries,iconOnly=true)
-        if(channel.kind!=MediaKind.SERIES)IconButton(onClick = { model.toggleFavorite(channel) }, modifier = Modifier.size(48.dp)) {
-            Icon(if (channel.url in model.favorites) Icons.Default.Star else Icons.Default.StarBorder,
-                if (channel.url in model.favorites) tr(R.string.remove_favorite) else tr(R.string.add_favorite),
-                tint = if (channel.url in model.favorites) Gold else Muted, modifier = Modifier.size(19.dp))
-        }
+        if(channel.kind!=MediaKind.SERIES)ChannelFavoriteButton(model,channel)
     }
 }
 
@@ -705,6 +747,14 @@ private fun ProgrammeCell(programme: Programme?, modifier: Modifier, color: Colo
     Column(modifier.padding(horizontal = 5.dp)) {
         Text(programme?.title ?: tr(R.string.no_guide), fontSize = 10.sp, color = if (programme == null) Muted else color, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (programme != null) Text(time(programme.start), fontSize = 9.sp, color = Muted)
+    }
+}
+
+@Composable private fun ChannelFavoriteButton(model: AuroraViewModel,channel: Channel,tag: String="favorite") {
+    val selected=channel.url in model.favorites
+    IconButton(onClick={model.toggleFavorite(channel)},modifier=Modifier.size(48.dp).testTag("${tag}_${channel.url}")) {
+        Icon(if(selected)Icons.Default.Star else Icons.Default.StarBorder,
+            tr(if(selected)R.string.remove_favorite else R.string.add_favorite),tint=if(selected)Gold else Muted,modifier=Modifier.size(19.dp))
     }
 }
 
@@ -719,6 +769,8 @@ private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
         item { Text(if (channel.kind == MediaKind.LIVE) show?.title ?: tr(R.string.no_guide) else model.openedSeries?.title ?: tr(R.string.movies),
             color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp)) }
         if(channel.kind!=MediaKind.LIVE)item {SynopsisAction(model,channel,model.openedSeries)}
+        item {if(channel.kind==MediaKind.MOVIES)ChannelFavoriteButton(model,channel,"current_favorite")
+            else model.openedSeries?.let {SeriesFavoriteButton(model,it)}}
     }
 }
 
@@ -754,6 +806,28 @@ internal fun PlaylistSettings(model: AuroraViewModel) {
                     Column { Text(tr(R.string.playlist), fontWeight = FontWeight.Bold, fontSize = 23.sp); Text(tr(R.string.playlist_help), color = Muted, fontSize = 12.sp) }
                 }
             }
+            if(model.savedPlaylists.isNotEmpty()) {
+                item {Text(tr(R.string.saved_playlists),fontWeight=FontWeight.SemiBold,color=Mint)}
+                items(model.savedPlaylists,key={it.url}) {playlist->
+                    val active=playlist.url==model.playlistUrl
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Elevated)
+                        .testTag("playlist_${PlaylistRepository.digest(playlist.url)}")
+                        .clickable(enabled=!model.switchingPlaylist && model.initialized) {if(!active)model.switchPlaylist(playlist)}
+                        .padding(start=8.dp,end=4.dp,top=4.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically) {
+                        RadioButton(selected=active,onClick={if(!active)model.switchPlaylist(playlist)},enabled=!model.switchingPlaylist && model.initialized)
+                        Column(Modifier.weight(1f).padding(horizontal=8.dp)) {
+                            Text(playlist.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            Text(tr(if(active)R.string.active_playlist else R.string.switch_playlist),fontSize=11.sp,color=Muted)
+                        }
+                        IconButton(onClick={url=playlist.url;name=playlist.name;reveal=false;invalid=false},enabled=!model.switchingPlaylist) {
+                            Icon(Icons.Default.Edit,tr(R.string.edit_playlist),tint=Muted)
+                        }
+                    }
+                }
+            }
+            item {OutlinedButton(onClick={url="";name="";reveal=false;invalid=false},modifier=Modifier.fillMaxWidth().testTag("add_playlist"),enabled=!model.switchingPlaylist) {
+                Icon(Icons.Default.Add,null);Spacer(Modifier.width(8.dp));Text(tr(R.string.add_playlist))
+            }}
             item { OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(tr(R.string.list_name)) }, singleLine = true, shape = RoundedCornerShape(14.dp)) }
             item {
                 OutlinedTextField(url, { url = it; invalid = false }, Modifier.fillMaxWidth(), label = { Text(tr(R.string.list_address)) },
@@ -767,7 +841,7 @@ internal fun PlaylistSettings(model: AuroraViewModel) {
                 Button(onClick = {
                     invalid = !PlaylistRepository.validUrl(url.trim())
                     if (!invalid) model.savePlaylist(url, name)
-                }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp), enabled = url.isNotBlank()) {
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp), enabled = url.isNotBlank() && model.initialized && !model.switchingPlaylist) {
                     Icon(Icons.Default.Save, null, Modifier.size(20.dp)); Spacer(Modifier.width(9.dp)); Text(tr(R.string.save_playlist), fontWeight = FontWeight.Bold)
                 }
             }

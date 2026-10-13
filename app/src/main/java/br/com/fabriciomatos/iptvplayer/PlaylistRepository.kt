@@ -22,6 +22,7 @@ import java.util.zip.GZIPInputStream
 data class Download(val playlist: Playlist, val etag: String, val modified: String)
 data class CacheState(val etag: String = "", val modified: String = "", val epgUrl: String = "", val checked: Long = 0L, val updated: Long = 0L)
 data class ImportResult(val added: Int, val total: Int)
+data class SavedPlaylist(val url: String, val name: String)
 
 /** Only page-sized objects live in memory. The complete catalog stays in SQLite. */
 class PlaylistRepository(context: Context) {
@@ -33,8 +34,24 @@ class PlaylistRepository(context: Context) {
     fun savedUrl() = prefs.getString("playlist_url", "").orEmpty()
     fun savedName() = prefs.getString("playlist_name", "Minha playlist").orEmpty()
     fun favorites() = prefs.getStringSet("favorite_urls", emptySet()).orEmpty().toSet()
-    fun lastUrl() = prefs.getString("last_channel_url", "").orEmpty()
-    fun saveLast(channel: Channel) { prefs.edit().putString("last_channel_url", channel.url).commit() }
+    fun lastUrl(source: String = savedUrl()) = prefs.getString("last_"+digest(source),
+        if(source==savedUrl() && !prefs.contains("saved_playlists"))prefs.getString("last_channel_url", "") else "").orEmpty()
+    fun saveLast(channel: Channel, source: String = savedUrl()) {
+        if(!prefs.edit().putString("last_"+digest(source), channel.url).commit())throw IOException("Não consegui salvar o último conteúdo.")
+    }
+    @Synchronized fun savedPlaylists(): List<SavedPlaylist> {
+        val stored=runCatching { JSONArray(prefs.getString("saved_playlists","[]")) }.getOrDefault(JSONArray())
+        val lists=buildList {
+            for(i in 0 until stored.length()) {
+                val row=stored.optJSONObject(i) ?: continue
+                val url=row.optString("url").trim()
+                if(validUrl(url))add(SavedPlaylist(url,row.optString("name").ifBlank {"Minha playlist"}))
+            }
+        }.distinctBy {it.url}.toMutableList()
+        val active=savedUrl()
+        if(validUrl(active) && lists.none {it.url==active})lists.add(0,SavedPlaylist(active,savedName()))
+        return lists
+    }
 
     @Synchronized fun saveFavorites(urls: Set<String>) {
         if (!prefs.edit().putStringSet("favorite_urls", urls).commit()) throw IOException("Não consegui salvar os favoritos.")
@@ -85,8 +102,15 @@ class PlaylistRepository(context: Context) {
             put("duration_ms",progress.durationMs.coerceAtLeast(0));put("completed",if(progress.completed)1 else 0)
         },SQLiteDatabase.CONFLICT_REPLACE).also { if(it==-1L)throw IOException("Não consegui salvar a reprodução.") }
     }
-    fun saveSource(url: String, name: String) {
-        val edit = prefs.edit().putString("playlist_url", url).putString("playlist_name", name.ifBlank { "Minha playlist" })
+    @Synchronized fun saveSource(url: String, name: String) {
+        val label=name.trim().ifBlank { "Minha playlist" }
+        val lists=savedPlaylists().toMutableList()
+        val index=lists.indexOfFirst {it.url==url}
+        if(index<0)lists.add(SavedPlaylist(url,label)) else lists[index]=SavedPlaylist(url,label)
+        val json=JSONArray().apply { lists.forEach {put(JSONObject().put("url",it.url).put("name",it.name))} }
+        val edit = prefs.edit().putString("playlist_url", url).putString("playlist_name", label).putString("saved_playlists",json.toString())
+        if(!prefs.contains("saved_playlists") && savedUrl().isNotBlank())
+            edit.putString("last_"+digest(savedUrl()),lastUrl())
         if (!prefs.contains("cache_source_hash")) edit.putString("cache_source_hash", digest(savedUrl()))
         if (!edit.commit()) throw IOException("Não consegui salvar o endereço neste aparelho.")
     }

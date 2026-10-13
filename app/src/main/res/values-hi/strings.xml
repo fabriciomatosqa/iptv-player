@@ -139,4 +139,15 @@
     <string name="season">सीज़न %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">रूप</string>
+    <string name="theme_system">सिस्टम के अनुसार</string>
+    <string name="theme_light">हल्का</string>
+    <string name="theme_dark">गहरा</string>
+    <string name="aurora_theme_help">अपने पसंदीदा थीम में ध्रुवीय ज्योति के रंग।</string>
+    <string name="playlists_help">सहेजी गई प्लेलिस्ट जोड़ें और उनके बीच बदलें।</string>
+    <string name="saved_playlists">प्लेलिस्ट</string>
+    <string name="active_playlist">सक्रिय प्लेलिस्ट</string>
+    <string name="switch_playlist">यह प्लेलिस्ट चुनें</string>
+    <string name="edit_playlist">प्लेलिस्ट बदलें</string>
+    <string name="add_playlist">एक और प्लेलिस्ट जोड़ें</string>
 </resources>

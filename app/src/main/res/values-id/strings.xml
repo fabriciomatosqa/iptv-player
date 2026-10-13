@@ -139,4 +139,15 @@
     <string name="season">Musim %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">Tampilan</string>
+    <string name="theme_system">Ikuti sistem</string>
+    <string name="theme_light">Terang</string>
+    <string name="theme_dark">Gelap</string>
+    <string name="aurora_theme_help">Warna aurora dalam tema pilihan Anda.</string>
+    <string name="playlists_help">Tambahkan dan beralih di antara daftar tersimpan.</string>
+    <string name="saved_playlists">Daftar putar</string>
+    <string name="active_playlist">Daftar aktif</string>
+    <string name="switch_playlist">Gunakan daftar ini</string>
+    <string name="edit_playlist">Edit daftar</string>
+    <string name="add_playlist">Tambah daftar lain</string>
 </resources>

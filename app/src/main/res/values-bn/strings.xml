@@ -139,4 +139,15 @@
     <string name="season">সিজন %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">চেহারা</string>
+    <string name="theme_system">সিস্টেমের মতো</string>
+    <string name="theme_light">হালকা</string>
+    <string name="theme_dark">গাঢ়</string>
+    <string name="aurora_theme_help">আপনার পছন্দের থিমে মেরুজ্যোতির রং।</string>
+    <string name="playlists_help">সংরক্ষিত প্লেলিস্ট যোগ করুন এবং বদলান।</string>
+    <string name="saved_playlists">প্লেলিস্ট</string>
+    <string name="active_playlist">সক্রিয় প্লেলিস্ট</string>
+    <string name="switch_playlist">এই প্লেলিস্ট ব্যবহার করুন</string>
+    <string name="edit_playlist">প্লেলিস্ট সম্পাদনা করুন</string>
+    <string name="add_playlist">আরেকটি প্লেলিস্ট যোগ করুন</string>
 </resources>

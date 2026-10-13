@@ -139,4 +139,15 @@
     <string name="season">시즌 %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">화면 테마</string>
+    <string name="theme_system">시스템 설정</string>
+    <string name="theme_light">밝게</string>
+    <string name="theme_dark">어둡게</string>
+    <string name="aurora_theme_help">원하는 테마로 오로라 색상을 즐기세요.</string>
+    <string name="playlists_help">저장된 재생목록을 추가하고 전환하세요.</string>
+    <string name="saved_playlists">재생목록</string>
+    <string name="active_playlist">사용 중인 재생목록</string>
+    <string name="switch_playlist">이 목록 사용</string>
+    <string name="edit_playlist">목록 편집</string>
+    <string name="add_playlist">다른 목록 추가</string>
 </resources>

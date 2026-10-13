@@ -26,8 +26,16 @@ class AppSettings(context: Context) {
     private val prefs = app.getSharedPreferences("aurora_settings", Context.MODE_PRIVATE)
     fun language() = prefs.getString("language", "pt-BR").orEmpty()
     fun saveLanguage(tag: String): Boolean = tag in appLanguages.map { it.tag } && prefs.edit().putString("language", tag).commit()
-    fun epgUrl() = prefs.getString("epg_url", "").orEmpty()
-    fun saveEpgUrl(value: String) = prefs.edit().putString("epg_url", value).commit()
+    fun appearance() = runCatching { AppAppearance.valueOf(prefs.getString("appearance", "SYSTEM").orEmpty()) }.getOrDefault(AppAppearance.SYSTEM)
+    fun saveAppearance(value: AppAppearance) = prefs.edit().putString("appearance", value.name).commit()
+    @Synchronized fun epgUrl(source: String = ""): String {
+        if(source.isBlank())return prefs.getString("epg_url", "").orEmpty()
+        val key="epg_"+PlaylistRepository.digest(source)
+        if(!prefs.contains("epg_legacy_source"))prefs.edit().putString("epg_legacy_source",source).commit()
+        return prefs.getString(key, if(prefs.getString("epg_legacy_source", "")==source)prefs.getString("epg_url", "") else "").orEmpty()
+    }
+    fun saveEpgUrl(value: String, source: String = "") = prefs.edit().putString(
+        if(source.isBlank())"epg_url" else "epg_"+PlaylistRepository.digest(source), value).commit()
     fun text(@StringRes id: Int, vararg args: Any): String {
         val config = Configuration(app.resources.configuration)
         config.setLocales(LocaleList.forLanguageTags(language()))

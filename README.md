@@ -2,6 +2,14 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.10.0
+
+- Início ajustado ao espaço da tela, com o último conteúdo no topo e o total abaixo de Futebol. A reprodução em andamento continua na prévia; celulares muito pequenos ou com fonte ampliada mantêm a rolagem necessária para acessibilidade.
+- Temas claro, escuro e conforme o sistema em Configurações → Aparência, com cores da aurora boreal, contraste próprio para cada tema e barras do Android compatíveis.
+- Várias listas em Configurações → Minha playlist, com cadastro, edição de nome e seleção da lista ativa. Cada lista mantém seu catálogo, atualização diária, guia, últimos conteúdos, séries favoritas e posição de reprodução.
+- Favoritos de filmes disponíveis na lista e junto ao vídeo; estrelas nos cartazes e na página da série guardam a série inteira, com todas as temporadas.
+- Horários de futebol em `HH:mm`, como `11:00`. Migração preserva a lista já cadastrada, catálogo e favoritos.
+
 ## Versão 1.9.0
 
 - Horários de futebol em `HH:mm`. Cards permanecem por uma hora após o fim da transmissão e desaparecem automaticamente, incluindo ao reabrir a agenda. Uma partida que continua ao vivo não expira durante a prorrogação.
