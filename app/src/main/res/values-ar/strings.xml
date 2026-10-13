@@ -139,4 +139,15 @@
     <string name="season">الموسم %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">المظهر</string>
+    <string name="theme_system">حسب النظام</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
+    <string name="aurora_theme_help">ألوان الشفق القطبي في المظهر الذي تفضله.</string>
+    <string name="playlists_help">أضف قوائم التشغيل المحفوظة وبدّل بينها.</string>
+    <string name="saved_playlists">قوائم التشغيل</string>
+    <string name="active_playlist">القائمة النشطة</string>
+    <string name="switch_playlist">استخدام هذه القائمة</string>
+    <string name="edit_playlist">تعديل القائمة</string>
+    <string name="add_playlist">إضافة قائمة أخرى</string>
 </resources>

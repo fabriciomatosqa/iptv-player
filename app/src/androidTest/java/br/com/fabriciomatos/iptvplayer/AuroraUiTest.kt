@@ -104,7 +104,7 @@ class AuroraUiTest {
             PlaylistRepository(context).also { assertEquals(6, it.readCache("$base/list.m3u").channels.size); it.close() }
             screenshot("portrait-home")
             compose.waitUntil(15000) { model.football.size == 2 }
-            compose.onNodeWithText("Futebol").performScrollTo().performClick()
+            compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
             compose.onNodeWithText("Champions League").assertExists()
             compose.onNodeWithText("Leste").assertExists()
             compose.onNodeWithText("Oeste").assertExists()

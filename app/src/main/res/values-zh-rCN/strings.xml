@@ -139,4 +139,15 @@
     <string name="season">第 %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">外观</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="aurora_theme_help">在喜爱的主题中体验极光色彩。</string>
+    <string name="playlists_help">添加并切换已保存的播放列表。</string>
+    <string name="saved_playlists">播放列表</string>
+    <string name="active_playlist">当前播放列表</string>
+    <string name="switch_playlist">使用此列表</string>
+    <string name="edit_playlist">编辑列表</string>
+    <string name="add_playlist">添加另一个列表</string>
 </resources>

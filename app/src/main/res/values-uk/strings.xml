@@ -139,4 +139,15 @@
     <string name="season">Сезон %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">Оформлення</string>
+    <string name="theme_system">Як у системі</string>
+    <string name="theme_light">Світле</string>
+    <string name="theme_dark">Темне</string>
+    <string name="aurora_theme_help">Кольори полярного сяйва в обраній темі.</string>
+    <string name="playlists_help">Додавайте та перемикайте збережені списки.</string>
+    <string name="saved_playlists">Списки відтворення</string>
+    <string name="active_playlist">Активний список</string>
+    <string name="switch_playlist">Використати список</string>
+    <string name="edit_playlist">Редагувати список</string>
+    <string name="add_playlist">Додати список</string>
 </resources>

@@ -53,16 +53,17 @@ import coil.compose.AsyncImage
                     if(model.settingsSection!=0) IconButton(onClick={model.settingsSection=0}) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack,tr(R.string.back))
                     }
-                    Text(tr(when(model.settingsSection){2->R.string.language;4->R.string.programming;else->R.string.settings}),fontSize=23.sp,fontWeight=FontWeight.Bold)
+                    Text(tr(when(model.settingsSection){2->R.string.language;4->R.string.programming;5->R.string.appearance;else->R.string.settings}),fontSize=23.sp,fontWeight=FontWeight.Bold)
                 }
             }
             when(model.settingsSection) {
                 0 -> {
-                    item { SettingsItem(tr(R.string.playlist),tr(R.string.saved_text),Icons.Default.PlaylistPlay) {model.settingsSection=1} }
+                    item { SettingsItem(tr(R.string.playlist),tr(R.string.playlists_help),Icons.Default.PlaylistPlay) {model.settingsSection=1} }
+                    item { SettingsItem(tr(R.string.appearance),appearanceLabel(model.appearance),Icons.Default.Palette) {model.settingsSection=5} }
                     item { SettingsItem(tr(R.string.language),appLanguages.first {it.tag==model.language}.label,Icons.Default.Language) {model.settingsSection=2} }
                     item { SettingsItem(tr(R.string.parental),tr(if(model.parentalConfigured)R.string.change_password else R.string.set_password),Icons.Default.Lock) {model.editParental()} }
                     item { SettingsItem(tr(R.string.programming),tr(R.string.football),Icons.Default.SportsSoccer) {model.settingsSection=4} }
-                    item { Text("AURORA IPTV · 1.4.0",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp) }
+                    item { Text("AURORA IPTV · 1.10.0",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp) }
                 }
                 2 -> items(appLanguages,key={it.tag}) {language ->
                     Row(Modifier.fillMaxWidth().clickable {model.chooseLanguage(language.tag)}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -77,12 +78,23 @@ import coil.compose.AsyncImage
                     item { Button(onClick={model.setGuideAddress(guideAddress)},modifier=Modifier.fillMaxWidth()) {Text(tr(R.string.save))} }
                     item { OutlinedButton(onClick={model.settingsOpen=false;model.showFootball()},modifier=Modifier.fillMaxWidth()) {Text(tr(R.string.football))} }
                 }
+                5 -> {
+                    item {Text(tr(R.string.aurora_theme_help),color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                    items(AppAppearance.entries,key={it.name}) {appearance->
+                        Row(Modifier.fillMaxWidth().testTag("theme_${appearance.name}").clickable {model.chooseAppearance(appearance)}
+                            .padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                            RadioButton(selected=model.appearance==appearance,onClick={model.chooseAppearance(appearance)})
+                            Text(appearanceLabel(appearance),Modifier.padding(start=8.dp),fontSize=16.sp)
+                        }
+                    }
+                }
             }
         }
     }
 }
 @Composable private fun SettingsItem(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, click: () -> Unit) {
-    Card(onClick=click,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) {
+    Card(onClick=click,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),
+        colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)) {
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
             Icon(icon,null,tint=MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f).padding(horizontal=16.dp)) {Text(title,fontWeight=FontWeight.SemiBold);Text(subtitle,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)}

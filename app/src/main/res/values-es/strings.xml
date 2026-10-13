@@ -139,4 +139,15 @@
     <string name="season">Temporada %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">Apariencia</string>
+    <string name="theme_system">Como el sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="aurora_theme_help">Colores de la aurora boreal en tu tema preferido.</string>
+    <string name="playlists_help">Añade y cambia entre tus listas guardadas.</string>
+    <string name="saved_playlists">Listas de reproducción</string>
+    <string name="active_playlist">Lista activa</string>
+    <string name="switch_playlist">Usar esta lista</string>
+    <string name="edit_playlist">Editar lista</string>
+    <string name="add_playlist">Añadir otra lista</string>
 </resources>

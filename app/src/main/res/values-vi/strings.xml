@@ -139,4 +139,15 @@
     <string name="season">Mùa %1$d</string>
     <string name="update_date">%1$s</string>
     <string name="episode_in_season">%1$s · %2$s</string>
+    <string name="appearance">Giao diện</string>
+    <string name="theme_system">Theo hệ thống</string>
+    <string name="theme_light">Sáng</string>
+    <string name="theme_dark">Tối</string>
+    <string name="aurora_theme_help">Màu cực quang trong giao diện bạn yêu thích.</string>
+    <string name="playlists_help">Thêm và chuyển đổi các danh sách đã lưu.</string>
+    <string name="saved_playlists">Danh sách phát</string>
+    <string name="active_playlist">Danh sách đang dùng</string>
+    <string name="switch_playlist">Dùng danh sách này</string>
+    <string name="edit_playlist">Sửa danh sách</string>
+    <string name="add_playlist">Thêm danh sách khác</string>
 </resources>

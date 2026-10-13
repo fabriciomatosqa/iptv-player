@@ -71,12 +71,14 @@ class SynopsisTest {
             listOf(EpisodeSynopsis("124",1,1,"O piloto","História do episódio piloto.")))).toString());repository.close()
         ActivityScenario.launch(MainActivity::class.java).use {scenario->
             lateinit var model: AuroraViewModel
-            scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
+            scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(15000) {model.initialized}
             scenario.onActivity {model.browse(MediaKind.MOVIES)}
-            compose.waitUntil(10000) {compose.onAllNodesWithTag("synopsis_content_action",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
+            compose.waitUntil(10000) {!model.filtering && model.visibleCount==1 && compose.onAllNodesWithText(movie.name).fetchSemanticsNodes().isNotEmpty() && compose.onAllNodesWithTag("synopsis_content_action",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithText(movie.name).assertIsDisplayed()
             compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
-            compose.waitUntil(10000) {compose.onAllNodesWithText("História do filme de teste.").fetchSemanticsNodes().isNotEmpty()}
+            try {compose.waitUntil(10000) {compose.onAllNodesWithText("História do filme de teste.").fetchSemanticsNodes().isNotEmpty()}}
+            catch(e: androidx.compose.ui.test.ComposeTimeoutException) {screenshot("movie-synopsis-failure");throw e}
             assertNull(model.current);screenshot("movie-synopsis")
             closeSynopsis(scenario)
             scenario.onActivity {model.browse(MediaKind.SERIES)}

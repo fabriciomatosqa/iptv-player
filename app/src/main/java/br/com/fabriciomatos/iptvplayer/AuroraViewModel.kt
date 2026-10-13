@@ -56,7 +56,11 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private val coverRequests = mutableMapOf<String,Deferred<String?>>()
     private val preferences = AppSettings(application)
     var language by mutableStateOf(preferences.language()); private set
-    var epgOverride by mutableStateOf(preferences.epgUrl()); private set
+    var appearance by mutableStateOf(preferences.appearance()); private set
+    var epgOverride by mutableStateOf(""); private set
+    var savedPlaylists by mutableStateOf(emptyList<SavedPlaylist>()); private set
+    var switchingPlaylist by mutableStateOf(false); private set
+    private val playlistSwitch = Mutex()
     var parentalConfigured by mutableStateOf(preferences.hasPassword()); private set
     var adultUnlocked by mutableStateOf(false); private set
     var parentalDialog by mutableStateOf(false); private set
@@ -175,6 +179,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val saved = withContext(Dispatchers.IO) { Triple(repository.savedUrl(), repository.savedName(), repository.lastUrl()) }
                 playlistUrl = saved.first; playlistName = saved.second
+                savedPlaylists=withContext(Dispatchers.IO) {repository.savedPlaylists()}
+                epgOverride=withContext(Dispatchers.IO) {preferences.epgUrl(playlistUrl)}
                 progressText = if (playlistUrl.isBlank()) null else preferences.text(R.string.loading)
                 val source = playlistUrl
                 withContext(Dispatchers.IO) { repository.restore(source, ::showProgress) }
@@ -219,24 +225,41 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun savePlaylist(url: String, name: String) {
         val clean = url.trim()
         if (!PlaylistRepository.validUrl(clean)) { message = preferences.text(R.string.invalid_url); return }
-        viewModelScope.launch {
-            try { withContext(Dispatchers.IO) { repository.saveSource(clean,name.trim()) } }
-            catch (_: Exception) { message = preferences.text(R.string.load_failed); return@launch }
-            refreshJob?.cancelAndJoin()
-            val changed = clean != playlistUrl
-            playlistUrl = clean; playlistName = name.trim().ifBlank { "Minha playlist" }
-            settingsOpen = false; message = null
-            if (changed) {
-                catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
-                footballFeed=FootballFeed();footballSearch="";footballTab=FOOTBALL_GAMES;footballPosition=null;fromFootball=false
-                guideJob?.cancelAndJoin();guide=withContext(Dispatchers.IO){repository.savedGuide(clean)};football=emptyList()
-                stop(); openedSeries = null; openedSeriesId = null; selectedSeason = null; group = null; search = ""
-                withContext(Dispatchers.IO) { repository.restore(clean,::showProgress) }
-                reloadOverview()
-            }
-            refresh(force = changed)
-        }
+        if(!initialized || switchingPlaylist)return
+        switchingPlaylist=true
+        viewModelScope.launch {playlistSwitch.withLock {
+            try {
+                refreshJob?.cancelAndJoin()
+                val changed=clean!=playlistUrl
+                withContext(NonCancellable+Dispatchers.IO) {repository.saveSource(clean,name.trim())}
+                if(changed) {
+                    // Save the old playback position before changing the active source.
+                    stop();guideJob?.cancelAndJoin();filterJob?.cancelAndJoin()
+                    openedSeries=null;openedSeriesId=null;selectedSeason=null;group=null;search=""
+                    selectedKind=MediaKind.LIVE;favoritesOnly=false;adultUnlocked=false;dismissParental()
+                    catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
+                    footballFeed=FootballFeed();footballSearch="";footballTab=FOOTBALL_GAMES;footballPosition=null;fromFootball=false
+                    football=emptyList();recent=null
+                }
+                playlistUrl=clean;playlistName=name.trim().ifBlank {"Minha playlist"}
+                savedPlaylists=withContext(Dispatchers.IO) {repository.savedPlaylists()}
+                epgOverride=withContext(Dispatchers.IO) {preferences.epgUrl(clean)}
+                settingsOpen=false;message=null
+                if(changed) {
+                    page=Page.HOME;loading=true
+                    guide=withContext(Dispatchers.IO) {repository.savedGuide(clean)}
+                    withContext(Dispatchers.IO) {repository.restore(clean,::showProgress)}
+                    recent=withContext(Dispatchers.IO) {repository.channel(clean,repository.lastUrl(clean))?.takeUnless {it.adult}}
+                    reloadOverview()
+                }
+            } catch(e: CancellationException) {throw e}
+            catch(_: Exception) {message=preferences.text(R.string.load_failed)}
+            finally {switchingPlaylist=false;loading=false;progressText=null;progressPercent=null}
+            // A saved catalog appears immediately; only the daily background check may download it again.
+            if(playlistUrl==clean)refreshDaily()
+        }}
     }
+    fun switchPlaylist(playlist: SavedPlaylist) = savePlaylist(playlist.url,playlist.name)
     private fun refreshDaily() = refresh(silent = true,daily = true)
     fun refresh(force: Boolean = false, silent: Boolean = false, daily: Boolean = false) {
         if (playlistUrl.isBlank()) { settingsOpen = true; return }
@@ -387,11 +410,17 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.forLanguageTags(tag))
         }
     } }
+    fun chooseAppearance(value: AppAppearance) {viewModelScope.launch {
+        if(withContext(Dispatchers.IO) {preferences.saveAppearance(value)})appearance=value
+    }}
     fun setGuideAddress(address: String) {
         val clean=address.trim()
         if(clean.isNotBlank() && !PlaylistRepository.validUrl(clean)) { message=preferences.text(R.string.invalid_url);return }
+        val source=playlistUrl
         viewModelScope.launch {
-            if(withContext(Dispatchers.IO) { preferences.saveEpgUrl(clean) }) { epgOverride=clean;refreshGuide(true) }
+            if(withContext(Dispatchers.IO) { preferences.saveEpgUrl(clean,source) } && source==playlistUrl) {
+                guideJob?.cancelAndJoin();epgOverride=clean;refreshGuide(true)
+            }
         }
     }
     fun showFootball() { page=Page.FOOTBALL;refreshGuide() }
@@ -499,8 +528,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         playerSource=""
         playerInstance?.stop()
         playbackError = null; buffering = true; current = channel; recent = channel; page = Page.LIBRARY
-        viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
         val source=playlistUrl
+        viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel,source) }
         val instance=try {playerInstance ?: createPlayer().also {playerInstance=it}}
             catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.load_failed);return}
         playJob=viewModelScope.launch { try {
