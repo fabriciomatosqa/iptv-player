@@ -126,8 +126,8 @@ class AppearanceAndPlaylistsTest {
                 screenshot("aurora-light-landscape")
                 scenario.onActivity {model.chooseAppearance(AppAppearance.SYSTEM)}
                 compose.waitUntil(10000) {model.appearance==AppAppearance.SYSTEM}
-                println("System night request: "+device.executeShellCommand("cmd uimode night yes"))
-                device.sleep();device.wakeUp();device.executeShellCommand("wm dismiss-keyguard")
+                val nightResponse=device.executeShellCommand("cmd uimode night yes")
+                assertTrue("Android rejected the system appearance request: $nightResponse",nightResponse.contains("Night mode: yes"))
                 // Query the Activity receiving configuration changes, rather than the cached instrumentation context.
                 compose.waitUntil(10000) {
                     var dark=false
@@ -146,10 +146,7 @@ class AppearanceAndPlaylistsTest {
                 assertEquals(AppAppearance.SYSTEM,model.appearance)
                 scenario.onActivity {assertEquals(android.graphics.Color.rgb(8,13,25),it.window.statusBarColor)}
             }
-        } finally {
-            device.executeShellCommand("cmd uimode night no")
-            device.sleep();device.wakeUp();device.executeShellCommand("wm dismiss-keyguard")
-        }
+        } finally {device.executeShellCommand("cmd uimode night no")}
     }
 
     private fun assertHomeFits() {

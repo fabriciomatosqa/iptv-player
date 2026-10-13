@@ -66,7 +66,8 @@ class CatalogNavigationTest {
             compose.waitUntil(10000) {model.catalogAnchor(seriesKey)?.index==20}
             val seriesAnchor=model.catalogAnchor(seriesKey)!!
             val selected=repository.series(shows,21,1).single()
-            compose.onNodeWithText(selected.title).performClick()
+            compose.waitUntil(10000) {compose.onAllNodesWithText(selected.title,useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithText(selected.title,useUnmergedTree=true).performClick()
             val episode=repository.channels(shows.copy(seriesId=selected.id,group=null,search="",season=1)).single()
             waitForText(episode.name)
             compose.onNodeWithText(episode.name).performClick()
