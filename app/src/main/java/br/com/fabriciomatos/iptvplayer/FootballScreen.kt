@@ -134,7 +134,7 @@ import androidx.compose.animation.core.*
                 Text(tr(R.string.broadcast)+":",color=color,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
                 if(transmissionIsLive(match.programme,event,now)) {
                     val transition=rememberInfiniteTransition(label="live transmission")
-                    val opacity by transition.animateFloat(0f,1f,infiniteRepeatable(tween(700),RepeatMode.Reverse),label="live dot")
+                    val opacity by transition.animateFloat(1f,0f,infiniteRepeatable(tween(700),RepeatMode.Reverse),label="live dot")
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                         Text(tr(R.string.live_score).uppercase(locale),color=color,fontSize=13.sp,fontWeight=FontWeight.Bold)
                         Box(Modifier.size(8.dp).alpha(opacity).clip(androidx.compose.foundation.shape.CircleShape).background(color).testTag("football_live_dot"))

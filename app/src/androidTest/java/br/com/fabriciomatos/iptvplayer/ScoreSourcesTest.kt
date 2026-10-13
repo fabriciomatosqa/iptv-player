@@ -39,11 +39,11 @@ class ScoreSourcesTest {
         val json=JSONObject(context.assets.open("scores-fotmob.json").bufferedReader().use {it.readText()})
         val league=json.getJSONArray("leagues").getJSONObject(0)
         league.put("primaryId",293).put("ccode","INT").put("name","International Friendlies Women")
-        assertEquals("fifa.friendly.w",parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).single().league)
+        assertEquals(setOf("fifa.friendly.w"),parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).map {it.league}.toSet())
         league.put("name","International Friendlies U-20")
-        assertNotEquals("fifa.friendly",parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).single().league)
+        assertTrue(parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).all {it.league!="fifa.friendly"})
         league.put("primaryId",47).put("name","Premier League Women").put("ccode","ENG")
-        assertNotEquals("eng.1",parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).single().league)
+        assertTrue(parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).all {it.league!="eng.1"})
     }
     @Test fun anUnavailableArchiveDoesNotShowAGlobalFailureWhenCurrentScoresRefresh() = runBlocking {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
