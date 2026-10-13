@@ -26,10 +26,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel as WriteQueue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -82,6 +85,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var progressText by mutableStateOf<String?>(null); private set
     var progressPercent by mutableStateOf<Int?>(null); private set
     var favorites by mutableStateOf(emptySet<String>()); private set
+    var seriesFavorites by mutableStateOf(emptySet<String>()); private set
     var guide by mutableStateOf(Guide(), referentialEqualityPolicy()); private set
     var current by mutableStateOf<Channel?>(null); private set
     var recent by mutableStateOf<Channel?>(null); private set
@@ -107,10 +111,21 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private var guideJob: Job? = null
     private val favoriteWrites = Mutex()
     private var pendingFavorites: Set<String>? = null
+    private var pendingSeriesFavorites: Pair<String,Set<String>>? = null
     private var epgUrl = ""
     private var foreground by mutableStateOf(false)
     private var resumePlayback = false
     private var playerInstance: ExoPlayer? = null
+    private var playerSource = ""
+    private var playJob: Job? = null
+    private val playbackPositions = LinkedHashMap<Pair<String,String>,PlaybackProgress>()
+    private val playbackWrites = WriteQueue<PlaybackCheckpoint>(WriteQueue.UNLIMITED)
+    private val playbackPersistence = CoroutineScope(SupervisorJob()+Dispatchers.IO)
+    private val playbackWriteJob = playbackPersistence.launch {
+        for(checkpoint in playbackWrites)try {
+            repository.savePlaybackProgress(checkpoint.source,checkpoint.url,checkpoint.progress)
+        } catch(_: Exception) { withContext(Dispatchers.Main) { message=preferences.text(R.string.load_failed) } }
+    }
     private var seriesOrigin: CatalogLocation? = null
     private var playbackOrigin: CatalogLocation? = null
     private val catalogAnchors = LinkedHashMap<CatalogPositionKey,CatalogAnchor>()
@@ -146,6 +161,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     init {
+        viewModelScope.launch { while(true) { delay(5000L); checkpointPlayback() } }
         viewModelScope.launch {
             snapshotFlow {if(initialized && foreground && page==Page.FOOTBALL && !settingsOpen)football else null}.collectLatest {matches->
                 if(matches!=null)while(true) {
@@ -164,6 +180,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 withContext(Dispatchers.IO) { repository.restore(source, ::showProgress) }
                 if (playlistUrl != source) return@launch
                 favorites = withContext(Dispatchers.IO) { repository.favorites() }
+                seriesFavorites = withContext(Dispatchers.IO) { repository.seriesFavorites(source) }
                 guide = withContext(Dispatchers.IO) { repository.savedGuide(source) }
                 reloadOverview()
                 recent = withContext(Dispatchers.IO) {
@@ -191,6 +208,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (source != playlistUrl) return
         catalog = data.first; updated = data.second.updated; epgUrl = data.second.epgUrl
+        seriesFavorites = withContext(Dispatchers.IO) { repository.seriesFavorites(source) }
         if (openedSeriesId != null) openedSeries = data.third
         if (recent == null && catalog.total > 0) recent = withContext(Dispatchers.IO) {
             repository.channels(BrowseQuery(source,if(catalog.movies>0)MediaKind.MOVIES else MediaKind.LIVE),limit=1).firstOrNull()
@@ -272,6 +290,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun showSeries(series: SeriesEntry) {
         if(series.adult && !adultUnlocked) { requireParental { showSeries(series) }; return }
         if(openedSeriesId==null)seriesOrigin=catalogLocation()
+        if(current!=null)stop()
+        selectedKind = MediaKind.SERIES
         openedSeriesId = series.id; openedSeries = series; selectedSeason = series.seasons.firstOrNull(); group = null; search = ""
         updateFilter()
     }
@@ -382,12 +402,19 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val source=playlistUrl
         footballScoresLoading=true
         try {
-            val feed=scores.load(football,force)
-            if(source==playlistUrl)footballFeed=feed
+            val matches=football
+            val feed=scores.load(matches,force)
+            val confirmed=withContext(Dispatchers.IO) {scores.confirmedBroadcasts(source,matches,feed)}
+            if(source==playlistUrl) {footballFeed=feed;if(football==matches)football=confirmed}
         } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
         finally {footballScoresLoading=false}
     }
     fun toggleFavorite(channel: Channel) {
+        if(channel.kind==MediaKind.SERIES) {
+            val id=seriesIdentity(channel)
+            toggleSeriesFavorite(SeriesEntry(id.id,id.title,channel.seriesImageUrl,setOf(channel.group),emptyList(),adult=channel.adult))
+            return
+        }
         val before = pendingFavorites ?: favorites
         val next = if(channel.url in before)before-channel.url else before+channel.url
         pendingFavorites = next
@@ -401,6 +428,24 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } catch(e: CancellationException) { throw e }
             catch(_: Exception) { if(pendingFavorites==next)pendingFavorites=null;message=preferences.text(R.string.load_failed) }
+        }
+    }
+    fun toggleSeriesFavorite(series: SeriesEntry) {
+        if(series.adult && !adultUnlocked) { requireParental { toggleSeriesFavorite(series) };return }
+        val source=playlistUrl
+        val before=pendingSeriesFavorites?.takeIf {it.first==source}?.second ?: seriesFavorites
+        val next=if(series.id in before)before-series.id else before+series.id
+        pendingSeriesFavorites=source to next
+        viewModelScope.launch {
+            try { favoriteWrites.withLock {
+                withContext(NonCancellable+Dispatchers.IO) { repository.saveSeriesFavorites(source,next) }
+                if(source==playlistUrl) {
+                    seriesFavorites=next
+                    if(favoritesOnly) { repository.invalidatePages();updateFilter() }
+                }
+                if(pendingSeriesFavorites==(source to next))pendingSeriesFavorites=null
+            } } catch(e: CancellationException) {throw e}
+            catch(_: Exception) {if(pendingSeriesFavorites==(source to next))pendingSeriesFavorites=null;message=preferences.text(R.string.load_failed)}
         }
     }
     private fun refreshGuide(force: Boolean = false) {
@@ -449,15 +494,24 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if (current?.url == channel.url && playbackError == null && playerInstance?.playbackState != Player.STATE_ENDED && playerInstance?.playbackState != Player.STATE_IDLE) {
             page = Page.LIBRARY; return
         }
+        checkpointPlayback()
+        playJob?.cancel()
+        playerSource=""
+        playerInstance?.stop()
         playbackError = null; buffering = true; current = channel; recent = channel; page = Page.LIBRARY
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel) }
-        try {
+        val source=playlistUrl
+        playJob=viewModelScope.launch { try {
+            val saved=if(channel.kind==MediaKind.LIVE)null else playbackPositions[source to channel.url]
+                ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
+            ensureActive()
+            if(current?.url!=channel.url || playlistUrl!=source)return@launch
             val instance = playerInstance ?: createPlayer().also { playerInstance = it }
             val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.7 Android" })
                 .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setDefaultRequestProperties(if (channel.referrer.isBlank()) emptyMap() else mapOf("Referer" to channel.referrer))
             val factory = DefaultMediaSourceFactory(DefaultDataSource.Factory(getApplication(), http))
-            val item = MediaItem.Builder().setUri(channel.url)
+            val item = MediaItem.Builder().setUri(channel.url).setMediaId(channel.url)
             val url = channel.url.lowercase()
             val mime = channel.mimeType.ifBlank {
                 when { url.contains(".m3u8") || url.contains("type=m3u8") || url.contains("output=m3u8") -> MimeTypes.APPLICATION_M3U8
@@ -465,9 +519,26 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     else -> "" }
             }
             if (mime.isNotBlank()) item.setMimeType(mime)
-            instance.setMediaSource(factory.createMediaSource(item.build()))
+            playerSource=source
+            val mediaSource=factory.createMediaSource(item.build())
+            if(channel.kind==MediaKind.LIVE)instance.setMediaSource(mediaSource)
+            else instance.setMediaSource(mediaSource,saved?.resumePositionMs ?: 0L)
             instance.prepare(); instance.playWhenReady = true
-        } catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.load_failed) }
+        } catch(e: CancellationException) {throw e}
+        catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.load_failed) } }
+    }
+
+    private fun checkpointPlayback() {
+        val channel=current ?: return
+        val instance=playerInstance ?: return
+        if(channel.kind==MediaKind.LIVE || playerSource.isBlank() || instance.currentMediaItem?.mediaId!=channel.url ||
+            !instance.isCurrentMediaItemSeekable || instance.isCurrentMediaItemLive)return
+        val key=playerSource to channel.url
+        val progress=PlaybackProgress(instance.contentPosition.coerceAtLeast(0),instance.contentDuration.coerceAtLeast(0),instance.playbackState==Player.STATE_ENDED)
+        if(playbackPositions[key]==progress)return
+        playbackPositions[key]=progress
+        while(playbackPositions.size>1000)playbackPositions.remove(playbackPositions.keys.first())
+        playbackWrites.trySend(PlaybackCheckpoint(playerSource,channel.url,progress))
     }
 
     private fun createPlayer(): ExoPlayer = ExoPlayer.Builder(getApplication<Application>())
@@ -476,9 +547,13 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(10000, 30000, 1000, 2000).setTargetBufferBytes(32 * 1024 * 1024).build())
         .build().apply {
             addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) { buffering = state == Player.STATE_BUFFERING }
-                override fun onIsPlayingChanged(playing: Boolean) { this@AuroraViewModel.isPlaying = playing }
+                override fun onPlaybackStateChanged(state: Int) { buffering = state == Player.STATE_BUFFERING;if(state==Player.STATE_ENDED)checkpointPlayback() }
+                override fun onIsPlayingChanged(playing: Boolean) { this@AuroraViewModel.isPlaying = playing;if(!playing)checkpointPlayback() }
+                override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo,newPosition: Player.PositionInfo,reason: Int) {
+                    if(reason==Player.DISCONTINUITY_REASON_SEEK)checkpointPlayback()
+                }
                 override fun onPlayerError(error: PlaybackException) {
+                    checkpointPlayback()
                     buffering = false
                     playbackError = when (error.errorCode) {
                         PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> preferences.text(R.string.load_failed)
@@ -491,11 +566,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
     fun retry() { current?.let(::play) }
-    fun stop() { playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
+    fun stop() { checkpointPlayback();playJob?.cancel();playerSource="";playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
     fun foreground(active: Boolean) {
         foreground = active
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()
         if (!active) {
+            checkpointPlayback()
             catalogAnchors.keys.removeAll {it.group==ADULT_GROUP}
             if(seriesOrigin?.group==ADULT_GROUP)seriesOrigin=null
             if(playbackOrigin?.group==ADULT_GROUP)playbackOrigin=null
@@ -508,8 +584,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         else if (resumePlayback) { playerInstance?.play(); resumePlayback = false }
     }
     override fun onCleared() {
+        checkpointPlayback();playerSource="";playbackWrites.close()
         playerInstance?.release()
         val pending = viewModelScope.coroutineContext[Job]
-        CoroutineScope(Dispatchers.IO).launch { pending?.join(); repository.close() }
+        CoroutineScope(Dispatchers.IO).launch { pending?.join();playbackWriteJob.join();repository.close();playbackPersistence.cancel() }
     }
 }

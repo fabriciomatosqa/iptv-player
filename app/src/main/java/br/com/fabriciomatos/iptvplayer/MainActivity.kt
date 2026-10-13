@@ -318,12 +318,14 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                     }
                     Spacer(Modifier.height(8.dp))
                     if (live) GuideHeading() else if (series != null) SeasonChips(model, series)
-                    ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = live)
+                    if(model.favoritesOnly && model.selectedKind==null)FavoritesList(model,Modifier.weight(1.15f).fillMaxWidth())
+                    else ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = live)
                 } else {
                     if (series != null) SeriesHeader(model,series)
                     SearchBox(model)
                     if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
                     if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth())
+                    else if(model.favoritesOnly && model.selectedKind==null)FavoritesList(model,Modifier.weight(1f).fillMaxWidth())
                     else ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = live)
                 }
             }
@@ -336,6 +338,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(model.current!!.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if(!live)SynopsisAction(model,model.current,series)
+                    if(series!=null)SeriesFavoriteButton(model,series)
                     IconButton(onClick = { model.closeVideo() }, Modifier.size(48.dp)) { Icon(Icons.Default.Close, tr(R.string.close_video), tint = Muted) }
                 }
             }
@@ -352,6 +355,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
             }
             if (model.loading) CatalogLoadingIndicator(model)
             if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp))
+            else if(model.favoritesOnly && model.selectedKind==null && series==null)FavoritesList(model,Modifier.weight(1f).fillMaxWidth().padding(horizontal=16.dp))
             else ChannelList(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), guideMode = live && model.current != null)
         }
     }
@@ -407,6 +411,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
                             Icon(Icons.Default.VideoLibrary, null, tint = Cyan, modifier = Modifier.size(36.dp))
                         }
                         AnimePoster(model,series,Modifier.fillMaxSize())
+                        SeriesFavoriteButton(model,series,Modifier.align(Alignment.TopEnd).padding(4.dp).background(Panel.copy(alpha=.85f),RoundedCornerShape(24.dp)))
                     }
                     Column(Modifier.padding(if (compact) 8.dp else 10.dp)) {
                         Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -430,6 +435,57 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
             Text(tr(R.string.select_episode), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             Text(tr(R.string.episode_in_season,episodeCount(series.episodeCount),seasonCount(series.seasons.size)), color = Muted, fontSize = 12.sp)
             SynopsisAction(model,series=series)
+        }
+        SeriesFavoriteButton(model,series)
+    }
+}
+
+@Composable private fun SeriesFavoriteButton(model: AuroraViewModel,series: SeriesEntry,modifier: Modifier = Modifier) {
+    val selected=series.id in model.seriesFavorites
+    IconButton(onClick={model.toggleSeriesFavorite(series)},modifier=modifier.size(48.dp).testTag("series_favorite_${series.id}")) {
+        Icon(if(selected)Icons.Default.Star else Icons.Default.StarBorder,
+            tr(if(selected)R.string.remove_favorite else R.string.add_favorite),tint=if(selected)Gold else Muted,modifier=Modifier.size(21.dp))
+    }
+}
+
+@Composable private fun FavoritesList(model: AuroraViewModel,modifier: Modifier) {
+    val channels=model.channelPages.collectAsLazyPagingItems()
+    val shows=model.seriesPages.collectAsLazyPagingItems()
+    val scroll=remember(model.catalogPositionKey()) {LazyListState()}
+    if(channels.itemCount==0 && shows.itemCount==0) {
+        val state=when {
+            channels.loadState.refresh is LoadState.Loading || shows.loadState.refresh is LoadState.Loading->LoadState.Loading
+            channels.loadState.refresh is LoadState.Error->channels.loadState.refresh
+            else->shows.loadState.refresh
+        }
+        Box(modifier,contentAlignment=Alignment.Center) {CatalogStatus(model,state) {channels.retry();shows.retry()}}
+        return
+    }
+    val now=guideClock()
+    LazyColumn(modifier.testTag("favorites_list"),state=scroll,contentPadding=PaddingValues(vertical=8.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
+        items(shows.itemCount,key=shows.itemKey {"series:${it.id}"},contentType={"series"}) {index->
+            shows[index]?.takeIf {!it.adult || model.adultUnlocked}?.let {series->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Panel).clickable {model.showSeries(series)}.padding(start=8.dp,top=6.dp,bottom=6.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Box(Modifier.size(52.dp,68.dp).clip(RoundedCornerShape(8.dp)).background(Elevated),contentAlignment=Alignment.Center) {
+                        Icon(Icons.Default.VideoLibrary,null,tint=Cyan)
+                        AnimePoster(model,series,Modifier.fillMaxSize())
+                    }
+                    Column(Modifier.weight(1f).padding(start=9.dp)) {
+                        Text(series.title,fontWeight=FontWeight.SemiBold,fontSize=14.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+                        Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodeCount)}",fontSize=11.sp,color=Muted)
+                    }
+                    SeriesFavoriteButton(model,series)
+                }
+            }
+        }
+        items(channels.itemCount,key=channels.itemKey {"channel:${it.url}"},contentType={"channel"}) {index->
+            channels[index]?.takeIf {!it.adult || model.adultUnlocked}?.let {ChannelRow(it,model,false,now)}
+        }
+        if(shows.loadState.append is LoadState.Loading || channels.loadState.append is LoadState.Loading)item {
+            Box(Modifier.fillMaxWidth().padding(12.dp),contentAlignment=Alignment.Center) {CircularProgressIndicator(Modifier.size(22.dp),color=Mint)}
+        }
+        if(shows.loadState.append is LoadState.Error || channels.loadState.append is LoadState.Error)item {
+            TextButton(onClick={shows.retry();channels.retry()}) {Text(tr(R.string.retry))}
         }
     }
 }
@@ -636,7 +692,7 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
             ProgrammeCell(next, Modifier.weight(1f), Muted)
         }
         if(!isLive)SynopsisAction(model,channel,model.openedSeries,iconOnly=true)
-        IconButton(onClick = { model.toggleFavorite(channel) }, modifier = Modifier.size(48.dp)) {
+        if(channel.kind!=MediaKind.SERIES)IconButton(onClick = { model.toggleFavorite(channel) }, modifier = Modifier.size(48.dp)) {
             Icon(if (channel.url in model.favorites) Icons.Default.Star else Icons.Default.StarBorder,
                 if (channel.url in model.favorites) tr(R.string.remove_favorite) else tr(R.string.add_favorite),
                 tint = if (channel.url in model.favorites) Gold else Muted, modifier = Modifier.size(19.dp))

@@ -2,7 +2,15 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.8.0
+## Versão 1.9.0
+
+- Horários de futebol em `HH:mm`. Cards permanecem por uma hora após o fim da transmissão e desaparecem automaticamente, incluindo ao reabrir a agenda. Uma partida que continua ao vivo não expira durante a prorrogação.
+- Quando os dois times e o campeonato coincidem com um placar atualizado, uma data divergente no guia é corrigida pelo início informado pelo serviço de resultados. A correção fica salva; ao observar o encerramento de uma partida acompanhada ao vivo, a hora desse encerramento passa a orientar a remoção. Reprises identificadas no guia mantêm a própria programação.
+- Favoritos de séries guardam o título inteiro, com estrela no cartaz e na página da série. Favoritos exibe uma entrada por série; abrir essa entrada libera todas as temporadas e episódios. Episódios anteriormente favoritados são convertidos sem alterar os favoritos de filmes e canais.
+- Filmes e episódios retomam automaticamente a posição salva por conteúdo e playlist. A posição é gravada periodicamente e ao pausar, trocar de vídeo ou sair do app; conteúdo concluído começa novamente. Canais ao vivo continuam na transmissão atual.
+- Migração aditiva do banco, sem apagar playlist ou catálogo. Testes cobrem favoritos, horários conflitantes, expiração, reprodução real, fechamento e retomada.
+
+## Recursos da versão 1.8.0
 
 - Placares e tempo de jogo consultados no FotMob, com ESPN como alternativa. Corrigidas as consultas por intervalo de datas que retornavam HTTP 400; as requisições usam dias individuais, cache e limite de tempo. Uma falha em um arquivo histórico não marca todos os campeonatos como indisponíveis.
 - Transmissões em andamento mostram AO VIVO com indicador piscando na cor de destaque do app. As demais mostram o dia da semana por extenso, data e horário. Reprises conservam a identificação e o resultado final quando disponível; uma transmissão de reprise em andamento não recebe o indicador ao vivo.

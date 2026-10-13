@@ -10,9 +10,19 @@ class FootballFormattingTest {
         val date=java.time.Instant.parse("2026-10-13T02:30:00Z").toEpochMilli()
         val locale=Locale.forLanguageTag("pt-BR")
         assertEquals("Segunda-Feira - 12 de Outubro",footballDay(date,locale,TimeZone.getTimeZone("America/Sao_Paulo")))
-        assertEquals("23-30",footballTime(date,locale,TimeZone.getTimeZone("America/Sao_Paulo")))
+        assertEquals("23:30",footballTime(date,locale,TimeZone.getTimeZone("America/Sao_Paulo")))
         assertEquals("Terça-Feira - 13 de Outubro",footballDay(date,locale,TimeZone.getTimeZone("UTC")))
         assertEquals("Tuesday - 13 October",footballDay(date,Locale.ENGLISH,TimeZone.getTimeZone("UTC")))
+    }
+    @Test fun finishedCardsExpireOneHourAfterTheBroadcastAndLiveOvertimeRemainsVisible() {
+        val now=1000000000L
+        val p=Programme("Fluminense x Botafogo",now-7200000L,now)
+        val match=FootballMatch("test",p,emptyList(),FootballDetails("Campeonato Brasileiro","Fluminense","Botafogo"))
+        assertEquals(1,filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3599999L).size)
+        assertTrue(filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3600000L).isEmpty())
+        val live=FootballScore("1","bra.1","Brasileirão",p.start,ScoreTeam("1",listOf("Fluminense")),ScoreTeam("2",listOf("Botafogo")),1,0,MatchState.LIVE,"120:00",now+3600000L)
+        assertEquals(1,filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3600000L,FootballFeed(listOf(live))).size)
+        assertTrue(filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3720001L,FootballFeed(listOf(live))).isEmpty())
     }
     @Test fun blinkingLiveTransmissionRequiresACurrentGameAndNeverAppliesToAReplay() {
         val now=1000000000L;val p=Programme("Fluminense x Botafogo",now-60000,now+3600000)

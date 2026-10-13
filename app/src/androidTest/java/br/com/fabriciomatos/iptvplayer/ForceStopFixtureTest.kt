@@ -22,6 +22,9 @@ class ForceStopFixtureTest {
             Channel("Rick e Morty S01E01", "https://example.test/series/3", "Séries"))
         repository.appendCache(source, Download(Playlist(channels), "", ""))
         repository.saveFavorites(setOf(channels[0].url))
+        repository.saveSeriesFavorites(source,setOf(seriesIdentity(channels[2]).id))
+        repository.savePlaybackProgress(source,channels[1].url,PlaybackProgress(420000,3600000))
+        repository.savePlaybackProgress(source,channels[2].url,PlaybackProgress(840000,1800000))
         repository.close()
     }
     @Test fun verify() {
@@ -30,6 +33,9 @@ class ForceStopFixtureTest {
         assertEquals(source, repository.savedUrl())
         assertEquals(3, repository.readCache(source).channels.size)
         assertEquals(setOf("https://example.test/live/1"), repository.favorites())
+        assertEquals(setOf("title:rick e morty"),repository.seriesFavorites(source))
+        assertEquals(420000L,repository.playbackProgress(source,"https://example.test/movie/2")?.resumePositionMs)
+        assertEquals(840000L,repository.playbackProgress(source,"https://example.test/series/3")?.resumePositionMs)
         assertFalse(repository.claimDailyAttempt(source))
         repository.close()
     }

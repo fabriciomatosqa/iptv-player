@@ -23,7 +23,7 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
     val byName = live.groupBy { guideChannelName(it.name) }
     val epgNames = guide.names.entries.groupBy({ it.value }, { guideChannelName(it.key) })
     val result = linkedMapOf<String, FootballMatch>()
-    guide.matches.filter { it.programme.end > now }.forEach { entry ->
+    guide.matches.filter { it.programme.end > now-FOOTBALL_RETENTION_MS }.forEach { entry ->
         val details = footballDetails(entry.programme.title, entry.programme.category) ?: return@forEach
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }

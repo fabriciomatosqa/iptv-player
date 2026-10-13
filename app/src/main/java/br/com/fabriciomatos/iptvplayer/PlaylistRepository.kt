@@ -51,6 +51,40 @@ class PlaylistRepository(context: Context) {
             db.setTransactionSuccessful(); favoritesSynced = true
         } finally { db.endTransaction() }
     }
+    fun seriesFavorites(source: String): Set<String> = helper.readableDatabase.rawQuery(
+        "SELECT series_key FROM series_favorites WHERE source_key=?", arrayOf(digest(source))).use {
+        buildSet { while (it.moveToNext()) add(it.getString(0)) }
+    }
+    @Synchronized fun saveSeriesFavorites(source: String, ids: Set<String>) {
+        val key = digest(source); val db = helper.writableDatabase
+        db.beginTransactionNonExclusive()
+        try {
+            db.delete("series_favorites", "source_key=?", arrayOf(key))
+            db.compileStatement("INSERT INTO series_favorites(source_key,series_key) VALUES(?,?)").use { statement ->
+                ids.forEach { statement.bindString(1,key); statement.bindString(2,it); statement.executeInsert() }
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+    /** Commit the series identities before removing old episode favorites; retries are idempotent. */
+    private fun migrateEpisodeFavorites() {
+        val db = helper.writableDatabase
+        db.execSQL("INSERT OR IGNORE INTO series_favorites(source_key,series_key) SELECT c.source_key,c.series_key FROM channels c JOIN favorites f ON f.url=c.url WHERE c.kind=? AND c.series_key<>''",arrayOf(MediaKind.SERIES.ordinal))
+        val episodes = db.rawQuery("SELECT DISTINCT f.url FROM favorites f JOIN channels c ON c.url=f.url WHERE c.kind=? AND c.series_key<>''",arrayOf(MediaKind.SERIES.ordinal.toString())).use {
+            buildSet { while(it.moveToNext())add(it.getString(0)) }
+        }
+        if(episodes.isNotEmpty())saveFavorites(favorites()-episodes)
+    }
+    fun playbackProgress(source: String, url: String): PlaybackProgress? = helper.readableDatabase.rawQuery(
+        "SELECT position_ms,duration_ms,completed FROM playback_progress WHERE source_key=? AND url=?",arrayOf(digest(source),url)).use {
+        if(it.moveToFirst())PlaybackProgress(it.getLong(0),it.getLong(1),it.getInt(2)!=0) else null
+    }
+    @Synchronized fun savePlaybackProgress(source: String, url: String, progress: PlaybackProgress) {
+        helper.writableDatabase.insertWithOnConflict("playback_progress",null,ContentValues().apply {
+            put("source_key",digest(source));put("url",url);put("position_ms",progress.positionMs.coerceAtLeast(0))
+            put("duration_ms",progress.durationMs.coerceAtLeast(0));put("completed",if(progress.completed)1 else 0)
+        },SQLiteDatabase.CONFLICT_REPLACE).also { if(it==-1L)throw IOException("Não consegui salvar a reprodução.") }
+    }
     fun saveSource(url: String, name: String) {
         val edit = prefs.edit().putString("playlist_url", url).putString("playlist_name", name.ifBlank { "Minha playlist" })
         if (!prefs.contains("cache_source_hash")) edit.putString("cache_source_hash", digest(savedUrl()))
@@ -111,6 +145,7 @@ class PlaylistRepository(context: Context) {
             db.beginTransactionNonExclusive()
             try { rebuild(db, key); db.setTransactionSuccessful() } finally { db.endTransaction() }
         }
+        migrateEpisodeFavorites()
     }
 
     fun overview(source: String): CatalogOverview {
@@ -140,7 +175,7 @@ class PlaylistRepository(context: Context) {
                 clauses.add("EXISTS(SELECT 1 FROM series_groups g WHERE g.source_key=c.source_key AND g.series_key=c.series_key AND g.group_name=?)")
                 args.add(query.group)
             }
-            if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM channels e JOIN favorites f ON e.url=f.url WHERE e.source_key=c.source_key AND e.series_key=c.series_key)")
+            if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM series_favorites f WHERE f.source_key=c.source_key AND f.series_key=c.series_key)")
         } else {
             query.kind?.let { clauses.add("c.kind=?"); args.add(it.ordinal.toString()) }
             query.group?.takeIf { it != ADULT_GROUP }?.let {
@@ -153,7 +188,10 @@ class PlaylistRepository(context: Context) {
             }
             query.seriesId?.let { clauses.add("c.series_key=?"); args.add(it) }
             query.season?.let { clauses.add("c.season=?"); args.add(it.toString()) }
-            if (query.favoritesOnly) clauses.add("EXISTS(SELECT 1 FROM favorites f WHERE f.url=c.url)")
+            if (query.favoritesOnly && query.seriesId==null) {
+                clauses.add("c.kind<>${MediaKind.SERIES.ordinal}")
+                clauses.add("EXISTS(SELECT 1 FROM favorites f WHERE f.url=c.url)")
+            }
         }
         normalized(query.search).split(' ').filter(String::isNotBlank).forEach {
             clauses.add("c.search_text LIKE ?"); args.add("%" + it + "%")
@@ -163,7 +201,8 @@ class PlaylistRepository(context: Context) {
     fun matchingCount(query: BrowseQuery): Int {
         val shows = query.kind == MediaKind.SERIES && query.seriesId == null
         val (where, args) = where(query, shows)
-        return scalar(helper.readableDatabase, "SELECT COUNT(*) FROM " + (if (shows) "series_directory" else "channels") + " c WHERE " + where, args)
+        val count = scalar(helper.readableDatabase, "SELECT COUNT(*) FROM " + (if (shows) "series_directory" else "channels") + " c WHERE " + where, args)
+        return count + if(query.favoritesOnly && query.kind==null && query.seriesId==null)matchingCount(query.copy(kind=MediaKind.SERIES)) else 0
     }
     /** Find the remembered item in the complete filtered catalog, beyond the loaded pages. */
     fun catalogOffset(query: BrowseQuery, item: String): Int? {
@@ -574,13 +613,13 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,6){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,7){
     init{setWriteAheadLoggingEnabled(true)}
     override fun onConfigure(db: SQLiteDatabase){db.setForeignKeyConstraintsEnabled(true);db.execSQL("PRAGMA synchronous=FULL")}
     override fun onCreate(db: SQLiteDatabase){
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
-        upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db);upgradeSynopses(db)
+        upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db);upgradeSynopses(db);upgradePlayback(db)
     }
     override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
         if(oldVersion<2)upgrade(db)
@@ -588,6 +627,11 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         if(oldVersion<4)upgradeArtwork(db)
         if(oldVersion<5)upgradeBroadcast(db)
         if(oldVersion<6)upgradeSynopses(db)
+        if(oldVersion<7)upgradePlayback(db)
+    }
+    private fun upgradePlayback(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS series_favorites(source_key TEXT NOT NULL,series_key TEXT NOT NULL,PRIMARY KEY(source_key,series_key))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS playback_progress(source_key TEXT NOT NULL,url TEXT NOT NULL,position_ms INTEGER NOT NULL,duration_ms INTEGER NOT NULL,completed INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(source_key,url))")
     }
     private fun upgradeSynopses(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS vod_ids(source_key TEXT NOT NULL,name_norm TEXT NOT NULL,provider_id TEXT NOT NULL,PRIMARY KEY(source_key,name_norm,provider_id))")
