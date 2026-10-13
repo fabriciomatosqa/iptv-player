@@ -16,8 +16,9 @@ import androidx.compose.ui.unit.dp
 @Composable internal fun SynopsisAction(model: AuroraViewModel, channel: Channel? = null, series: SeriesEntry? = null, iconOnly: Boolean = false) {
     var open by remember(model.playlistUrl,channel?.url,series?.id) {mutableStateOf(false)}
     val label=tr(R.string.synopsis)
-    if(iconOnly)IconButton(onClick={open=true},Modifier.size(48.dp).testTag("synopsis_action")) {Icon(Icons.Outlined.Info,label,Modifier.size(20.dp))}
-    else TextButton(onClick={open=true},modifier=Modifier.testTag("synopsis_action")) {Icon(Icons.Outlined.Info,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(label)}
+    val tag=if(channel==null)"synopsis_series_action"else"synopsis_content_action"
+    if(iconOnly)IconButton(onClick={open=true},Modifier.size(48.dp).testTag(tag)) {Icon(Icons.Outlined.Info,label,Modifier.size(20.dp))}
+    else TextButton(onClick={open=true},modifier=Modifier.testTag(tag)) {Icon(Icons.Outlined.Info,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(label)}
     if(open)SynopsisDialog(model,channel,series) {open=false}
 }
 

@@ -74,21 +74,21 @@ class SynopsisTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
             compose.waitUntil(15000) {model.initialized}
             scenario.onActivity {model.browse(MediaKind.MOVIES)}
-            compose.waitUntil(10000) {compose.onAllNodesWithTag("synopsis_action",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
-            compose.onNodeWithTag("synopsis_action",useUnmergedTree=true).performClick()
+            compose.waitUntil(10000) {compose.onAllNodesWithTag("synopsis_content_action",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História do filme de teste.").fetchSemanticsNodes().isNotEmpty()}
             assertNull(model.current);screenshot("movie-synopsis")
             compose.onNodeWithText("Fechar").performClick()
             scenario.onActivity {model.browse(MediaKind.SERIES)}
             compose.waitUntil(10000) {compose.onAllNodesWithText("Série de teste").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Série de teste").performClick()
-            compose.waitUntil(10000) {compose.onAllNodesWithTag("synopsis_action",useUnmergedTree=true).fetchSemanticsNodes().size==2}
-            compose.onAllNodesWithTag("synopsis_action",useUnmergedTree=true).onLast().performClick()
+            compose.waitUntil(10000) {!model.filtering && compose.onAllNodesWithText(episode.name).fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História do episódio piloto.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("História da série de teste.").assertExists()
             assertNull(model.current);screenshot("series-episode-synopsis")
             compose.onNodeWithText("Fechar").performClick()
-            compose.onAllNodesWithTag("synopsis_action",useUnmergedTree=true).onFirst().performClick()
+            compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História da série de teste.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
         }
