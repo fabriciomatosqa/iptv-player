@@ -41,12 +41,10 @@ class FootballUiTest {
         val live=FootballScore("live-test","bra.1","Campeonato Brasileiro",programmes.first().start,ScoreTeam("flu",listOf("Fluminense")),
             ScoreTeam("bot",listOf("Botafogo")),2,1,MatchState.LIVE,"83:21",now)
         val games=footballMatches(guide,channels,now)
-        val dates=listOf(footballDates(now-86400000L,now+86400000L),footballDates(now-7*86400000L,programmes.last().start+86400000L))
-        for(league in games.flatMap {footballScoreLeagues(it.details)}.distinct()) {
-            val feed=FootballFeed(listOf(live,final).filter {it.league==league},now)
-            dates.forEach {repository.saveArtwork(footballScoreCacheKey(league,it),encodeFootballFeed(feed).toString())}
-            repository.saveArtwork("football:$league","{}")
+        footballRequestDays(games,now).forEach {day->
+            repository.saveArtwork(footballScoreCacheKey("fotmob",day),encodeFootballFeed(FootballFeed(listOf(live,final),now)).toString())
         }
+        for(league in games.flatMap {footballScoreLeagues(it.details)}.distinct())repository.saveArtwork("football:$league","{}")
         repository.close()
         ActivityScenario.launch(MainActivity::class.java).use {scenario->
             lateinit var model: AuroraViewModel
@@ -62,6 +60,8 @@ class FootballUiTest {
             compose.onNodeWithTag("football_home_goals",useUnmergedTree=true).assertTextEquals("2")
             compose.onNodeWithTag("football_away_goals",useUnmergedTree=true).assertTextEquals("1")
             compose.onNodeWithText("Al Nassr").assertDoesNotExist()
+            compose.onNodeWithTag("football_live_dot",useUnmergedTree=true).assertExists()
+            compose.onNodeWithText("AO VIVO").assertExists()
             screenshot("football-live-score")
             compose.onNodeWithTag("football_match").performClick()
             compose.waitUntil(15000) {model.isPlaying && model.fromFootball}

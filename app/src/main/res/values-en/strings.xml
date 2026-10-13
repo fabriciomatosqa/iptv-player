@@ -114,6 +114,14 @@
     <string name="now_on_channel">On this channel now</string>
     <string name="original_match">Original match: %1$s</string>
     <string name="last_score_update">Score updated at %1$s</string>
+    <string name="broadcast_time">Time: %1$s</string>
+    <string name="synopsis">Synopsis</string>
+    <string name="series_synopsis">Series synopsis</string>
+    <string name="episode_synopsis">Episode synopsis</string>
+    <string name="synopsis_unavailable">The provider has not supplied a synopsis for this title.</string>
+    <string name="episode_synopsis_unavailable">The provider has not supplied a synopsis for this episode.</string>
+    <string name="synopsis_failed">Could not load the synopsis. Try again.</string>
+    <string name="close_details">Close</string>
     <string name="one_channel">1 channel</string>
     <string name="channel_count">%1$s channels</string>
     <string name="one_movie">1 movie</string>

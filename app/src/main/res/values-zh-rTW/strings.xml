@@ -114,6 +114,14 @@
     <string name="now_on_channel">正在本頻道播出</string>
     <string name="original_match">原比賽：%1$s</string>
     <string name="last_score_update">比分更新於 %1$s</string>
+    <string name="broadcast_time">時間：%1$s</string>
+    <string name="synopsis">劇情簡介</string>
+    <string name="series_synopsis">影集簡介</string>
+    <string name="episode_synopsis">本集簡介</string>
+    <string name="synopsis_unavailable">供應商尚未提供此內容的簡介。</string>
+    <string name="episode_synopsis_unavailable">供應商尚未提供本集的簡介。</string>
+    <string name="synopsis_failed">無法載入簡介，請重試。</string>
+    <string name="close_details">關閉</string>
     <string name="one_channel">1 頻道</string>
     <string name="channel_count">%1$s 頻道</string>
     <string name="one_movie">1 電影</string>

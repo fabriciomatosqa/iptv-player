@@ -114,6 +114,14 @@
     <string name="now_on_channel">Nu op deze zender</string>
     <string name="original_match">Oorspronkelijke wedstrijd: %1$s</string>
     <string name="last_score_update">Score bijgewerkt om %1$s</string>
+    <string name="broadcast_time">Tijd: %1$s</string>
+    <string name="synopsis">Samenvatting</string>
+    <string name="series_synopsis">Samenvatting serie</string>
+    <string name="episode_synopsis">Samenvatting aflevering</string>
+    <string name="synopsis_unavailable">De aanbieder heeft geen samenvatting voor deze titel geleverd.</string>
+    <string name="episode_synopsis_unavailable">De aanbieder heeft geen samenvatting voor deze aflevering geleverd.</string>
+    <string name="synopsis_failed">Samenvatting kan niet worden geladen. Probeer opnieuw.</string>
+    <string name="close_details">Sluiten</string>
     <string name="one_channel">1 zender</string>
     <string name="channel_count">%1$s zenders</string>
     <string name="one_movie">1 film</string>

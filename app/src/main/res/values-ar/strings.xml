@@ -114,6 +114,14 @@
     <string name="now_on_channel">الآن على القناة</string>
     <string name="original_match">المباراة الأصلية: %1$s</string>
     <string name="last_score_update">تم تحديث النتيجة في %1$s</string>
+    <string name="broadcast_time">الوقت: %1$s</string>
+    <string name="synopsis">الملخص</string>
+    <string name="series_synopsis">ملخص المسلسل</string>
+    <string name="episode_synopsis">ملخص الحلقة</string>
+    <string name="synopsis_unavailable">لم يقدم المزود ملخصًا لهذا المحتوى.</string>
+    <string name="episode_synopsis_unavailable">لم يقدم المزود ملخصًا لهذه الحلقة.</string>
+    <string name="synopsis_failed">تعذر تحميل الملخص. حاول مرة أخرى.</string>
+    <string name="close_details">إغلاق</string>
     <string name="one_channel">1 قناة</string>
     <string name="channel_count">%1$s قنوات</string>
     <string name="one_movie">1 فيلم</string>

@@ -114,6 +114,14 @@
     <string name="now_on_channel">Sekarang di saluran ini</string>
     <string name="original_match">Pertandingan asli: %1$s</string>
     <string name="last_score_update">Skor diperbarui pukul %1$s</string>
+    <string name="broadcast_time">Waktu: %1$s</string>
+    <string name="synopsis">Sinopsis</string>
+    <string name="series_synopsis">Sinopsis serial</string>
+    <string name="episode_synopsis">Sinopsis episode</string>
+    <string name="synopsis_unavailable">Penyedia belum memberikan sinopsis untuk judul ini.</string>
+    <string name="episode_synopsis_unavailable">Penyedia belum memberikan sinopsis untuk episode ini.</string>
+    <string name="synopsis_failed">Sinopsis tidak dapat dimuat. Coba lagi.</string>
+    <string name="close_details">Tutup</string>
     <string name="one_channel">1 saluran</string>
     <string name="channel_count">%1$s saluran</string>
     <string name="one_movie">1 film</string>

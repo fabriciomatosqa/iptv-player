@@ -2,7 +2,14 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
-## Versão 1.7.0
+## Versão 1.8.0
+
+- Placares e tempo de jogo consultados no FotMob, com ESPN como alternativa. Corrigidas as consultas por intervalo de datas que retornavam HTTP 400; as requisições usam dias individuais, cache e limite de tempo. Uma falha em um arquivo histórico não marca todos os campeonatos como indisponíveis.
+- Transmissões em andamento mostram AO VIVO com indicador piscando na cor de destaque do app. As demais mostram o dia da semana por extenso, data e horário. Reprises conservam a identificação e o resultado final quando disponível; uma transmissão de reprise em andamento não recebe o indicador ao vivo.
+- Botão Sinopse nos filmes, na página da série, nos episódios e ao lado do vídeo. As sinopses vêm da API do próprio provedor, incluindo o resumo específico de cada episódio quando informado, e ficam salvas para consulta sem conexão. O índice de filmes aceita URLs de reprodução opacas e distingue títulos com anos diferentes.
+- Novos textos traduzidos nos 20 idiomas e migração que preserva catálogo, lista, favoritos e guia. Validação inclui conectividade real dos placares no Android, sinopses em tela e reabertura sem conexão.
+
+## Recursos da versão 1.7.0
 
 - Futebol com placar e tempo informados pelo serviço público da ESPN. Atualização a cada 60 segundos enquanto a agenda está visível e o app está em primeiro plano; consultas simultâneas limitadas e cache separado para resultados e calendário.
 - O horário real da partida é associado aos dois times e ao campeonato antes de mostrar o placar. Partidas encerradas antes da faixa de transmissão aparecem como reprise, com resultado final; o XMLTV também pode informar transmissão ao vivo ou reprise. Falta de cobertura e dados desatualizados são indicados, sem inventar placares ou tempos.

@@ -63,7 +63,18 @@ object ProviderApi {
         return ProviderMetadata(categories, posters)
     }
 
-    private suspend fun read(source: String, action: String, accept: (Map<String, String>) -> Unit) {
+    suspend fun readVodIds(source: String, accept: (Map<String, String>) -> Unit) =
+        read(source,"get_vod_streams",setOf("name","title","stream_id"),accept)
+
+    suspend fun findSeriesId(source: String, title: String): String? {
+        val ids=HashSet<String>()
+        read(source,"get_series",setOf("name","series_id")) {row->
+            if(normalized(row["name"].orEmpty())==normalized(title))row["series_id"]?.takeIf(String::isNotBlank)?.let(ids::add)
+        }
+        return ids.singleOrNull()
+    }
+
+    private suspend fun read(source: String, action: String, wanted: Set<String> = setOf("category_name", "name", "cover", "series_id", "genre"), accept: (Map<String, String>) -> Unit) {
         val context = currentCoroutineContext()
         val address = endpoint(source, action) ?: return
         val connection = (URL(address).openConnection() as HttpURLConnection).apply {
@@ -78,7 +89,6 @@ object ProviderApi {
                 if (json.peek() != JsonToken.BEGIN_ARRAY) throw IOException("Resposta de metadados inválida.")
                 json.beginArray()
                 var count = 0
-                val wanted = setOf("category_name", "name", "cover", "series_id", "genre")
                 while (json.hasNext()) {
                     if (count++ % 128 == 0) context.ensureActive()
                     val row = HashMap<String, String>()

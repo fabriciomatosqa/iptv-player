@@ -92,6 +92,30 @@ football_rows={
 'vi':'Trở lại bóng đá|Tìm đội|Tỷ số cập nhật mỗi phút|Không thể cập nhật. Giữ dữ liệu mới nhất.|Không có trận phù hợp với bộ lọc.|Trận đấu|Giải Brazil|Libertadores|Sudamericana|Trực tiếp|Giữa hiệp|Kết thúc|Hoãn|Hủy|Đã lên lịch|Đã cũ|Chưa có tỷ số|Phát lại|Trực tiếp|Phát sóng|Đang phát trên kênh|Trận gốc: %1$s|Tỷ số cập nhật lúc %1$s',
 'id':'Kembali ke sepak bola|Cari tim|Skor diperbarui setiap menit|Tidak dapat memperbarui. Data terakhir tetap disimpan.|Tidak ada pertandingan untuk filter ini.|Pertandingan|Brasileirão|Libertadores|Sudamericana|Langsung|Jeda|Selesai|Ditunda|Dibatalkan|Dijadwalkan|Kedaluwarsa|Skor tidak tersedia|Siaran ulang|Langsung|Siaran|Sekarang di saluran ini|Pertandingan asli: %1$s|Skor diperbarui pukul %1$s'}
 
+detail_keys='broadcast_time synopsis series_synopsis episode_synopsis synopsis_unavailable episode_synopsis_unavailable synopsis_failed close_details'.split()
+detail_rows={
+'pt':'Horário: %1$s|Sinopse|Sinopse da série|Sinopse do episódio|O provedor não informou a sinopse deste conteúdo.|O provedor não informou a sinopse deste episódio.|Não foi possível carregar a sinopse. Tente novamente.|Fechar',
+'en':'Time: %1$s|Synopsis|Series synopsis|Episode synopsis|The provider has not supplied a synopsis for this title.|The provider has not supplied a synopsis for this episode.|Could not load the synopsis. Try again.|Close',
+'es':'Horario: %1$s|Sinopsis|Sinopsis de la serie|Sinopsis del episodio|El proveedor no ha incluido la sinopsis de este contenido.|El proveedor no ha incluido la sinopsis de este episodio.|No se pudo cargar la sinopsis. Inténtalo de nuevo.|Cerrar',
+'fr':'Heure : %1$s|Synopsis|Synopsis de la série|Synopsis de l’épisode|Le fournisseur ne propose pas de synopsis pour ce contenu.|Le fournisseur ne propose pas de synopsis pour cet épisode.|Impossible de charger le synopsis. Réessayez.|Fermer',
+'de':'Uhrzeit: %1$s|Inhalt|Serienbeschreibung|Folgenbeschreibung|Der Anbieter hat keine Beschreibung für diesen Titel bereitgestellt.|Der Anbieter hat keine Beschreibung für diese Folge bereitgestellt.|Beschreibung konnte nicht geladen werden. Erneut versuchen.|Schließen',
+'it':'Orario: %1$s|Sinossi|Sinossi della serie|Sinossi dell’episodio|Il fornitore non ha fornito una sinossi per questo contenuto.|Il fornitore non ha fornito una sinossi per questo episodio.|Impossibile caricare la sinossi. Riprova.|Chiudi',
+'nl':'Tijd: %1$s|Samenvatting|Samenvatting serie|Samenvatting aflevering|De aanbieder heeft geen samenvatting voor deze titel geleverd.|De aanbieder heeft geen samenvatting voor deze aflevering geleverd.|Samenvatting kan niet worden geladen. Probeer opnieuw.|Sluiten',
+'pl':'Godzina: %1$s|Opis|Opis serialu|Opis odcinka|Dostawca nie udostępnił opisu tego tytułu.|Dostawca nie udostępnił opisu tego odcinka.|Nie udało się załadować opisu. Spróbuj ponownie.|Zamknij',
+'ru':'Время: %1$s|Описание|Описание сериала|Описание серии|Поставщик не предоставил описание этого материала.|Поставщик не предоставил описание этой серии.|Не удалось загрузить описание. Попробуйте снова.|Закрыть',
+'uk':'Час: %1$s|Опис|Опис серіалу|Опис епізоду|Постачальник не надав опис цього матеріалу.|Постачальник не надав опис цього епізоду.|Не вдалося завантажити опис. Спробуйте знову.|Закрити',
+'ar':'الوقت: %1$s|الملخص|ملخص المسلسل|ملخص الحلقة|لم يقدم المزود ملخصًا لهذا المحتوى.|لم يقدم المزود ملخصًا لهذه الحلقة.|تعذر تحميل الملخص. حاول مرة أخرى.|إغلاق',
+'hi':'समय: %1$s|कहानी का सार|श्रृंखला का सार|एपिसोड का सार|प्रदाता ने इस शीर्षक का सार नहीं दिया है।|प्रदाता ने इस एपिसोड का सार नहीं दिया है।|सार लोड नहीं हो सका। फिर से कोशिश करें।|बंद करें',
+'bn':'সময়: %1$s|সারসংক্ষেপ|সিরিজের সারসংক্ষেপ|পর্বের সারসংক্ষেপ|সরবরাহকারী এই বিষয়বস্তুর সারসংক্ষেপ দেয়নি।|সরবরাহকারী এই পর্বের সারসংক্ষেপ দেয়নি।|সারসংক্ষেপ লোড করা যায়নি। আবার চেষ্টা করুন।|বন্ধ করুন',
+'zh-rCN':'时间：%1$s|剧情简介|剧集简介|本集简介|提供商尚未提供此内容的简介。|提供商尚未提供本集的简介。|无法加载简介，请重试。|关闭',
+'zh-rTW':'時間：%1$s|劇情簡介|影集簡介|本集簡介|供應商尚未提供此內容的簡介。|供應商尚未提供本集的簡介。|無法載入簡介，請重試。|關閉',
+'ja':'時刻：%1$s|あらすじ|シリーズのあらすじ|エピソードのあらすじ|配信元がこの作品のあらすじを提供していません。|配信元がこのエピソードのあらすじを提供していません。|あらすじを読み込めませんでした。再試行してください。|閉じる',
+'ko':'시간: %1$s|줄거리|시리즈 줄거리|에피소드 줄거리|제공자가 이 작품의 줄거리를 제공하지 않았습니다.|제공자가 이 에피소드의 줄거리를 제공하지 않았습니다.|줄거리를 불러오지 못했습니다. 다시 시도하세요.|닫기',
+' tr':'Saat: %1$s|Özet|Dizi özeti|Bölüm özeti|Sağlayıcı bu içerik için özet sunmamış.|Sağlayıcı bu bölüm için özet sunmamış.|Özet yüklenemedi. Tekrar deneyin.|Kapat',
+'vi':'Giờ: %1$s|Tóm tắt|Tóm tắt phim bộ|Tóm tắt tập|Nhà cung cấp chưa có tóm tắt cho nội dung này.|Nhà cung cấp chưa có tóm tắt cho tập này.|Không tải được tóm tắt. Hãy thử lại.|Đóng',
+'id':'Waktu: %1$s|Sinopsis|Sinopsis serial|Sinopsis episode|Penyedia belum memberikan sinopsis untuk judul ini.|Penyedia belum memberikan sinopsis untuk episode ini.|Sinopsis tidak dapat dimuat. Coba lagi.|Tutup'
+}
+detail_rows['tr']=detail_rows.pop(' tr')
 root=Path(__file__).resolve().parents[1]/'app/src/main/res'
 for lang,row in rows.items():
     values=row.split('|'); assert len(values)==len(keys),(lang,len(values),len(keys))
@@ -100,6 +124,8 @@ for lang,row in rows.items():
     data.update(zip(extra_keys,translated))
     football=football_rows[lang].split('|');assert len(football)==len(football_keys),(lang,len(football))
     data.update(zip(football_keys,football))
+    details=detail_rows[lang].split('|');assert len(details)==len(detail_keys),(lang,len(details))
+    data.update(zip(detail_keys,details))
     for index,noun in enumerate(['channel','movie','series','season','episode','item']):
         data['one_'+noun]='1 '+u[index*2];data[noun+'_count']='%1$s '+u[index*2+1]
     data['total_count']='%1$s '+u[12];data['saved_count']='%1$s '+u[13];data['season']=u[14]+' %1$d'

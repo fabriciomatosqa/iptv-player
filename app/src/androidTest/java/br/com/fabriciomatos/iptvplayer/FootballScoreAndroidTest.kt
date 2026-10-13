@@ -32,11 +32,11 @@ class FootballScoreAndroidTest {
         assertEquals(listOf(liveResult),decodeFootballFeed(encodeFootballFeed(FootballFeed(listOf(liveResult),now))).events)
         val match=FootballMatch("replay",Programme("Al Nassr x Neftchi Fergana - AFC Champions League Elite",parsed.kickoff+4*3600000L,now+2*86400000L),
             emptyList(),FootballDetails("AFC Champions League Elite","Al Nassr","Neftchi Fergana"))
-        val repository=PlaylistRepository(context);var calls=0
-        val loader=FootballScoreRepository(repository) {address->assertTrue(address.startsWith("https://site.api.espn.com/"));assertFalse(address.contains("username"));calls++;json}
-        val first=loader.load(listOf(match),now=now);assertEquals(2,calls)
-        loader.load(listOf(match),now=now+59999);assertEquals(2,calls)
-        loader.load(listOf(match),now=now+60000);assertEquals(3,calls)
+        val repository=PlaylistRepository(context);val calls=java.util.concurrent.atomic.AtomicInteger()
+        val loader=FootballScoreRepository(repository) {address->assertTrue(address.startsWith("https://www.fotmob.com/") || address.startsWith("https://site.api.espn.com/"));assertFalse(address.contains("username"));assertTrue(Regex("[?&](?:date|dates)=[0-9]{8}(?:&|$)").containsMatchIn(address));calls.incrementAndGet();if(address.contains("fotmob"))error("Primary offline")else json}
+        val first=loader.load(listOf(match),now=now);val firstCalls=calls.get();assertTrue(firstCalls>0)
+        loader.load(listOf(match),now=now+59999);val retryCalls=calls.get();assertEquals(firstCalls+footballRequestDays(listOf(match),now).size,retryCalls)
+        loader.load(listOf(match),now=now+60000);assertEquals(retryCalls+footballRequestDays(listOf(match),now).size+2,calls.get())
         val result=matchFootballScore(match,first)!!
         assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme,result.event))
         repository.close()

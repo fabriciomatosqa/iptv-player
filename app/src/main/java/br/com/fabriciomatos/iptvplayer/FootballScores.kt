@@ -76,20 +76,29 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
 }
 fun footballScoreTeamKey(name: String): String {
     nationalTeam(name)?.let {return "country:"+it.country.lowercase()}
-    return teamKey(name).replace(Regex("^(?:fk|cf|ec|cr|ac)\\s+|\\s+(?:fk|cf|ec|cr|ac)$"),"")
+    val key=teamKey(name).replace(Regex("^(?:fk|cf|ec|cr|ac)\\s+|\\s+(?:fk|cf|ec|cr|ac)$"),"")
         .replace(Regex("^(?:clube de regatas|clube atletico)\\s+"),"").replace(" ","").trim()
+    return when(key) {
+        "neftchifargona"->"neftchifergana"
+        "sportingcp","sportinglisbon","sportingclubeportugal","sportingclubedeportugal"->"sporting"
+        else->key
+    }
 }
 private fun matchesScoreTeam(name: String, team: ScoreTeam): Boolean = team.names.any {footballScoreTeamKey(it)==footballScoreTeamKey(name)}
 
 /** Exact teams, a compatible competition and a bounded date window; never guess from a partial name. */
 fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? {
     val leagues=footballScoreLeagues(match.details)
-    val candidates=feed.events.filter {event ->
+    val compatible=feed.events.filter {event ->
         event.league in leagues && event.kickoff in (match.programme.start-7*86400000L)..(match.programme.start+90*60000L) &&
             ((matchesScoreTeam(match.details.home,event.home) && matchesScoreTeam(match.details.away,event.away)) ||
                 (matchesScoreTeam(match.details.home,event.away) && matchesScoreTeam(match.details.away,event.home))) &&
             (match.programme.broadcast!=BroadcastHint.REPLAY || event.kickoff<=match.programme.start)
-    }.distinctBy {it.league+":"+it.id}.sortedBy {abs(it.kickoff-match.programme.start)}
+    }.distinctBy {it.league+":"+it.id}
+    // Prefer the new source without treating two providers' IDs as two different matches.
+    val preferred=compatible.filter {it.id.startsWith("fotmob:") && scoreIsFresh(it,feed.checked)}
+    val candidates=(preferred.ifEmpty {compatible.filterNot {it.id.startsWith("fotmob:")}.ifEmpty {compatible}})
+        .sortedBy {abs(it.kickoff-match.programme.start)}
     val chosen=candidates.firstOrNull() ?: return null
     // Two different games at nearly the same time require better metadata, not an arbitrary score.
     if(candidates.getOrNull(1)?.let {abs(abs(it.kickoff-match.programme.start)-abs(chosen.kickoff-match.programme.start))<30*60000L}==true)return null
