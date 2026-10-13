@@ -114,6 +114,14 @@
     <string name="now_on_channel">Ahora en el canal</string>
     <string name="original_match">Partido original: %1$s</string>
     <string name="last_score_update">Marcador actualizado a las %1$s</string>
+    <string name="broadcast_time">Horario: %1$s</string>
+    <string name="synopsis">Sinopsis</string>
+    <string name="series_synopsis">Sinopsis de la serie</string>
+    <string name="episode_synopsis">Sinopsis del episodio</string>
+    <string name="synopsis_unavailable">El proveedor no ha incluido la sinopsis de este contenido.</string>
+    <string name="episode_synopsis_unavailable">El proveedor no ha incluido la sinopsis de este episodio.</string>
+    <string name="synopsis_failed">No se pudo cargar la sinopsis. Inténtalo de nuevo.</string>
+    <string name="close_details">Cerrar</string>
     <string name="one_channel">1 canal</string>
     <string name="channel_count">%1$s canales</string>
     <string name="one_movie">1 película</string>

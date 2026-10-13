@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.collect
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.animation.core.*
 
 @Composable internal fun FootballScreen(model: AuroraViewModel) {
     var now by remember {mutableLongStateOf(System.currentTimeMillis())}
@@ -126,14 +128,25 @@ import java.util.Locale
                 FootballTeam(match.details.away,awayBadge,Modifier.weight(1f))
             }
             if(event==null)Text(tr(R.string.score_unavailable),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            val broadcast=when(mode) {
-                BroadcastMode.REPLAY->R.string.replay
-                BroadcastMode.LIVE->R.string.live_broadcast
-                BroadcastMode.UNCONFIRMED->R.string.broadcast
+            Column(Modifier.testTag("football_broadcast"),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                val color=MaterialTheme.colorScheme.primary
+                val locale=Locale.forLanguageTag(model.language)
+                Text(tr(R.string.broadcast)+":",color=color,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+                if(transmissionIsLive(match.programme,event,now)) {
+                    val transition=rememberInfiniteTransition(label="live transmission")
+                    val opacity by transition.animateFloat(0f,1f,infiniteRepeatable(tween(700),RepeatMode.Reverse),label="live dot")
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                        Text(tr(R.string.live_score).uppercase(locale),color=color,fontSize=13.sp,fontWeight=FontWeight.Bold)
+                        Box(Modifier.size(8.dp).alpha(opacity).clip(androidx.compose.foundation.shape.CircleShape).background(color).testTag("football_live_dot"))
+                    }
+                } else {
+                    if(mode==BroadcastMode.REPLAY)Text(tr(R.string.replay),color=color,fontWeight=FontWeight.Bold,fontSize=12.sp)
+                    Text(footballDay(match.programme.start,locale),color=color,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+                    Text(tr(R.string.broadcast_time,footballTime(match.programme.start,locale)),color=color,fontSize=12.sp)
+                    if(match.programme.start<=now && match.programme.end>now)Text(tr(R.string.now_on_channel),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Text(tr(broadcast)+" · "+footballDate(match.programme.start),Modifier.testTag("football_broadcast"),color=MaterialTheme.colorScheme.primary,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
-            if(match.programme.start<=now && match.programme.end>now)Text(tr(R.string.now_on_channel),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            if(event!=null && mode==BroadcastMode.REPLAY)Text(tr(R.string.original_match,footballDate(event.kickoff)),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            if(event!=null && mode==BroadcastMode.REPLAY)Text(tr(R.string.original_match,footballDay(event.kickoff,Locale.forLanguageTag(model.language))+" · "+footballTime(event.kickoff,Locale.forLanguageTag(model.language))),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(event!=null && event.state in listOf(MatchState.LIVE,MatchState.HALFTIME) && !scoreIsFresh(event,now))
                 Text(tr(R.string.last_score_update,SimpleDateFormat("HH:mm",Locale.getDefault()).format(Date(event.checked))),fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -163,4 +176,3 @@ import java.util.Locale
         if(image.isNotBlank())AsyncImage(catalogImage(image),null,Modifier.fillMaxSize().padding(3.dp),contentScale=ContentScale.Fit)
     }
 }
-private fun footballDate(value: Long) = SimpleDateFormat("EEE, dd MMM · HH:mm",Locale.getDefault()).format(Date(value))

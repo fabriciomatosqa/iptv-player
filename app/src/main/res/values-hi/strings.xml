@@ -114,6 +114,14 @@
     <string name="now_on_channel">अभी इस चैनल पर</string>
     <string name="original_match">मूल मैच: %1$s</string>
     <string name="last_score_update">स्कोर %1$s पर अपडेट हुआ</string>
+    <string name="broadcast_time">समय: %1$s</string>
+    <string name="synopsis">कहानी का सार</string>
+    <string name="series_synopsis">श्रृंखला का सार</string>
+    <string name="episode_synopsis">एपिसोड का सार</string>
+    <string name="synopsis_unavailable">प्रदाता ने इस शीर्षक का सार नहीं दिया है।</string>
+    <string name="episode_synopsis_unavailable">प्रदाता ने इस एपिसोड का सार नहीं दिया है।</string>
+    <string name="synopsis_failed">सार लोड नहीं हो सका। फिर से कोशिश करें।</string>
+    <string name="close_details">बंद करें</string>
     <string name="one_channel">1 चैनल</string>
     <string name="channel_count">%1$s चैनल</string>
     <string name="one_movie">1 फ़िल्म</string>

@@ -114,6 +114,14 @@
     <string name="now_on_channel">Зараз на каналі</string>
     <string name="original_match">Початковий матч: %1$s</string>
     <string name="last_score_update">Рахунок оновлено о %1$s</string>
+    <string name="broadcast_time">Час: %1$s</string>
+    <string name="synopsis">Опис</string>
+    <string name="series_synopsis">Опис серіалу</string>
+    <string name="episode_synopsis">Опис епізоду</string>
+    <string name="synopsis_unavailable">Постачальник не надав опис цього матеріалу.</string>
+    <string name="episode_synopsis_unavailable">Постачальник не надав опис цього епізоду.</string>
+    <string name="synopsis_failed">Не вдалося завантажити опис. Спробуйте знову.</string>
+    <string name="close_details">Закрити</string>
     <string name="one_channel">1 канал</string>
     <string name="channel_count">%1$s каналів</string>
     <string name="one_movie">1 фільм</string>

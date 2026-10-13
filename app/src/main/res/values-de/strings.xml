@@ -114,6 +114,14 @@
     <string name="now_on_channel">Jetzt auf dem Sender</string>
     <string name="original_match">Ursprüngliches Spiel: %1$s</string>
     <string name="last_score_update">Spielstand aktualisiert um %1$s</string>
+    <string name="broadcast_time">Uhrzeit: %1$s</string>
+    <string name="synopsis">Inhalt</string>
+    <string name="series_synopsis">Serienbeschreibung</string>
+    <string name="episode_synopsis">Folgenbeschreibung</string>
+    <string name="synopsis_unavailable">Der Anbieter hat keine Beschreibung für diesen Titel bereitgestellt.</string>
+    <string name="episode_synopsis_unavailable">Der Anbieter hat keine Beschreibung für diese Folge bereitgestellt.</string>
+    <string name="synopsis_failed">Beschreibung konnte nicht geladen werden. Erneut versuchen.</string>
+    <string name="close_details">Schließen</string>
     <string name="one_channel">1 Sender</string>
     <string name="channel_count">%1$s Sender</string>
     <string name="one_movie">1 Film</string>

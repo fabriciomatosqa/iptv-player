@@ -114,6 +114,14 @@
     <string name="now_on_channel">이 채널에서 방송 중</string>
     <string name="original_match">원래 경기: %1$s</string>
     <string name="last_score_update">점수 업데이트: %1$s</string>
+    <string name="broadcast_time">시간: %1$s</string>
+    <string name="synopsis">줄거리</string>
+    <string name="series_synopsis">시리즈 줄거리</string>
+    <string name="episode_synopsis">에피소드 줄거리</string>
+    <string name="synopsis_unavailable">제공자가 이 작품의 줄거리를 제공하지 않았습니다.</string>
+    <string name="episode_synopsis_unavailable">제공자가 이 에피소드의 줄거리를 제공하지 않았습니다.</string>
+    <string name="synopsis_failed">줄거리를 불러오지 못했습니다. 다시 시도하세요.</string>
+    <string name="close_details">닫기</string>
     <string name="one_channel">1 채널</string>
     <string name="channel_count">%1$s 채널</string>
     <string name="one_movie">1 영화</string>

@@ -114,6 +114,14 @@
     <string name="now_on_channel">正在本频道播出</string>
     <string name="original_match">原比赛：%1$s</string>
     <string name="last_score_update">比分更新于 %1$s</string>
+    <string name="broadcast_time">时间：%1$s</string>
+    <string name="synopsis">剧情简介</string>
+    <string name="series_synopsis">剧集简介</string>
+    <string name="episode_synopsis">本集简介</string>
+    <string name="synopsis_unavailable">提供商尚未提供此内容的简介。</string>
+    <string name="episode_synopsis_unavailable">提供商尚未提供本集的简介。</string>
+    <string name="synopsis_failed">无法加载简介，请重试。</string>
+    <string name="close_details">关闭</string>
     <string name="one_channel">1 频道</string>
     <string name="channel_count">%1$s 频道</string>
     <string name="one_movie">1 电影</string>

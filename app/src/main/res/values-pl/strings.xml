@@ -114,6 +114,14 @@
     <string name="now_on_channel">Teraz na kanale</string>
     <string name="original_match">Oryginalny mecz: %1$s</string>
     <string name="last_score_update">Wynik zaktualizowany o %1$s</string>
+    <string name="broadcast_time">Godzina: %1$s</string>
+    <string name="synopsis">Opis</string>
+    <string name="series_synopsis">Opis serialu</string>
+    <string name="episode_synopsis">Opis odcinka</string>
+    <string name="synopsis_unavailable">Dostawca nie udostępnił opisu tego tytułu.</string>
+    <string name="episode_synopsis_unavailable">Dostawca nie udostępnił opisu tego odcinka.</string>
+    <string name="synopsis_failed">Nie udało się załadować opisu. Spróbuj ponownie.</string>
+    <string name="close_details">Zamknij</string>
     <string name="one_channel">1 kanał</string>
     <string name="channel_count">%1$s kanały</string>
     <string name="one_movie">1 film</string>

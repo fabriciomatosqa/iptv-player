@@ -114,6 +114,14 @@
     <string name="now_on_channel">Đang phát trên kênh</string>
     <string name="original_match">Trận gốc: %1$s</string>
     <string name="last_score_update">Tỷ số cập nhật lúc %1$s</string>
+    <string name="broadcast_time">Giờ: %1$s</string>
+    <string name="synopsis">Tóm tắt</string>
+    <string name="series_synopsis">Tóm tắt phim bộ</string>
+    <string name="episode_synopsis">Tóm tắt tập</string>
+    <string name="synopsis_unavailable">Nhà cung cấp chưa có tóm tắt cho nội dung này.</string>
+    <string name="episode_synopsis_unavailable">Nhà cung cấp chưa có tóm tắt cho tập này.</string>
+    <string name="synopsis_failed">Không tải được tóm tắt. Hãy thử lại.</string>
+    <string name="close_details">Đóng</string>
     <string name="one_channel">1 kênh</string>
     <string name="channel_count">%1$s kênh</string>
     <string name="one_movie">1 phim</string>

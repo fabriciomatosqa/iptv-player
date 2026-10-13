@@ -114,6 +114,14 @@
     <string name="now_on_channel">এখন এই চ্যানেলে</string>
     <string name="original_match">মূল ম্যাচ: %1$s</string>
     <string name="last_score_update">স্কোর আপডেট হয়েছে %1$s এ</string>
+    <string name="broadcast_time">সময়: %1$s</string>
+    <string name="synopsis">সারসংক্ষেপ</string>
+    <string name="series_synopsis">সিরিজের সারসংক্ষেপ</string>
+    <string name="episode_synopsis">পর্বের সারসংক্ষেপ</string>
+    <string name="synopsis_unavailable">সরবরাহকারী এই বিষয়বস্তুর সারসংক্ষেপ দেয়নি।</string>
+    <string name="episode_synopsis_unavailable">সরবরাহকারী এই পর্বের সারসংক্ষেপ দেয়নি।</string>
+    <string name="synopsis_failed">সারসংক্ষেপ লোড করা যায়নি। আবার চেষ্টা করুন।</string>
+    <string name="close_details">বন্ধ করুন</string>
     <string name="one_channel">1 চ্যানেল</string>
     <string name="channel_count">%1$s চ্যানেল</string>
     <string name="one_movie">1 সিনেমা</string>

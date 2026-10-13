@@ -335,6 +335,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                 VideoPane(model, Modifier.fillMaxWidth().aspectRatio(16f / 9f))
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(model.current!!.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if(!live)SynopsisAction(model,model.current,series)
                     IconButton(onClick = { model.closeVideo() }, Modifier.size(48.dp)) { Icon(Icons.Default.Close, tr(R.string.close_video), tint = Muted) }
                 }
             }
@@ -428,6 +429,7 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(tr(R.string.select_episode), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             Text(tr(R.string.episode_in_season,episodeCount(series.episodeCount),seasonCount(series.seasons.size)), color = Muted, fontSize = 12.sp)
+            SynopsisAction(model,series=series)
         }
     }
 }
@@ -633,6 +635,7 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
             ProgrammeCell(present, Modifier.weight(1f), if (selected) Mint else Txt)
             ProgrammeCell(next, Modifier.weight(1f), Muted)
         }
+        if(!isLive)SynopsisAction(model,channel,model.openedSeries,iconOnly=true)
         IconButton(onClick = { model.toggleFavorite(channel) }, modifier = Modifier.size(48.dp)) {
             Icon(if (channel.url in model.favorites) Icons.Default.Star else Icons.Default.StarBorder,
                 if (channel.url in model.favorites) tr(R.string.remove_favorite) else tr(R.string.add_favorite),
@@ -659,6 +662,7 @@ private fun CurrentProgramme(model: AuroraViewModel, modifier: Modifier) {
         item { Text(show?.let { "${time(it.start)} – ${time(it.end)}" } ?: channel.group, color = Mint, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp)) }
         item { Text(if (channel.kind == MediaKind.LIVE) show?.title ?: tr(R.string.no_guide) else model.openedSeries?.title ?: tr(R.string.movies),
             color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp)) }
+        if(channel.kind!=MediaKind.LIVE)item {SynopsisAction(model,channel,model.openedSeries)}
     }
 }
 

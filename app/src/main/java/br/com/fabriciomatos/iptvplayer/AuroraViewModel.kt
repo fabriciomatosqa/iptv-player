@@ -48,6 +48,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private val repository = PlaylistRepository(application)
     private val artwork = ArtworkResolver(repository)
     private val scores = FootballScoreRepository(repository)
+    private val synopses = SynopsisRepository(repository)
     private val scoreRefresh = Mutex()
     private val coverRequests = mutableMapOf<String,Deferred<String?>>()
     private val preferences = AppSettings(application)
@@ -333,6 +334,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         return request.await()
     }
     suspend fun footballArtwork(details: FootballDetails): FootballArtwork = viewModelScope.async {artwork.football(details)}.await()
+    suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false): Synopsis {
+        if(channel?.adult==true && !adultUnlocked || series?.adult==true && !adultUnlocked)return Synopsis()
+        return synopses.load(playlistUrl,channel,series,force)
+    }
     private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
     fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
     fun dismissParental() { parentalRequestId++;parentalDialog=false;protectedAction=null;parentalError=null }

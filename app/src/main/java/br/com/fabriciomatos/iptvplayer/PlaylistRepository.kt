@@ -237,6 +237,37 @@ class PlaylistRepository(context: Context) {
         }
         return ProviderMetadata(kinds, posters)
     }
+    fun synopsisSeriesId(source: String, title: String): String? = helper.readableDatabase.rawQuery(
+        "SELECT DISTINCT provider_id FROM series_posters WHERE source_key=? AND (name_norm=? OR name_norm=?) AND provider_id<>'' LIMIT 2",
+        arrayOf(digest(source),normalized(title),posterAlias(title))).use {cursor->
+        if(!cursor.moveToFirst())null else cursor.getString(0).takeUnless {cursor.moveToNext()}
+    }
+    fun synopsisMovieId(source: String, title: String): String? = helper.readableDatabase.rawQuery(
+        "SELECT DISTINCT provider_id FROM vod_ids WHERE source_key=? AND name_norm=? LIMIT 2",
+        arrayOf(digest(source),normalized(title))).use {cursor->
+        if(!cursor.moveToFirst())null else cursor.getString(0).takeUnless {cursor.moveToNext()}
+    }
+    /** Stream the provider's index to disk, including providers with opaque playback URLs. */
+    suspend fun refreshVodIds(source: String) {
+        val sourceKey=digest(source)
+        val key="vod-index:"+sourceKey
+        if(cachedArtwork(key)!=null)return
+        val db=helper.writableDatabase
+        db.beginTransactionNonExclusive()
+        try {
+            db.execSQL("DELETE FROM vod_ids WHERE source_key=?",arrayOf(sourceKey))
+            db.compileStatement("INSERT OR IGNORE INTO vod_ids(source_key,name_norm,provider_id) VALUES(?,?,?)").use {statement->
+                ProviderApi.readVodIds(source) {row->
+                    val id=row["stream_id"].orEmpty()
+                    if(id.matches(Regex("[0-9]+")))listOf(row["name"],row["title"]).filterNotNull().filter(String::isNotBlank).distinct().forEach {title->
+                        statement.bindString(1,sourceKey);statement.bindString(2,normalized(title));statement.bindString(3,id);statement.executeInsert()
+                    }
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {db.endTransaction()}
+        saveArtwork(key,"{}",86400000L)
+    }
     fun needsMetadata(source: String): Boolean {
         if (ProviderApi.endpoint(source, "get_series") == null) return false
         return helper.readableDatabase.rawQuery("SELECT metadata_ready,metadata_checked FROM playlists WHERE source_key=?", arrayOf(digest(source))).use {
@@ -543,19 +574,23 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,5){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,6){
     init{setWriteAheadLoggingEnabled(true)}
     override fun onConfigure(db: SQLiteDatabase){db.setForeignKeyConstraintsEnabled(true);db.execSQL("PRAGMA synchronous=FULL")}
     override fun onCreate(db: SQLiteDatabase){
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
-        upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db)
+        upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db);upgradeSynopses(db)
     }
     override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
         if(oldVersion<2)upgrade(db)
         if(oldVersion<3)upgradePreferences(db)
         if(oldVersion<4)upgradeArtwork(db)
         if(oldVersion<5)upgradeBroadcast(db)
+        if(oldVersion<6)upgradeSynopses(db)
+    }
+    private fun upgradeSynopses(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS vod_ids(source_key TEXT NOT NULL,name_norm TEXT NOT NULL,provider_id TEXT NOT NULL,PRIMARY KEY(source_key,name_norm,provider_id))")
     }
     private fun upgradeBroadcast(db: SQLiteDatabase) {
         db.execSQL("ALTER TABLE guide_programmes ADD COLUMN broadcast INTEGER NOT NULL DEFAULT 0")

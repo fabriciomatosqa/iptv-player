@@ -114,6 +114,14 @@
     <string name="now_on_channel">Сейчас на канале</string>
     <string name="original_match">Исходный матч: %1$s</string>
     <string name="last_score_update">Счёт обновлён в %1$s</string>
+    <string name="broadcast_time">Время: %1$s</string>
+    <string name="synopsis">Описание</string>
+    <string name="series_synopsis">Описание сериала</string>
+    <string name="episode_synopsis">Описание серии</string>
+    <string name="synopsis_unavailable">Поставщик не предоставил описание этого материала.</string>
+    <string name="episode_synopsis_unavailable">Поставщик не предоставил описание этой серии.</string>
+    <string name="synopsis_failed">Не удалось загрузить описание. Попробуйте снова.</string>
+    <string name="close_details">Закрыть</string>
     <string name="one_channel">1 канал</string>
     <string name="channel_count">%1$s каналов</string>
     <string name="one_movie">1 фильм</string>
