@@ -53,7 +53,7 @@ import coil.compose.AsyncImage
                     if(model.settingsSection!=0) IconButton(onClick={model.settingsSection=0}) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack,tr(R.string.back))
                     }
-                    Text(tr(when(model.settingsSection){2->R.string.language;4->R.string.programming;5->R.string.appearance;else->R.string.settings}),fontSize=23.sp,fontWeight=FontWeight.Bold)
+                    Text(tr(when(model.settingsSection){2->R.string.language;4->R.string.programming;5->R.string.appearance;6->R.string.app_update_title;else->R.string.settings}),fontSize=23.sp,fontWeight=FontWeight.Bold)
                 }
             }
             when(model.settingsSection) {
@@ -63,7 +63,8 @@ import coil.compose.AsyncImage
                     item { SettingsItem(tr(R.string.language),appLanguages.first {it.tag==model.language}.label,Icons.Default.Language) {model.settingsSection=2} }
                     item { SettingsItem(tr(R.string.parental),tr(if(model.parentalConfigured)R.string.change_password else R.string.set_password),Icons.Default.Lock) {model.editParental()} }
                     item { SettingsItem(tr(R.string.programming),tr(R.string.football),Icons.Default.SportsSoccer) {model.settingsSection=4} }
-                    item { Text("AURORA IPTV · 1.10.0",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp) }
+                    item { SettingsItem(tr(R.string.app_update_title),tr(R.string.app_update_installed,BuildConfig.VERSION_NAME),Icons.Default.SystemUpdate) {model.settingsSection=6;if(model.onlineUpdate.state.phase==UpdatePhase.IDLE)model.onlineUpdate.check()} }
+                    item { Text("AURORA IPTV · ${BuildConfig.VERSION_NAME}",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp) }
                 }
                 2 -> items(appLanguages,key={it.tag}) {language ->
                     Row(Modifier.fillMaxWidth().clickable {model.chooseLanguage(language.tag)}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -78,6 +79,7 @@ import coil.compose.AsyncImage
                     item { Button(onClick={model.setGuideAddress(guideAddress)},modifier=Modifier.fillMaxWidth()) {Text(tr(R.string.save))} }
                     item { OutlinedButton(onClick={model.settingsOpen=false;model.showFootball()},modifier=Modifier.fillMaxWidth()) {Text(tr(R.string.football))} }
                 }
+                6 -> item { AppUpdateContent(model.onlineUpdate) }
                 5 -> {
                     item {Text(tr(R.string.aurora_theme_help),color=MaterialTheme.colorScheme.onSurfaceVariant)}
                     items(AppAppearance.entries,key={it.name}) {appearance->
