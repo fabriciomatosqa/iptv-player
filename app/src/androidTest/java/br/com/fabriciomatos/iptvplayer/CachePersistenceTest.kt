@@ -120,6 +120,18 @@ class CachePersistenceTest {
 }
 
 internal fun resetCatalog(context: android.content.Context) {
+    // ActivityScenario.close() clears ViewModels, but their non-cancellable persistence and
+    // repository shutdown finish on IO. Deleting an open WAL database can corrupt the next
+    // test's new files (SQLITE_IOERR_SHORT_READ). Wait for actual descriptors, not a fixed delay.
+    InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+    val catalogFiles=setOf("aurora_catalog.db","aurora_catalog.db-wal","aurora_catalog.db-shm")
+    fun openCatalogFiles()=File("/proc/self/fd").listFiles().orEmpty().mapNotNull { descriptor ->
+        runCatching { android.system.Os.readlink(descriptor.path).removeSuffix(" (deleted)") }.getOrNull()
+    }.filter { it.substringAfterLast('/') in catalogFiles }
+    val deadline=android.os.SystemClock.uptimeMillis()+30000L
+    while(openCatalogFiles().isNotEmpty() && android.os.SystemClock.uptimeMillis()<deadline)
+        android.os.SystemClock.sleep(25)
+    check(openCatalogFiles().isEmpty()) { "Previous test has not closed its catalog database" }
     context.getSharedPreferences("aurora_settings", 0).edit().clear().commit()
     context.getSharedPreferences("aurora_iptv_preferences", 0).edit().clear().commit()
     context.deleteDatabase("aurora_catalog.db")
