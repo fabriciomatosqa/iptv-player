@@ -26,21 +26,33 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
     val result = linkedMapOf<String, FootballMatch>()
     val mostRecentByTeams = mutableMapOf<String, String>()
     // The same fixture may appear with slightly different EPG start times across providers.
-    // Sort once and merge only compatible competitions, teams and broadcast types.
-    guide.matches.asSequence().filter { it.programme.end > now-FOOTBALL_RETENTION_MS }
-        .sortedBy { it.programme.start }.forEach { entry ->
+    // Sort once and retain prior broadcasts only to identify genuine reruns.
+    val history = mutableMapOf<String, Programme>()
+    guide.matches.asSequence().sortedBy { it.programme.start }.forEach { entry ->
         val details = footballDetails(entry.programme.title, entry.programme.category) ?: return@forEach
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
+        val teams = listOf(footballScoreTeamKey(details.home), footballScoreTeamKey(details.away)).sorted()
+        val competition = if (footballTabKey(details) == FOOTBALL_LIBERTADORES_WOMEN)
+            FOOTBALL_LIBERTADORES_WOMEN else footballLeagueSlug(details.competition) ?: normalized(details.competition)
+        val fixtureKey = listOf(competition, teams[0], teams[1]).joinToString(":")
+        val previousAiring = history[fixtureKey]
+        val priorFinished = previousAiring != null && previousAiring.end < now &&
+            entry.programme.start - previousAiring.end in 2*3600000L..36*3600000L
+        // A replay label needs explicit EPG metadata or evidence of a previous airing.
+        val broadcast = if (entry.programme.broadcast == BroadcastHint.UNKNOWN && priorFinished)
+            BroadcastHint.REPLAY else entry.programme.broadcast
+        val programme = entry.programme.copy(broadcast=broadcast)
+        if (previousAiring == null || entry.programme.start - previousAiring.start > 90*60000L)
+            history[fixtureKey] = entry.programme
+        if (entry.programme.end <= now-FOOTBALL_RETENTION_MS) return@forEach
         if (available.isNotEmpty()) {
-            val teams = listOf(footballScoreTeamKey(details.home), footballScoreTeamKey(details.away)).sorted()
-            val competition = footballLeagueSlug(details.competition) ?: normalized(details.competition)
-            val category = if (entry.programme.broadcast == BroadcastHint.REPLAY) "replay" else "game"
-            val groupKey = listOf(competition, teams[0], teams[1], category).joinToString(":")
+            val category = if (programme.broadcast == BroadcastHint.REPLAY) "replay" else "game"
+            val groupKey = listOf(fixtureKey, category).joinToString(":")
             val previous = mostRecentByTeams[groupKey]?.let(result::get)
                 ?.takeIf { abs(it.programme.start - entry.programme.start) <= 90 * 60000L }
             val id = previous?.id ?: groupKey + ":" + entry.programme.start
-            result[id] = FootballMatch(id, previous?.programme ?: entry.programme,
+            result[id] = FootballMatch(id, previous?.programme ?: programme,
                 (previous?.channels.orEmpty() + available).distinctBy { it.url }
                     .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name }), details)
             mostRecentByTeams[groupKey] = id

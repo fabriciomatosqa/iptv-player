@@ -69,7 +69,8 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
             val json=readJson("https://www.fotmob.com/api/data/matchDetails?matchId=$id")
             parseFotMobIncidents(json,id)
         }.getOrNull() ?: return@withContext null
-        repository.saveArtwork(key,encodeFootballIncidents(result).toString(),60*60000L)
+        repository.saveArtwork(key,encodeFootballIncidents(result).toString(),
+            if (score.state in listOf(MatchState.LIVE, MatchState.HALFTIME)) FOOTBALL_REFRESH_MS else 60*60000L)
         result
     }
     /** Correct conflicting guide dates only from an exact, fresh match. Keep the correction after reopening. */

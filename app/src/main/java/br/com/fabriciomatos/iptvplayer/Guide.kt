@@ -55,7 +55,9 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                             start = xmltvTime(parser.getAttributeValue(null, "start").orEmpty())
                             end = xmltvTime(parser.getAttributeValue(null, "stop").orEmpty())
                             title = ""; image = ""; category = "";broadcast=BroadcastHint.UNKNOWN
-                            accepted = end > now-FOOTBALL_RETENTION_MS
+                            // Retain recent football broadcasts to identify a later airing as a replay.
+                            // Keep ordinary channel guide cards filtered below as before.
+                            accepted = end > now-36*3600000L
                         }
                         "title" -> if (entry == "programme" && accepted && title.isEmpty()) title = parser.nextText().take(300)
                         "category" -> if (entry == "programme" && accepted) category += " " + parser.nextText().take(100)
