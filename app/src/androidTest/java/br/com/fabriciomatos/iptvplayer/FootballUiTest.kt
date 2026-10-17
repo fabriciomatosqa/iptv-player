@@ -91,6 +91,7 @@ class FootballUiTest {
             assertTrue(portraitTeams.bottom<=portraitTime.top)
             screenshot("football-aurora-dark-portrait")
             scenario.onActivity {model.chooseAppearance(AppAppearance.LIGHT)}
+            compose.waitUntil(10000) {model.appearance==AppAppearance.LIGHT}
             compose.waitForIdle();screenshot("football-aurora-light-portrait")
             scenario.onActivity {it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE}
             compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE}
@@ -101,6 +102,7 @@ class FootballUiTest {
             compose.onNodeWithTag("football_search").assertIsDisplayed()
             screenshot("football-aurora-light-landscape")
             scenario.onActivity {model.chooseAppearance(AppAppearance.DARK)}
+            compose.waitUntil(10000) {model.appearance==AppAppearance.DARK}
             compose.waitForIdle();screenshot("football-aurora-dark-landscape")
             scenario.onActivity {model.footballTab="eng.1";it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_PORTRAIT && compose.onAllNodesWithText("Wolverhampton Wanderers").fetchSemanticsNodes().isNotEmpty()}
