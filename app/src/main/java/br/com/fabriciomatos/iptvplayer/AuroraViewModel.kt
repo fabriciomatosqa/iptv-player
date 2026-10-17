@@ -362,6 +362,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             filtering = false
         }
     }
+    /** Lookup runs off the main thread; no full catalog is loaded for group artwork. */
+    suspend fun groupLogo(source: String, group: String): String = withContext(Dispatchers.IO) {
+        repository.groupLogo(source, group)
+    }
     fun groups(): List<String> {
         val raw=if(selectedKind==null)catalog.groups.values.flatten().distinct() else catalog.groups[selectedKind].orEmpty()
         if(selectedKind==MediaKind.MOVIES)return orderedMovieCategories(raw)
