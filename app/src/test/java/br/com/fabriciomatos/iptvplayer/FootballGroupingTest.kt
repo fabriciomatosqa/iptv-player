@@ -9,13 +9,13 @@ class FootballGroupingTest {
         GuideMatch(id,Programme("Fenerbahçe x Alanyaspor - Campeonato Turco de Futebol",start,start+2*3600000L,broadcast=hint))
     @Test fun sameFixtureWithDifferentEpgMinutesSharesOneCardAndAllStreams() {
         val now=1800000000000L
-        val channels=listOf(channel("ESPN 2 FHD","e"),channel("ESPN 2 HD","f"),channel("SPORTV HD","s"),
+        val channels=listOf(channel("ESPN 2 FULL HD","e"),channel("ESPN 2 HD","f"),channel("SPORTV HD","s"),
             channel("SPORTV SD","t"))
         val items=listOf(entry("e",now),entry("f",now+5*60000L),entry("s",now+15*60000L),entry("t",now+12*60000L))
         val matches=footballMatches(Guide(matches=items),channels,now)
         assertEquals(1,matches.size)
         assertEquals(4,matches.single().channels.size)
-        assertEquals(listOf("ESPN 2 FHD","SPORTV HD"),footballFeaturedChannels(matches.single().channels).map {it.name})
+        assertEquals(listOf("ESPN 2 FULL HD","SPORTV HD"),footballFeaturedChannels(matches.single().channels).map {it.name})
     }
     @Test fun distinctFixturesAndReplaysRemainSeparate() {
         val now=1800000000000L
