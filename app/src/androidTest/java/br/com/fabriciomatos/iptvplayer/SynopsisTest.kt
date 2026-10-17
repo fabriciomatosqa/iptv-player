@@ -2,6 +2,7 @@ package br.com.fabriciomatos.iptvplayer
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -90,7 +91,9 @@ class SynopsisTest {
             compose.onNodeWithText("História da série de teste.").assertExists()
             assertNull(model.current);screenshot("series-episode-synopsis")
             closeSynopsis(scenario)
-            compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).performClick()
+            // Exercise the accessible button action after native dialog removal; input dispatch can lag window focus.
+            compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).assertIsDisplayed()
+                .performSemanticsAction(SemanticsActions.OnClick) {it()}
             compose.waitUntil(10000) {compose.onAllNodesWithText("História da série de teste.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
         }

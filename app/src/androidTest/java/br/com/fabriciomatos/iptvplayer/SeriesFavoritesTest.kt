@@ -29,6 +29,7 @@ class SeriesFavoritesTest {
             it.saveSource(source,"Favoritos");it.appendCache(source,Download(Playlist(episodes+movie),"",""))
             it.saveFavorites(setOf(episodes.first().url,movie.url));it.close()
         }
+        legacyHostCopies(context,source,0)
         SQLiteDatabase.openDatabase(context.getDatabasePath("aurora_catalog.db").path,null,SQLiteDatabase.OPEN_READWRITE).use {
             it.execSQL("DROP TABLE series_favorites");it.execSQL("DROP TABLE playback_progress");it.version=6
         }

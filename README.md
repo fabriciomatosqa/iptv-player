@@ -2,6 +2,10 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.1
+
+Corrige o crescimento indevido do catálogo quando o provedor alterna os servidores dos endereços `/play/<identificador de 64 dígitos hexadecimais>`. A identidade fica vinculada à playlist e ao caminho completo, incluindo formato, query e fragmento; outros endereços continuam separados pela URL integral. O endereço de reprodução é atualizado sem inserir outra cópia. A migração do banco v7 para v8 remove cópias acumuladas, preserva a ordem original e o endereço mais recente, remapeia favoritos, último conteúdo e progresso e recalcula os totais. Séries favoritas, listas e registro diário são mantidos. O banco reparado é compactado quando possível; a limpeza não depende de um novo download da lista.
+
 ## Versão 1.12.0
 
 - Futebol com nova apresentação Aurora: cards com bordas e luzes suaves em verde, ciano e violeta, escudos maiores, nomes abaixo dos escudos e placares centralizados com melhor contraste.

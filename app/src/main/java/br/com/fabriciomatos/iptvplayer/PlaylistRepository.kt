@@ -33,11 +33,21 @@ class PlaylistRepository(context: Context) {
     private var favoritesSynced = false
     fun savedUrl() = prefs.getString("playlist_url", "").orEmpty()
     fun savedName() = prefs.getString("playlist_name", "Minha playlist").orEmpty()
-    fun favorites() = prefs.getStringSet("favorite_urls", emptySet()).orEmpty().toSet()
-    fun lastUrl(source: String = savedUrl()) = prefs.getString("last_"+digest(source),
-        if(source==savedUrl() && !prefs.contains("saved_playlists"))prefs.getString("last_channel_url", "") else "").orEmpty()
+    fun favorites() = resolveFavorites(prefs.getStringSet("favorite_urls", emptySet()).orEmpty())
+    private fun resolveFavorites(urls: Set<String>): Set<String> = buildSet {
+        val db=helper.readableDatabase
+        urls.forEach { url ->
+            val current=db.rawQuery("SELECT url FROM channels WHERE source_key IN(SELECT source_key FROM playlists) AND content_key=?",arrayOf(catalogContentKey(url))).use { cursor ->
+                buildList {while(cursor.moveToNext())add(cursor.getString(0))}
+            }
+            if(current.isEmpty())add(url) else addAll(current)
+        }
+    }
+    private fun currentUrl(source: String, url: String) = resolveCatalogUrl(helper.readableDatabase,digest(source),url)
+    fun lastUrl(source: String = savedUrl()) = currentUrl(source,prefs.getString("last_"+digest(source),
+        if(source==savedUrl() && !prefs.contains("saved_playlists"))prefs.getString("last_channel_url", "") else "").orEmpty())
     fun saveLast(channel: Channel, source: String = savedUrl()) {
-        if(!prefs.edit().putString("last_"+digest(source), channel.url).commit())throw IOException("Não consegui salvar o último conteúdo.")
+        if(!prefs.edit().putString("last_"+digest(source), currentUrl(source,channel.url)).commit())throw IOException("Não consegui salvar o último conteúdo.")
     }
     @Synchronized fun savedPlaylists(): List<SavedPlaylist> {
         val stored=runCatching { JSONArray(prefs.getString("saved_playlists","[]")) }.getOrDefault(JSONArray())
@@ -54,8 +64,9 @@ class PlaylistRepository(context: Context) {
     }
 
     @Synchronized fun saveFavorites(urls: Set<String>) {
-        if (!prefs.edit().putStringSet("favorite_urls", urls).commit()) throw IOException("Não consegui salvar os favoritos.")
-        syncFavorites(urls)
+        val current=resolveFavorites(urls)
+        if (!prefs.edit().putStringSet("favorite_urls", current).commit()) throw IOException("Não consegui salvar os favoritos.")
+        syncFavorites(current)
     }
     private fun syncFavorites(urls: Set<String> = favorites()) {
         val db = helper.writableDatabase
@@ -93,12 +104,12 @@ class PlaylistRepository(context: Context) {
         if(episodes.isNotEmpty())saveFavorites(favorites()-episodes)
     }
     fun playbackProgress(source: String, url: String): PlaybackProgress? = helper.readableDatabase.rawQuery(
-        "SELECT position_ms,duration_ms,completed FROM playback_progress WHERE source_key=? AND url=?",arrayOf(digest(source),url)).use {
+        "SELECT position_ms,duration_ms,completed FROM playback_progress WHERE source_key=? AND url=?",arrayOf(digest(source),currentUrl(source,url))).use {
         if(it.moveToFirst())PlaybackProgress(it.getLong(0),it.getLong(1),it.getInt(2)!=0) else null
     }
     @Synchronized fun savePlaybackProgress(source: String, url: String, progress: PlaybackProgress) {
         helper.writableDatabase.insertWithOnConflict("playback_progress",null,ContentValues().apply {
-            put("source_key",digest(source));put("url",url);put("position_ms",progress.positionMs.coerceAtLeast(0))
+            put("source_key",digest(source));put("url",currentUrl(source,url));put("position_ms",progress.positionMs.coerceAtLeast(0))
             put("duration_ms",progress.durationMs.coerceAtLeast(0));put("completed",if(progress.completed)1 else 0)
         },SQLiteDatabase.CONFLICT_REPLACE).also { if(it==-1L)throw IOException("Não consegui salvar a reprodução.") }
     }
@@ -270,12 +281,12 @@ class PlaylistRepository(context: Context) {
     fun seriesDetail(source: String, id: String): SeriesEntry? = helper.readableDatabase.rawQuery(
         "SELECT c.series_key,c.title,CASE WHEN EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.name_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.image) END,c.episode_count,c.seasons,c.adult,EXISTS(SELECT 1 FROM series_groups ag WHERE ag.source_key=c.source_key AND ag.series_key=c.series_key AND (lower(ag.group_name) LIKE '%crunchyroll%' OR lower(ag.group_name) LIKE '%anime%' OR lower(ag.group_name) LIKE '%funimation%' OR lower(ag.group_name) LIKE '%hidive%')) FROM series_directory c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.name_norm WHERE c.source_key=? AND c.series_key=?",
         arrayOf(digest(source), id)).use { if (it.moveToFirst()) readSeries(it) else null }
-    fun seriesId(source: String, url: String): String? = helper.readableDatabase.rawQuery("SELECT series_key FROM channels WHERE source_key=? AND url=?", arrayOf(digest(source), url)).use {
+    fun seriesId(source: String, url: String): String? = helper.readableDatabase.rawQuery("SELECT series_key FROM channels WHERE source_key=? AND url=?", arrayOf(digest(source), currentUrl(source,url))).use {
         if (it.moveToFirst()) it.getString(0).takeIf(String::isNotBlank) else null
     }
     fun channel(source: String, url: String): Channel? = helper.readableDatabase.rawQuery("SELECT " + CHANNEL_COLUMNS +
         " FROM channels c LEFT JOIN series_posters p ON p.source_key=c.source_key AND p.name_norm=c.series_norm WHERE c.source_key=? AND c.url=?",
-        arrayOf(digest(source), url)).use { if (it.moveToFirst()) readChannel(it) else null }
+        arrayOf(digest(source), currentUrl(source,url))).use { if (it.moveToFirst()) readChannel(it) else null }
     fun liveIds(source: String): Set<String> = helper.readableDatabase.rawQuery("SELECT DISTINCT tvg_id FROM channels WHERE source_key=? AND kind=0 AND tvg_id<>''", arrayOf(digest(source))).use {
         buildSet { while (it.moveToNext()) add(it.getString(0)) }
     }
@@ -462,17 +473,20 @@ class PlaylistRepository(context: Context) {
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
         progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, scan: ((Channel) -> Unit) -> String): ImportResult {
         val db=helper.writableDatabase; val key=digest(source); var added=0; var parsed=0
+        lateinit var result: ImportResult
         db.beginTransactionNonExclusive()
         try {
             ensureSource(db,key)
+            pinSavedCatalogUrls(db,prefs,key)
             val firstAdded=if(scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))>0)now else 0L
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
-            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added) VALUES(" + List(24){"?"}.joinToString(",") + ")"
-            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=? WHERE source_key=? AND url=? AND seen_generation<>?"
+            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key) VALUES(" + List(25){"?"}.joinToString(",") + ")"
+            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=CASE WHEN ?<>'' THEN ? ELSE image_url END,user_agent=?,referrer=?,mime_type=? WHERE source_key=? AND content_key=? AND seen_generation<>?"
             var epg=""
             db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
                 epg=scan { c ->
+                    val contentKey=catalogContentKey(c.url)
                     val identity=if(c.kind==MediaKind.SERIES)seriesIdentity(c) else null
                     val title=identity?.title ?: c.seriesTitle
                     val seriesKey=identity?.id.orEmpty(); val norm=if(identity==null)"" else normalized(identity.title)
@@ -484,12 +498,16 @@ class PlaylistRepository(context: Context) {
                     insert.bindLong(15,season.toLong());insert.bindLong(16,number.toLong());insert.bindLong(17,c.kind.ordinal.toLong())
                     insert.bindString(18,c.searchText);insert.bindString(19,seriesKey);insert.bindString(20,norm);insert.bindString(21,episodeTitle);insert.bindLong(22,generation.toLong());insert.bindLong(23,if(c.adult)1L else 0L)
                     insert.bindLong(24,firstAdded)
+                    insert.bindString(25,contentKey)
                     if(insert.executeInsert()!=-1L){added++;position++}
                     else {
                         update.clearBindings();update.bindLong(1,c.kind.ordinal.toLong());update.bindString(2,c.searchText)
                         update.bindString(3,seriesKey);update.bindString(4,norm);update.bindString(5,title);update.bindString(6,c.seriesImageUrl)
                         update.bindLong(7,season.toLong());update.bindLong(8,number.toLong());update.bindString(9,episodeTitle)
-                        update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L);update.bindString(13,key);update.bindString(14,c.url);update.bindLong(15,generation.toLong())
+                        update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L)
+                        update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.imageUrl)
+                        update.bindString(16,c.userAgent);update.bindString(17,c.referrer);update.bindString(18,c.mimeType)
+                        update.bindString(19,key);update.bindString(20,contentKey);update.bindLong(21,generation.toLong())
                         update.executeUpdateDelete()
                     }
                     parsed++
@@ -504,10 +522,14 @@ class PlaylistRepository(context: Context) {
                 if(added>0)put("updated",now)
             }
             finalizing()
+            pinSavedCatalogUrls(db,prefs,key)
+            repairCatalogProgress(db,key)
             db.update("playlists",values,"source_key=?",arrayOf(key));rebuild(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
-            db.setTransactionSuccessful();return ImportResult(added,total)
+            db.setTransactionSuccessful();result=ImportResult(added,total)
         } finally { db.endTransaction() }
+        syncFavorites()
+        return result
     }
     private fun typed(channel: Channel, kinds: Map<String, MediaKind>): Channel {
         val hint=kinds[channel.group.trim()]?.name?.lowercase() ?: channel.typeHint
@@ -637,13 +659,16 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,7){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,8){
+    private val prefs=context.applicationContext.getSharedPreferences("aurora_iptv_preferences",Context.MODE_PRIVATE)
+    private var compactAfterUpgrade=false
     init{setWriteAheadLoggingEnabled(true)}
     override fun onConfigure(db: SQLiteDatabase){db.setForeignKeyConstraintsEnabled(true);db.execSQL("PRAGMA synchronous=FULL")}
     override fun onCreate(db: SQLiteDatabase){
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
         upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db);upgradeSynopses(db);upgradePlayback(db)
+        upgradeCatalogIdentity(db,prefs)
     }
     override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
         if(oldVersion<2)upgrade(db)
@@ -652,6 +677,15 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         if(oldVersion<5)upgradeBroadcast(db)
         if(oldVersion<6)upgradeSynopses(db)
         if(oldVersion<7)upgradePlayback(db)
+        if(oldVersion<8)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs)
+    }
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        if(compactAfterUpgrade) {
+            // Outside the upgrade transaction. If storage is too low, the logical repair still stands.
+            runCatching { db.execSQL("VACUUM") }
+            compactAfterUpgrade=false
+        }
     }
     private fun upgradePlayback(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS series_favorites(source_key TEXT NOT NULL,series_key TEXT NOT NULL,PRIMARY KEY(source_key,series_key))")

@@ -1,8 +1,9 @@
-Novo visual do futebol no AURORA IPTV para Android.
+Correção do catálogo duplicado no AURORA IPTV 1.12.1 para Android.
 
-- Cards com identidade Aurora, escudos maiores e placar central em destaque.
-- Datas, horários e transmissão organizados em um painel próprio, com botão Assistir e acesso aos outros canais.
-- Busca e abas renovadas, com contagem dos jogos e adaptação para paisagem e fontes ampliadas.
-- Temas claro e escuro e escudos vetoriais de reserva quando uma imagem não estiver disponível.
+- Reconhece o mesmo conteúdo quando o provedor troca o servidor mantendo seu identificador.
+- Atualiza o endereço do vídeo sem multiplicar o catálogo nas atualizações da lista.
+- Repara automaticamente as cópias já acumuladas e recalcula os totais ao abrir cada playlist.
+- Preserva favoritos, séries favoritas, último conteúdo, progresso e atualização diária. Versões e identificadores diferentes continuam separados.
+- Compacta o banco reparado quando há espaço disponível, sem baixar a lista novamente para fazer a limpeza.
 
-Na versão 1.11, abra Configurações → Atualizar online → Verificar atualizações para baixar a 1.12. O Android pedirá a confirmação da instalação. Listas, favoritos e progresso de reprodução são preservados.
+Abra Configurações → Atualizar online → Verificar atualizações. O Android pedirá a confirmação da instalação. A primeira abertura pode levar mais tempo para reparar um catálogo grande; aguarde a conclusão.
