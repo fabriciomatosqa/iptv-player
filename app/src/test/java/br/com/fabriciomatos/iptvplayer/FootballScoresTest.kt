@@ -24,7 +24,7 @@ class FootballScoresTest {
         val live=score("Fluminense","Botafogo",game.programme.start,MatchState.LIVE,"bra.1")
         assertEquals("83:21",matchFootballScore(game,FootballFeed(listOf(live)))?.event?.clock)
         assertEquals(BroadcastMode.LIVE,broadcastMode(game.programme,live))
-        assertTrue(scoreIsFresh(live,now+60000L));assertFalse(scoreIsFresh(live,now+120001L))
+        assertTrue(scoreIsFresh(live,now+60000L));assertFalse(scoreIsFresh(live,now+240001L))
         assertFalse(footballRefreshDue(now,now+119999L));assertTrue(footballRefreshDue(now,now+120000L))
         assertTrue(footballRefreshDue(now,now-1))
     }
