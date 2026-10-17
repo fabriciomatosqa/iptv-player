@@ -93,7 +93,7 @@
     <string name="forward">التقديم 10 ثوانٍ</string>
     <string name="back_football">العودة إلى كرة القدم</string>
     <string name="search_team">البحث عن فريق</string>
-    <string name="minute_updates">تحديث النتائج كل دقيقة</string>
+    <string name="minute_updates">تُحدَّث النتائج كل دقيقتين</string>
     <string name="scores_stale">تعذر التحديث. يتم الاحتفاظ بآخر البيانات.</string>
     <string name="no_matching_games">لا توجد مباريات لهذا المرشح.</string>
     <string name="games">المباريات</string>

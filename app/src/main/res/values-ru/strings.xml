@@ -93,7 +93,7 @@
     <string name="forward">Вперёд на 10 секунд</string>
     <string name="back_football">Вернуться к футболу</string>
     <string name="search_team">Поиск команды</string>
-    <string name="minute_updates">Счёт обновляется каждую минуту</string>
+    <string name="minute_updates">Счёт обновляется каждые 2 минуты</string>
     <string name="scores_stale">Не удалось обновить. Последние данные сохранены.</string>
     <string name="no_matching_games">Нет матчей по этому фильтру.</string>
     <string name="games">Матчи</string>

@@ -93,7 +93,7 @@
     <string name="forward">Tiến 10 giây</string>
     <string name="back_football">Trở lại bóng đá</string>
     <string name="search_team">Tìm đội</string>
-    <string name="minute_updates">Tỷ số cập nhật mỗi phút</string>
+    <string name="minute_updates">Tỷ số được cập nhật mỗi 2 phút</string>
     <string name="scores_stale">Không thể cập nhật. Giữ dữ liệu mới nhất.</string>
     <string name="no_matching_games">Không có trận phù hợp với bộ lọc.</string>
     <string name="games">Trận đấu</string>
