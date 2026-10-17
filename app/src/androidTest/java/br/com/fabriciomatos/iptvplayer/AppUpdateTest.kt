@@ -3,6 +3,7 @@ package br.com.fabriciomatos.iptvplayer
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.compose.material3.Surface
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
