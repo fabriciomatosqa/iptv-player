@@ -41,6 +41,8 @@ class FootballClassificationTest {
         assertEquals("Copa Libertadores Feminina",footballDetails("Belgrano x Palmeiras","Futebol",
             FootballMetadata(description="Disputa da Copa Libertadores Feminina."))!!.competition)
         assertNull(footballLeagueSlug(footballCompetitionMention("Disputa do Campeonato Brasileiro Série C.").orEmpty()))
+        assertEquals(FootballGender.WOMEN,footballDetails("Brasil x Argentina - Campeonato Sul-Americano Feminino")!!.gender)
+        assertNull(footballDetails("Aurora x Norte - American Football League"))
     }
     @Test fun clubIdentityNeverDeterminesGenderAndExplicitCompetitionBeatsGenericGroup() {
         for(home in listOf("Palmeiras","Corinthians","Flamengo","Belgrano")) {

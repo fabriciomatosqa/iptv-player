@@ -87,7 +87,7 @@ class OrganizationAndroidTest {
         val matches=footballMatches(reopened.savedGuide(source),listOf(channel),now)
         assertEquals(2,matches.size)
         assertEquals(FootballDetails("Premier League","Chelsea","Bournemouth"),matches.first().details)
-        assertEquals(FootballDetails("Futebol","Aurora","Norte"),matches.last().details)
+        assertEquals(FootballDetails("","Aurora","Norte"),matches.last().details)
         reopened.close()
     }
     @Test fun footballCrestsMatchTheExactClubsAndPersistWithoutNewNetworkRequests() = runBlocking {
