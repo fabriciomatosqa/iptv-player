@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
-# Avoid two builds generating different signing keys at the same time.
+# Keep one release build per ref, but never make a main release wait for PR emulation.
+# All builds restore the same existing signing key; no replacement keys are generated.
 concurrency:
-  group: aurora-iptv-apk-build
+  group: aurora-iptv-apk-build-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
