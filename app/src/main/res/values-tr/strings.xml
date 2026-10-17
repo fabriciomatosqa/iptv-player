@@ -93,7 +93,7 @@
     <string name="forward">10 saniye ileri</string>
     <string name="back_football">Futbola dön</string>
     <string name="search_team">Takım ara</string>
-    <string name="minute_updates">Skorlar her dakika güncellenir</string>
+    <string name="minute_updates">Skorlar 2 dakikada bir güncellenir</string>
     <string name="scores_stale">Güncellenemedi. Son veriler korunuyor.</string>
     <string name="no_matching_games">Bu filtreye uygun maç yok.</string>
     <string name="games">Maçlar</string>

@@ -92,6 +92,29 @@ football_rows={
 'vi':'Trở lại bóng đá|Tìm đội|Tỷ số cập nhật mỗi phút|Không thể cập nhật. Giữ dữ liệu mới nhất.|Không có trận phù hợp với bộ lọc.|Trận đấu|Giải Brazil|Libertadores|Sudamericana|Trực tiếp|Giữa hiệp|Kết thúc|Hoãn|Hủy|Đã lên lịch|Đã cũ|Chưa có tỷ số|Phát lại|Trực tiếp|Phát sóng|Đang phát trên kênh|Trận gốc: %1$s|Tỷ số cập nhật lúc %1$s',
 'id':'Kembali ke sepak bola|Cari tim|Skor diperbarui setiap menit|Tidak dapat memperbarui. Data terakhir tetap disimpan.|Tidak ada pertandingan untuk filter ini.|Pertandingan|Brasileirão|Libertadores|Sudamericana|Langsung|Jeda|Selesai|Ditunda|Dibatalkan|Dijadwalkan|Kedaluwarsa|Skor tidak tersedia|Siaran ulang|Langsung|Siaran|Sekarang di saluran ini|Pertandingan asli: %1$s|Skor diperbarui pukul %1$s'}
 
+football_two_minute_labels = {
+  'pt': "Placares atualizados a cada 2 minutos",
+  'en': "Scores updated every 2 minutes",
+  'es': "Marcadores actualizados cada 2 minutos",
+  'fr': "Scores actualisés toutes les 2 minutes",
+  'de': "Spielstände werden alle 2 Minuten aktualisiert",
+  'it': "Risultati aggiornati ogni 2 minuti",
+  'nl': "Scores worden elke 2 minuten bijgewerkt",
+  'pl': "Wyniki aktualizowane co 2 minuty",
+  'ru': "Счёт обновляется каждые 2 минуты",
+  'uk': "Рахунок оновлюється кожні 2 хвилини",
+  'ar': "يتم تحديث النتائج كل دقيقتين",
+  'hi': "स्कोर हर 2 मिनट में अपडेट होते हैं",
+  'bn': "প্রতি ২ মিনিটে স্কোর আপডেট হয়",
+  'zh-rCN': "比分每 2 分钟更新",
+  'zh-rTW': "比分每 2 分鐘更新",
+  'ja': "スコアは2分ごとに更新されます",
+  'ko': "점수는 2분마다 업데이트됩니다",
+  'tr': "Skorlar 2 dakikada bir güncellenir",
+  'vi': "Tỷ số cập nhật mỗi 2 phút",
+  'id': "Skor diperbarui setiap 2 menit",
+}
+
 detail_keys='broadcast_time synopsis series_synopsis episode_synopsis synopsis_unavailable episode_synopsis_unavailable synopsis_failed close_details'.split()
 detail_rows={
 'pt':'Horário: %1$s|Sinopse|Sinopse da série|Sinopse do episódio|O provedor não informou a sinopse deste conteúdo.|O provedor não informou a sinopse deste episódio.|Não foi possível carregar a sinopse. Tente novamente.|Fechar',
@@ -124,6 +147,7 @@ for lang,row in rows.items():
     data.update(zip(extra_keys,translated))
     football=football_rows[lang].split('|');assert len(football)==len(football_keys),(lang,len(football))
     data.update(zip(football_keys,football))
+    data['minute_updates']=football_two_minute_labels[lang]
     details=detail_rows[lang].split('|');assert len(details)==len(detail_keys),(lang,len(details))
     data.update(zip(detail_keys,details))
     for index,noun in enumerate(['channel','movie','series','season','episode','item']):

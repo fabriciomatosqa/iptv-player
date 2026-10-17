@@ -93,7 +93,7 @@
     <string name="forward">10秒進む</string>
     <string name="back_football">サッカーに戻る</string>
     <string name="search_team">チームを検索</string>
-    <string name="minute_updates">スコアは毎分更新されます</string>
+    <string name="minute_updates">スコアは2分ごとに更新されます</string>
     <string name="scores_stale">更新できません。最新のデータを保持しています。</string>
     <string name="no_matching_games">この条件に合う試合はありません。</string>
     <string name="games">試合</string>

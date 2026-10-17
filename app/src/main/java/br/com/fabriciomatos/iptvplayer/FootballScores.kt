@@ -8,7 +8,7 @@ const val FOOTBALL_FIFA = "__fifa__"
 const val FOOTBALL_BRAZIL = "__brazil__"
 const val FOOTBALL_LIBERTADORES = "__libertadores__"
 const val FOOTBALL_SUDAMERICANA = "__sudamericana__"
-const val FOOTBALL_REFRESH_MS = 60000L
+const val FOOTBALL_REFRESH_MS = 120000L
 const val FOOTBALL_RETENTION_MS = 3600000L
 
 enum class MatchState { SCHEDULED, LIVE, FINISHED, HALFTIME, POSTPONED, CANCELLED, UNKNOWN }
@@ -71,12 +71,17 @@ fun footballTabs(matches: List<FootballMatch>): List<FootballTab> {
 }
 fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, now: Long, feed: FootballFeed = FootballFeed()): List<FootballMatch> {
     val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
-    return matches.filter {match ->
-        val teams=normalized("${match.details.home} ${match.details.away}")
-        val event=matchFootballScore(match,feed)?.event
-        val live=transmissionIsLive(match.programme,event,now)
-        (match.programme.end>now-FOOTBALL_RETENTION_MS || live) &&
-            (tab==FOOTBALL_GAMES || (tab==FOOTBALL_LIVE && live) || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
+    return matches.filter { match ->
+        // Cheap filters first: most games do not need a scoreboard lookup during scrolling.
+        if (tab != FOOTBALL_GAMES && tab != FOOTBALL_LIVE && footballTabKey(match.details) != tab) return@filter false
+        if (words.isNotEmpty()) {
+            val teams = normalized("${match.details.home} ${match.details.away}")
+            if (!words.all(teams::contains)) return@filter false
+        }
+        if (tab != FOOTBALL_LIVE && match.programme.end > now - FOOTBALL_RETENTION_MS) return@filter true
+        val live = transmissionIsLive(match.programme, matchFootballScore(match,feed)?.event, now)
+        (match.programme.end > now - FOOTBALL_RETENTION_MS || live) &&
+            (tab != FOOTBALL_LIVE || live)
     }
 }
 fun footballScoreTeamKey(name: String): String {
