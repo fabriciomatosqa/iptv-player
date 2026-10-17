@@ -55,6 +55,12 @@ class FootballUiTest {
             compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
             compose.waitUntil(15000) { compose.onAllNodesWithText("83:21").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("83:21").assertExists()
+            compose.onNodeWithTag("football_live_details_toggle").assertExists().performClick()
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithText("Os acontecimentos da partida não estão disponíveis no momento.")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("football_live_details_toggle").performClick()
             compose.onNodeWithTag("football_tab_${FOOTBALL_LIVE}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithText("Fluminense").assertExists()

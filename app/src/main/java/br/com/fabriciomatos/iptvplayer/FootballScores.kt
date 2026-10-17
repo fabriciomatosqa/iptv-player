@@ -7,6 +7,7 @@ const val FOOTBALL_GAMES = "__games__"
 const val FOOTBALL_FIFA = "__fifa__"
 const val FOOTBALL_BRAZIL = "__brazil__"
 const val FOOTBALL_LIBERTADORES = "__libertadores__"
+const val FOOTBALL_LIBERTADORES_WOMEN = "__libertadores_women__"
 const val FOOTBALL_SUDAMERICANA = "__sudamericana__"
 const val FOOTBALL_REFRESH_MS = 120000L
 const val FOOTBALL_RETENTION_MS = 3600000L
@@ -55,6 +56,10 @@ fun footballScoreLeagues(details: FootballDetails): List<String> {
     return footballLeagueSlug(details.competition)?.let(::listOf) ?: emptyList()
 }
 fun footballTabKey(details: FootballDetails): String {
+    val competition=normalized(details.competition)
+    if ((competition.contains("libertadores") || competition.contains("libertador")) &&
+        (competition.contains("feminin") || competition.contains("women") ||
+            competition.contains("femenina"))) return FOOTBALL_LIBERTADORES_WOMEN
     val league=footballLeagueSlug(details.competition)
     if(nationalMatch(details)!=null || Regex("\\b(fifa|amistoso internacional|eliminatorias|copa do mundo|eurocopa|copa america)\\b").containsMatchIn(normalized(details.competition)))return FOOTBALL_FIFA
     return when(league) {
@@ -65,7 +70,8 @@ fun footballTabKey(details: FootballDetails): String {
     }
 }
 fun footballTabs(matches: List<FootballMatch>): List<FootballTab> {
-    val leading=listOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,FOOTBALL_LIBERTADORES,FOOTBALL_SUDAMERICANA)
+    val leading=listOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,
+        FOOTBALL_LIBERTADORES,FOOTBALL_LIBERTADORES_WOMEN,FOOTBALL_SUDAMERICANA)
     return leading.map(::FootballTab)+matches.map {FootballTab(footballTabKey(it.details),it.details.competition)}
         .filterNot {it.key in leading}.distinctBy {it.key}.sortedBy {normalized(it.title)}
 }

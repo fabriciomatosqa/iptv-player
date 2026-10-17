@@ -2,6 +2,15 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.7
+
+- **Futebol — detalhes em andamento:** partidas em transmissão agora oferecem "Ver detalhes" para gols, cartões, jogadores e minutos, quando o provedor disponibilizar uma súmula confiável. Reutiliza a mesma visão dos jogos encerrados. Os dados são carregados somente ao expandir e o cache de eventos ao vivo acompanha os 2 minutos do placar.
+- **Reprises:** preserva o sinal explícito do EPG, o placar confirmado e agora reconhece retransmissões quando há registro anterior da mesma partida no guia das últimas 36 horas, sem adivinhar quando faltam evidências. Reprises exibem card compacto expansível.
+- **Nomes de clubes:** elimina o prefixo do campeonato de títulos como "Brasileirão - Fluminense x Santos" e "Libertadores Feminina - Belgrano x Palmeiras", sem remover hífens legítimos de times (por exemplo, Botafogo-SP). Evita cards separados por nomes falsos.
+- **Libertadores Feminina:** aba própria e identificação separada da Libertadores masculina, sem atribuir placares da competição masculina a jogos femininos.
+- **Menu dos canais:** substitui o popup padrão por uma janela compacta no tema Aurora, com rolagem, qualidade do vídeo e todos os streams disponíveis.
+- Mantém instalação incremental, assinatura, playlists, favoritos, reprodução e atualização de placares a cada 2 minutos.
+
 ## Versão 1.12.6
 
 - **Futebol sem duplicatas:** transmissões da mesma partida na mesma competição, com os mesmos times e horários de EPG próximos, agora compartilham um único card, sem misturar reprises e outros jogos.

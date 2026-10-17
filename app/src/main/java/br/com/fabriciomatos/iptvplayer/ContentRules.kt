@@ -27,10 +27,19 @@ fun footballDetails(title: String, category: String = ""): FootballDetails? {
     var home = main.substring(0, separator.range.first).trim()
     var away = main.substring(separator.range.last + 1).trim()
     var competition = ""
-    if (home.contains(':')) {
+    // Some EPGs put the competition before the first team:
+    // "Brasileirão - Fluminense x Santos" is Fluminense vs Santos.
+    // Require a spaced delimiter; club names such as Botafogo-SP remain intact.
+    val heading = Regex("^(.+?)\\s+(?:-|–|—|:)\\s+(.+)$").matchEntire(home)
+    if (heading != null && footballCompetitions.containsMatchIn(normalized(heading.groupValues[1]))) {
+        competition = heading.groupValues[1].trim()
+        home = heading.groupValues[2].trim()
+    } else if (home.contains(':')) {
         val prefix = home.substringBeforeLast(':').trim()
-        if (footballCompetitions.containsMatchIn(normalized(prefix))) competition = prefix
-        home = home.substringAfterLast(':').trim()
+        if (footballCompetitions.containsMatchIn(normalized(prefix))) {
+            competition = prefix
+            home = home.substringAfterLast(':').trim()
+        }
     }
     if (away.contains(" - ")) {
         competition = away.substringAfter(" - ").trim()
@@ -38,7 +47,14 @@ fun footballDetails(title: String, category: String = ""): FootballDetails? {
     }
     if (competition.isBlank()) competition = parts.firstOrNull { !matchSeparator.containsMatchIn(it) && footballCompetitions.containsMatchIn(normalized(it)) }.orEmpty()
     if (competition.isBlank() && footballCompetitions.containsMatchIn(normalized(category))) competition = category.trim()
-    if (home.length !in 2..80 || away.length !in 2..80 || normalized(home) == normalized(away)) return null
+    // Reject bare competition names as clubs instead of inventing an opponent.
+    fun isBareCompetition(value: String): Boolean {
+        val key = normalized(value)
+        return key in setOf("brasileirao", "libertadores", "libertadores feminina",
+            "copa libertadores", "sul americana", "futebol", "campeonato brasileiro")
+    }
+    if (home.length !in 2..80 || away.length !in 2..80 ||
+        normalized(home) == normalized(away) || isBareCompetition(home) || isBareCompetition(away)) return null
     return FootballDetails(competition, home, away)
 }
 fun isFootballProgramme(title: String, category: String = "") = footballDetails(title, category) != null

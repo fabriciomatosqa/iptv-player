@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -133,6 +135,7 @@ import java.util.Locale
     FOOTBALL_FIFA -> "FIFA"
     FOOTBALL_BRAZIL -> tr(R.string.brasileirao)
     FOOTBALL_LIBERTADORES -> tr(R.string.libertadores)
+    FOOTBALL_LIBERTADORES_WOMEN -> "Libertadores Feminina"
     FOOTBALL_SUDAMERICANA -> tr(R.string.sudamericana)
     else -> tab.title
 }
@@ -150,6 +153,7 @@ import java.util.Locale
     val championship = match.details.competition.ifBlank { event?.competition.orEmpty().ifBlank { tr(R.string.football) } }
     val mode = broadcastMode(match.programme, event)
     val liveTransmission = transmissionIsLive(match.programme, event, now)
+    var liveDetailsExpanded by remember(match.id) { mutableStateOf(false) }
     if(compactFootballMatch(match,event,now)) {
         CompactFootballCard(model,match,matched,homeBadge,awayBadge,championship,now)
         return
@@ -189,6 +193,11 @@ import java.util.Locale
                     if (event != null && event.state in listOf(MatchState.LIVE, MatchState.HALFTIME) && !scoreIsFresh(event, now)) {
                         Text(tr(R.string.last_score_update, SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(event.checked))), fontSize = 10.sp, color = colors.muted)
                     }
+                    if (liveTransmission || (match.programme.start <= now && match.programme.end > now &&
+                            mode != BroadcastMode.REPLAY)) {
+                        FootballDetailsToggle(liveDetailsExpanded) { liveDetailsExpanded = !liveDetailsExpanded }
+                        if (liveDetailsExpanded) FootballIncidentsPanel(model,matched,match.details.home,match.details.away)
+                    }
                     HorizontalDivider(color = colors.muted.copy(alpha = .12f))
                     FootballChannelActions(model,match.channels)
                 }
@@ -207,16 +216,6 @@ import java.util.Locale
     val replay=broadcastMode(match.programme,event)==BroadcastMode.REPLAY
     val accent=if(replay) colors.violet else colors.muted
     var detailsExpanded by remember(match.id) { mutableStateOf(false) }
-    var incidents by remember(match.id,event?.id) { mutableStateOf<List<FootballIncident>?>(null) }
-    var incidentsLoaded by remember(match.id,event?.id) { mutableStateOf(false) }
-    var incidentsLoading by remember(match.id,event?.id) { mutableStateOf(false) }
-    LaunchedEffect(detailsExpanded,event?.id) {
-        if(detailsExpanded && event!=null && !incidentsLoaded) {
-            incidentsLoading=true
-            try { incidents=model.footballIncidents(event) }
-            finally { incidentsLoaded=true;incidentsLoading=false }
-        }
-    }
     Card(onClick={ detailsExpanded=!detailsExpanded },modifier=Modifier.fillMaxWidth().testTag("football_match"),
         shape=RoundedCornerShape(19.dp),colors=CardDefaults.cardColors(containerColor=colors.panel),
         border=BorderStroke(1.dp,accent.copy(alpha=.28f))) {
@@ -251,29 +250,7 @@ import java.util.Locale
                         footballTime(event.kickoff,Locale.forLanguageTag(model.language))),
                     fontSize=11.sp,color=colors.muted)
                 HorizontalDivider(color=colors.muted.copy(alpha=.15f))
-                when {
-                    incidentsLoading -> CircularProgressIndicator(Modifier.size(20.dp))
-                    incidents==null -> Text(tr(R.string.football_incidents_unavailable),fontSize=11.sp,color=colors.muted)
-                    incidents!!.isEmpty() -> Text(tr(R.string.football_incidents_empty),fontSize=11.sp,color=colors.muted)
-                    else -> Column(Modifier.testTag("football_incidents"),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-                        incidents!!.forEach { incident ->
-                            val homeSide=matched?.home?.id==event?.home?.id
-                            val side=if(homeSide)incident.isHome else !incident.isHome
-                            val icon=when(incident.kind) {
-                                FootballIncidentKind.GOAL->"⚽"
-                                FootballIncidentKind.YELLOW_CARD->"🟨"
-                                FootballIncidentKind.RED_CARD->"🟥"
-                            }
-                            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                                Text(icon,fontSize=13.sp)
-                                Text(incident.minute,fontSize=11.sp,color=colors.muted)
-                                Text(incident.player,Modifier.weight(1f),fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                                Text(if(side)match.details.home else match.details.away,fontSize=10.sp,color=colors.muted,
-                                    maxLines=1,overflow=TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
-                }
+                FootballIncidentsPanel(model,matched,match.details.home,match.details.away)
                 FootballChannelActions(model,match.channels,compact=true)
             }
         }
@@ -310,11 +287,126 @@ import java.util.Locale
                 border = BorderStroke(1.dp, colors.muted.copy(alpha = .2f))) {
                 Icon(Icons.Default.MoreHoriz, tr(R.string.channels), tint = colors.muted)
             }
-            DropdownMenu(menuOpen, { menuOpen = false }) {
-                channels.distinctBy { it.url }.forEach { channel ->
-                    DropdownMenuItem(text = { Text(channel.name, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis) },
-                        onClick = { menuOpen = false; model.playFootball(channel) })
+            if(menuOpen) FootballChannelPicker(channels, { menuOpen = false }) { channel ->
+                menuOpen = false
+                model.playFootball(channel)
+            }
+        }
+    }
+}
+
+
+@Composable private fun FootballDetailsToggle(expanded: Boolean, onClick: () -> Unit) {
+    val colors = LocalAuroraColors.current
+    TextButton(onClick = onClick, modifier = Modifier.testTag("football_live_details_toggle")) {
+        Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            null, Modifier.size(19.dp), tint = colors.mint)
+        Spacer(Modifier.width(5.dp))
+        Text(tr(if (expanded) R.string.football_hide_details else R.string.football_match_details),
+            color = colors.mint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Shared live / replay / finished fixture events, only requested when details are expanded. */
+@Composable private fun FootballIncidentsPanel(
+    model: AuroraViewModel, matched: MatchedScore?, homeName: String, awayName: String
+) {
+    val colors = LocalAuroraColors.current
+    val event = matched?.event
+    var incidents by remember(event?.id, event?.checked) { mutableStateOf<List<FootballIncident>?>(null) }
+    var loading by remember(event?.id, event?.checked) { mutableStateOf(event != null) }
+    LaunchedEffect(event?.id, event?.checked) {
+        if (event != null) {
+            loading = true
+            try { incidents = model.footballIncidents(event) }
+            finally { loading = false }
+        }
+    }
+    when {
+        loading -> CircularProgressIndicator(Modifier.size(22.dp))
+        incidents == null -> Text(tr(R.string.football_incidents_unavailable),fontSize=11.sp,color=colors.muted)
+        incidents!!.isEmpty() -> Text(tr(R.string.football_incidents_empty),fontSize=11.sp,color=colors.muted)
+        else -> Column(Modifier.testTag("football_incidents"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            incidents!!.forEach { item ->
+                val sameOrientation = matched?.home?.id == event?.home?.id
+                val homeSide = if (sameOrientation) item.isHome else !item.isHome
+                val symbol = when (item.kind) {
+                    FootballIncidentKind.GOAL -> "⚽"
+                    FootballIncidentKind.YELLOW_CARD -> "🟨"
+                    FootballIncidentKind.RED_CARD -> "🟥"
+                }
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text(symbol,fontSize=14.sp)
+                    Text(item.minute,fontSize=11.sp,color=colors.muted)
+                    Text(item.player,Modifier.weight(1f),fontSize=12.sp,maxLines=2,
+                        overflow=TextOverflow.Ellipsis)
+                    Text(if(homeSide) homeName else awayName,fontSize=10.sp,color=colors.muted,
+                        maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** Aurora-themed, scrollable channel selector replacing Android's tall default popup. */
+@Composable private fun FootballChannelPicker(
+    channels: List<Channel>, dismiss: () -> Unit, select: (Channel) -> Unit
+) {
+    val colors = LocalAuroraColors.current
+    val variants = remember(channels) { channels.distinctBy { it.url } }
+    Dialog(onDismissRequest = dismiss,properties = DialogProperties(usePlatformDefaultWidth=false)) {
+        Card(Modifier.fillMaxWidth(.92f).widthIn(max=470.dp),
+            shape=RoundedCornerShape(24.dp),
+            border=BorderStroke(1.dp,colors.mint.copy(alpha=.28f)),
+            colors=CardDefaults.cardColors(containerColor=colors.panel)) {
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Default.LiveTv,null,tint=colors.mint,modifier=Modifier.size(22.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(tr(R.string.channels),fontSize=19.sp,fontWeight=FontWeight.Bold,
+                        color=colors.text,modifier=Modifier.weight(1f))
+                    Text(variants.size.toString(),fontSize=12.sp,color=colors.muted)
+                    IconButton(onClick=dismiss,modifier=Modifier.size(36.dp)) {
+                        Icon(Icons.Default.Close,null,tint=colors.muted)
+                    }
+                }
+                HorizontalDivider(color=colors.muted.copy(alpha=.18f))
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max=490.dp)
+                    .testTag("football_channel_picker"),
+                    verticalArrangement=Arrangement.spacedBy(7.dp)) {
+                    items(variants,key={it.url}) { channel ->
+                        val quality = remember(channel.name) {
+                            when (footballChannelQuality(channel.name)) {
+                                4 -> "4K"
+                                3 -> "FHD"
+                                2 -> "HD"
+                                else -> if (Regex("(?i)\\bSD\\b").containsMatchIn(channel.name)) "SD" else ""
+                            }
+                        }
+                        Surface(onClick={select(channel)},modifier=Modifier.fillMaxWidth(),
+                            shape=RoundedCornerShape(13.dp),
+                            color=colors.elevated.copy(alpha=.86f),
+                            border=BorderStroke(1.dp,colors.muted.copy(alpha=.12f))) {
+                            Row(Modifier.padding(horizontal=12.dp,vertical=12.dp),
+                                verticalAlignment=Alignment.CenterVertically,
+                                horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                                Icon(Icons.Default.PlayCircleFilled,null,
+                                    tint=colors.mint,modifier=Modifier.size(23.dp))
+                                Text(channel.name,Modifier.weight(1f),fontSize=12.sp,
+                                    maxLines=2,lineHeight=16.sp,overflow=TextOverflow.Ellipsis,
+                                    color=colors.text)
+                                if (quality.isNotBlank()) {
+                                    Text(quality,fontSize=10.sp,color=colors.mint,
+                                        modifier=Modifier.clip(RoundedCornerShape(7.dp))
+                                            .background(colors.mint.copy(alpha=.13f))
+                                            .padding(horizontal=7.dp,vertical=5.dp))
+                                }
+                                Icon(Icons.Default.ChevronRight,null,
+                                    tint=colors.muted,modifier=Modifier.size(16.dp))
+                            }
+                        }
+                    }
                 }
             }
         }
