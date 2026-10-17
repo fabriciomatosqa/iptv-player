@@ -14,7 +14,7 @@ class FootballScoreAndroidTest {
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
     private val context get()=instrumentation.targetContext
     @Before fun reset()=resetCatalog(context)
-    @Test fun actualScoreboardParsesFinalAndLiveStatesAndCachesRefreshesAtOneMinute() = runBlocking {
+    @Test fun actualScoreboardParsesFinalAndLiveStatesAndCachesRefreshesAtTwoMinutes() = runBlocking {
         val json=JSONObject(instrumentation.context.assets.open("scores-afc-final.json").bufferedReader().use {it.readText()})
         val now=System.currentTimeMillis()/86400000L*86400000L+12*3600000L
         val parsed=parseFootballScoreboard(json,"afc.champions",now).single()
@@ -36,7 +36,7 @@ class FootballScoreAndroidTest {
         val loader=FootballScoreRepository(repository) {address->assertTrue(address.startsWith("https://www.fotmob.com/") || address.startsWith("https://site.api.espn.com/"));assertFalse(address.contains("username"));assertTrue(Regex("[?&](?:date|dates)=[0-9]{8}(?:&|$)").containsMatchIn(address));calls.incrementAndGet();if(address.contains("fotmob"))error("Primary offline")else json}
         val first=loader.load(listOf(match),now=now);val firstCalls=calls.get();assertTrue(firstCalls>0)
         loader.load(listOf(match),now=now+59999);val retryCalls=calls.get();assertEquals(firstCalls+footballRequestDays(listOf(match),now).size,retryCalls)
-        loader.load(listOf(match),now=now+60000);assertEquals(retryCalls+footballRequestDays(listOf(match),now).size+2,calls.get())
+        loader.load(listOf(match),now=now+120000);assertEquals(retryCalls+footballRequestDays(listOf(match),now).size+2,calls.get())
         val result=matchFootballScore(match,first)!!
         assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme,result.event))
         repository.close()

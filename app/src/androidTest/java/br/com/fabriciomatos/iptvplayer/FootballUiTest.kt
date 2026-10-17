@@ -53,6 +53,7 @@ class FootballUiTest {
             compose.waitUntil(15000) {model.initialized && model.football.size==4}
             compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
             compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
+            compose.waitUntil(15000) { compose.onAllNodesWithText("83:21").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("83:21").assertExists()
             compose.onNodeWithTag("football_tab_${FOOTBALL_LIVE}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
