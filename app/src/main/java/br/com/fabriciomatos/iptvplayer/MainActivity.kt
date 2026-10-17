@@ -751,7 +751,7 @@ private fun ProgrammeCell(programme: Programme?, modifier: Modifier, color: Colo
 }
 
 @Composable private fun ChannelFavoriteButton(model: AuroraViewModel,channel: Channel,tag: String="favorite") {
-    val selected=channel.url in model.favorites
+    val selected=model.isFavorite(channel)
     IconButton(onClick={model.toggleFavorite(channel)},modifier=Modifier.size(48.dp).testTag("${tag}_${channel.url}")) {
         Icon(if(selected)Icons.Default.Star else Icons.Default.StarBorder,
             tr(if(selected)R.string.remove_favorite else R.string.add_favorite),tint=if(selected)Gold else Muted,modifier=Modifier.size(19.dp))

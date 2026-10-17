@@ -14,7 +14,7 @@ internal fun pinSavedCatalogUrls(db: SQLiteDatabase, prefs: SharedPreferences, k
 }
 
 internal fun resolveCatalogUrl(db: SQLiteDatabase, key: String, url: String): String = db.rawQuery(
-    "SELECT c.url FROM channel_url_aliases a JOIN channels c ON c.source_key=a.source_key AND c.content_key=a.content_key WHERE a.source_key=? AND a.old_url=?",arrayOf(key,url)
+    "SELECT url FROM channels WHERE source_key=? AND content_key=?",arrayOf(key,catalogContentKey(url))
 ).use { if(it.moveToFirst())it.getString(0) else url }
 
 /** Keep the latest saved position when several old host URLs have progress. */

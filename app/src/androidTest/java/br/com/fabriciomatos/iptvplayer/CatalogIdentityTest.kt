@@ -82,6 +82,10 @@ class CatalogIdentityTest {
             assertEquals(23000L,repository.playbackProgress(source,fresh[1].url)!!.positionMs)
             assertEquals(1,repository.matchingCount(BrowseQuery(source,MediaKind.MOVIES,favoritesOnly=true)))
         }
+        // This live item was on screen before refresh but never bookmarked or played: no saved alias exists.
+        assertEquals(rows("cdn-2.test")[0].url,repository.channel(source,old[0].url)!!.url)
+        repository.saveFavorites(setOf(old[0].url))
+        assertEquals(setOf(rows("cdn-2.test")[0].url),repository.favorites())
         val extra=Channel("Novo",url(99),"Filmes")
         assertEquals(1,repository.importReader(source,playlist(listOf(extra)).reader()).added)
         assertEquals(4,repository.overview(source).total)

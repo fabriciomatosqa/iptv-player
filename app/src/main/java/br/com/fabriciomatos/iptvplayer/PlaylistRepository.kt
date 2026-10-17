@@ -37,7 +37,7 @@ class PlaylistRepository(context: Context) {
     private fun resolveFavorites(urls: Set<String>): Set<String> = buildSet {
         val db=helper.readableDatabase
         urls.forEach { url ->
-            val current=db.rawQuery("SELECT DISTINCT c.url FROM channel_url_aliases a JOIN channels c ON c.source_key=a.source_key AND c.content_key=a.content_key WHERE a.old_url=?",arrayOf(url)).use { cursor ->
+            val current=db.rawQuery("SELECT url FROM channels WHERE source_key IN(SELECT source_key FROM playlists) AND content_key=?",arrayOf(catalogContentKey(url))).use { cursor ->
                 buildList {while(cursor.moveToNext())add(cursor.getString(0))}
             }
             if(current.isEmpty())add(url) else addAll(current)

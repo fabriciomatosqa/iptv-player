@@ -441,6 +441,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
         finally {footballScoresLoading=false}
     }
+    fun isFavorite(channel: Channel) = favorites.any {catalogContentKey(it)==catalogContentKey(channel.url)}
     fun toggleFavorite(channel: Channel) {
         if(channel.kind==MediaKind.SERIES) {
             val id=seriesIdentity(channel)
@@ -448,13 +449,14 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val before = pendingFavorites ?: favorites
-        val next = if(channel.url in before)before-channel.url else before+channel.url
+        val matching=before.filter {catalogContentKey(it)==catalogContentKey(channel.url)}.toSet()
+        val next = if(matching.isNotEmpty())before-matching else before+channel.url
         pendingFavorites = next
         viewModelScope.launch {
             try {
                 favoriteWrites.withLock {
                     withContext(NonCancellable + Dispatchers.IO) { repository.saveFavorites(next) }
-                    favorites = next
+                    favorites = withContext(Dispatchers.IO) {repository.favorites()}
                     if(pendingFavorites==next)pendingFavorites = null
                     if(favoritesOnly) { repository.invalidatePages(); updateFilter() }
                 }
