@@ -22,7 +22,7 @@ class FootballWomenUiTest {
             "Belgrano x Palmeiras - Copa Libertadores Feminina")
         val guide=Guide(matches=titles.mapIndexed { i,t -> GuideMatch("sport$i",Programme(t,now-60000,now+7200000,broadcast=BroadcastHint.LIVE)) })
         PlaylistRepository(context).also { repo ->
-            repo.saveSource(source,"Futebol");repo.appendCache(source,Download(Playlist(channels),"",""));repo.saveGuide(source,guide)
+            repo.saveSource(source,"Futebol");repo.appendCache(source,Download(Playlist(channels,"https://example.test/guide.xml"),"",""));repo.saveGuide(source,guide)
             val games=footballMatches(guide,channels,now)
             footballRequestDays(games,now).forEach { repo.saveArtwork(footballScoreCacheKey("fotmob",it),encodeFootballFeed(FootballFeed(checked=now)).toString()) }
             repo.close()
