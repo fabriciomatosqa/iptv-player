@@ -48,7 +48,7 @@ internal fun legacyHostCopies(context: Context, source: String, copies: Int, ori
 class CatalogIdentityTest {
     private val context get()=InstrumentationRegistry.getInstrumentation().targetContext
     private val source="https://example.test/list.m3u"
-    private fun url(id: Int, host: String="example.test", suffix: String="")="https://$host/play/"+id.toString(16).padStart(64,'0')+suffix
+    private fun url(id: Int, host: String="example.test", suffix: String="")="https://$host/play/aZ_"+id.toString(16).padStart(61,'0')+suffix
     private fun rows(host: String="example.test")=listOf(Channel("Canal HD",url(1,host,"/ts"),"Brasil"),
         Channel("Aurora (2026) 4K",url(2,host),"Filmes"),Channel("Aurora S01E01",url(3,host),"Séries"))
     private fun playlist(rows: List<Channel>)="#EXTM3U\n"+rows.joinToString("\n") {"#EXTINF:-1 group-title=\"${it.group}\",${it.name}\n${it.url}"}+"\n"
@@ -139,6 +139,32 @@ class CatalogIdentityTest {
             assertEquals(12000L,repository.playbackProgress(source,original[1].url)!!.positionMs)
             assertEquals("old",repository.state(source).etag)
         } finally {repository.close()}
+    }
+
+    @Test fun versionEightCacheWithUrlSafeTokensIsRekeyedAndRepaired() {
+        val original=rows()
+        val repository=PlaylistRepository(context);repository.saveSource(source,"Lista")
+        repository.importReader(source,playlist(original).reader())
+        repository.saveFavorites(setOf(original[1].url));repository.saveLast(original[2])
+        repository.savePlaybackProgress(source,original[1].url,PlaybackProgress(21000,120000,false));repository.close()
+        legacyHostCopies(context,source,2)
+        SQLiteDatabase.openDatabase(context.getDatabasePath("aurora_catalog.db").path,null,SQLiteDatabase.OPEN_READWRITE).use {db->
+            db.execSQL("ALTER TABLE channels ADD COLUMN content_key TEXT NOT NULL DEFAULT ''")
+            db.execSQL("UPDATE channels SET content_key='url:'||url")
+            db.execSQL("CREATE UNIQUE INDEX channel_content_identity ON channels(source_key,content_key)")
+            db.execSQL("CREATE TABLE channel_url_aliases(source_key TEXT NOT NULL,old_url TEXT NOT NULL,content_key TEXT NOT NULL,PRIMARY KEY(source_key,old_url))")
+            db.execSQL("CREATE INDEX catalog_alias_url ON channel_url_aliases(old_url)")
+            db.execSQL("INSERT INTO channel_url_aliases SELECT source_key,url,content_key FROM channels WHERE url=?",arrayOf(original[1].url))
+            db.version=8
+        }
+        PlaylistRepository(context).useRepository {repaired->
+            repaired.restore(source)
+            assertEquals(3,repaired.overview(source).total)
+            assertEquals(url(2,"cdn-2.example.test"),repaired.channel(source,original[1].url)!!.url)
+            assertEquals(setOf(url(2,"cdn-2.example.test")),repaired.favorites())
+            assertEquals(url(3,"cdn-2.example.test"),repaired.lastUrl())
+            assertEquals(21000L,repaired.playbackProgress(source,original[1].url)!!.positionMs)
+        }
     }
 }
 
