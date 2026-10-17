@@ -93,7 +93,7 @@
     <string name="forward">Maju 10 detik</string>
     <string name="back_football">Kembali ke sepak bola</string>
     <string name="search_team">Cari tim</string>
-    <string name="minute_updates">Skor diperbarui setiap menit</string>
+    <string name="minute_updates">Skor diperbarui setiap 2 menit</string>
     <string name="scores_stale">Tidak dapat memperbarui. Data terakhir tetap disimpan.</string>
     <string name="no_matching_games">Tidak ada pertandingan untuk filter ini.</string>
     <string name="games">Pertandingan</string>

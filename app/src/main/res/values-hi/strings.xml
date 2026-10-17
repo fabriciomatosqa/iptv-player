@@ -93,7 +93,7 @@
     <string name="forward">10 सेकंड आगे</string>
     <string name="back_football">फ़ुटबॉल पर वापस जाएँ</string>
     <string name="search_team">टीम खोजें</string>
-    <string name="minute_updates">स्कोर हर मिनट अपडेट होते हैं</string>
+    <string name="minute_updates">स्कोर हर 2 मिनट में अपडेट होते हैं</string>
     <string name="scores_stale">अपडेट नहीं हो सका। पिछला डेटा सुरक्षित है।</string>
     <string name="no_matching_games">इस फ़िल्टर से कोई मैच नहीं मिला।</string>
     <string name="games">मैच</string>

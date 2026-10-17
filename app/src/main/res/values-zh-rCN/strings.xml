@@ -93,7 +93,7 @@
     <string name="forward">前进 10 秒</string>
     <string name="back_football">返回足球</string>
     <string name="search_team">搜索球队</string>
-    <string name="minute_updates">比分每分钟更新</string>
+    <string name="minute_updates">比分每 2 分钟更新一次</string>
     <string name="scores_stale">无法更新，保留最新数据。</string>
     <string name="no_matching_games">没有符合筛选条件的比赛。</string>
     <string name="games">比赛</string>

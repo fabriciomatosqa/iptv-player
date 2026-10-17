@@ -8,7 +8,7 @@ const val FOOTBALL_FIFA = "__fifa__"
 const val FOOTBALL_BRAZIL = "__brazil__"
 const val FOOTBALL_LIBERTADORES = "__libertadores__"
 const val FOOTBALL_SUDAMERICANA = "__sudamericana__"
-const val FOOTBALL_REFRESH_MS = 60000L
+const val FOOTBALL_REFRESH_MS = 120000L
 const val FOOTBALL_RETENTION_MS = 3600000L
 
 enum class MatchState { SCHEDULED, LIVE, FINISHED, HALFTIME, POSTPONED, CANCELLED, UNKNOWN }
@@ -79,6 +79,60 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
             (tab==FOOTBALL_GAMES || (tab==FOOTBALL_LIVE && live) || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
     }
 }
+
+/** Merge broadcasts for one real fixture; keep replays and separate kickoff dates apart. */
+fun groupFootballMatches(matches: List<FootballMatch>, feed: FootballFeed = FootballFeed()): List<FootballMatch> {
+    data class Identity(val league: String, val teams: List<String>, val replay: Boolean)
+    fun identity(match: FootballMatch) = Identity(
+        footballScoreLeagues(match.details).singleOrNull() ?: normalized(match.details.competition),
+        listOf(footballScoreTeamKey(match.details.home), footballScoreTeamKey(match.details.away)).sorted(),
+        match.programme.broadcast == BroadcastHint.REPLAY
+    )
+    val merged = mutableListOf<FootballMatch>()
+    val identities = mutableListOf<Identity>()
+    val eventIds = mutableListOf<String?>()
+    for (match in matches) {
+        val fixture = identity(match)
+        val scoreId = matchFootballScore(match, feed)?.event?.id
+        val index = merged.indices.firstOrNull { i ->
+            identities[i] == fixture && (
+                (scoreId != null && eventIds[i] != null && eventIds[i] == scoreId) ||
+                kotlin.math.abs(merged[i].programme.start - match.programme.start) <= 45 * 60000L
+            )
+        }
+        if (index == null) {
+            merged += match.copy(channels = rankedFootballChannels(match.channels))
+            identities += fixture
+            eventIds += scoreId
+        } else {
+            val previous = merged[index]
+            val primary = if (match.programme.broadcast == BroadcastHint.LIVE &&
+                previous.programme.broadcast != BroadcastHint.LIVE) match else previous
+            merged[index] = primary.copy(id = previous.id,
+                channels = rankedFootballChannels(previous.channels + match.channels))
+            if (eventIds[index] == null) eventIds[index] = scoreId
+        }
+    }
+    return merged
+}
+
+private fun footballStreamRank(channel: Channel): Int = when {
+    Regex("\\b(?:4K|UHD)\\b", RegexOption.IGNORE_CASE).containsMatchIn(channel.name) -> 5
+    Regex("\\bFHD\\b", RegexOption.IGNORE_CASE).containsMatchIn(channel.name) -> 4
+    Regex("\\bHD\\b", RegexOption.IGNORE_CASE).containsMatchIn(channel.name) -> 3
+    Regex("\\bSD\\b", RegexOption.IGNORE_CASE).containsMatchIn(channel.name) -> 1
+    else -> 2
+}
+
+/** Sort versions by picture quality but retain every stream for the overflow menu. */
+fun rankedFootballChannels(channels: List<Channel>): List<Channel> =
+    channels.distinctBy { it.url }.sortedWith(compareByDescending<Channel>(::footballStreamRank)
+        .thenBy { normalized(it.name) })
+
+/** Prefer separate broadcasters, not FHD/HD copies of the same channel. */
+fun featuredFootballChannels(channels: List<Channel>): List<Channel> =
+    rankedFootballChannels(channels).distinctBy { guideChannelName(it.name) }.take(2)
+
 fun footballScoreTeamKey(name: String): String {
     nationalTeam(name)?.let {return "country:"+it.country.lowercase()}
     val key=teamKey(name).replace(Regex("^(?:fk|cf|ec|cr|ac)\\s+|\\s+(?:fk|cf|ec|cr|ac)$"),"")

@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -45,16 +45,18 @@ import java.util.Locale
 @Composable internal fun FootballScreen(model: AuroraViewModel) {
     val colors = LocalAuroraColors.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { delay(1000); now = System.currentTimeMillis() } }
-    val matches = remember(model.football, model.footballFeed, model.footballTab, model.footballSearch, now / 1000) {
-        filterFootball(model.football, model.footballTab, model.footballSearch, now, model.footballFeed)
+    // Scores only update every two minutes; do not recompute the whole list every second.
+    LaunchedEffect(Unit) { while (true) { delay(15000L); now = System.currentTimeMillis() } }
+    val matches = remember(model.football, model.footballFeed, model.footballTab, model.footballSearch, now / 15000L) {
+        groupFootballMatches(filterFootball(model.football, model.footballTab, model.footballSearch, now, model.footballFeed), model.footballFeed)
     }
     val tabs = remember(model.football) { footballTabs(model.football) }
     val key = model.footballTab to model.footballSearch
     val scroll = remember(key) {
         model.footballPosition.takeIf { it?.first == key }?.second?.let { LazyListState(it.first, it.second) } ?: LazyListState()
     }
-    LaunchedEffect(key, scroll) { snapshotFlow { scroll.firstVisibleItemIndex to scroll.firstVisibleItemScrollOffset }.collect {
+    LaunchedEffect(key, scroll) { snapshotFlow { scroll.firstVisibleItemIndex to scroll.firstVisibleItemScrollOffset }.collectLatest {
+        delay(250L) // Persist only settled scroll positions, not every pixel.
         model.footballPosition = key to it
     } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -130,7 +132,6 @@ import java.util.Locale
 
 @Composable private fun FootballCard(model: AuroraViewModel, match: FootballMatch, now: Long) {
     val colors = LocalAuroraColors.current
-    var expanded by remember(match.id) { mutableStateOf(false) }
     var artwork by remember(match.id) { mutableStateOf(initialFootballArtwork(match.details)) }
     LaunchedEffect(match.id) { artwork = model.footballArtwork(match.details) }
     val matched = remember(match, model.footballFeed) { matchFootballScore(match, model.footballFeed) }
@@ -158,51 +159,7 @@ import java.util.Locale
             Column(Modifier.fillMaxWidth()) {
                 Box(Modifier.fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(accent.copy(alpha = .08f), accent.copy(alpha = .85f), colors.cyan.copy(alpha = .55f), colors.violet.copy(alpha = .08f)))))
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FootballBadge(competitionBadge, championship, Modifier.size(36.dp), colors.cyan, competition = true)
-                        Text(championship, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = colors.muted, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        if (mode == BroadcastMode.REPLAY) FootballStatus(tr(R.string.replay), Icons.Default.Replay, colors.violet)
-                        else if (liveTransmission) FootballStatus(tr(R.string.now), Icons.Default.Sensors, colors.mint)
-                    }
-                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        if (maxWidth >= 600.dp) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                            FootballConfrontation(match, matched, homeBadge, awayBadge, now, Modifier.weight(1.2f))
-                            FootballTransmission(model, match, liveTransmission, now, Modifier.weight(1f))
-                        } else Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            FootballConfrontation(match, matched, homeBadge, awayBadge, now, Modifier.fillMaxWidth())
-                            FootballTransmission(model, match, liveTransmission, now, Modifier.fillMaxWidth())
-                        }
-                    }
-                    if (event != null && mode == BroadcastMode.REPLAY) Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Icon(Icons.Default.History, null, Modifier.size(14.dp), tint = colors.muted)
-                        Text(tr(R.string.original_match, footballDay(event.kickoff, Locale.forLanguageTag(model.language)) + " · " + footballTime(event.kickoff, Locale.forLanguageTag(model.language))),
-                            fontSize = 10.sp, color = colors.muted, lineHeight = 15.sp)
-                    }
-                    if (event != null && event.state in listOf(MatchState.LIVE, MatchState.HALFTIME) && !scoreIsFresh(event, now)) {
-                        Text(tr(R.string.last_score_update, SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(event.checked))), fontSize = 10.sp, color = colors.muted)
-                    }
-                    HorizontalDivider(color = colors.muted.copy(alpha = .12f))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Surface(onClick = { model.playFootball(match.channels.first()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(15.dp),
-                            color = colors.mint.copy(alpha = .12f), contentColor = colors.mint) {
-                            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Icon(Icons.Default.PlayCircleFilled, null, Modifier.size(28.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(tr(R.string.watch), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Text(match.channels.first().name, color = colors.muted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                }
-                                Icon(Icons.Default.ChevronRight, null, Modifier.size(18.dp))
-                            }
-                        }
-                        if (match.channels.size > 1) Box {
-                            OutlinedIconButton(onClick = { expanded = true }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, colors.muted.copy(alpha = .2f))) {
-                                Icon(Icons.Default.MoreHoriz, tr(R.string.channels), tint = colors.muted)
-                            }
-                            DropdownMenu(expanded, { expanded = false }) { match.channels.forEach { channel ->
-                                DropdownMenuItem(text = { Text(channel.name) }, onClick = { expanded = false; model.playFootball(channel) })
-                            } }
-                        }
-                    }
+                    FootballChannelActions(model, match.channels, Modifier.fillMaxWidth())
                 }
             }
         }
@@ -286,19 +243,47 @@ import java.util.Locale
                         }
                     }
                 }
-                FilledTonalButton(onClick={model.playFootball(match.channels.first())},
-                    modifier=Modifier.fillMaxWidth().testTag("football_compact_watch")) {
-                    Icon(Icons.Default.PlayCircle,null,Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(tr(R.string.watch))
-                }
-                if(match.channels.size>1) {
-                    Text(tr(R.string.channels),fontSize=11.sp,color=colors.muted)
-                    match.channels.drop(1).forEach { channel ->
-                        TextButton(onClick={model.playFootball(channel)},modifier=Modifier.fillMaxWidth()) {
-                            Text(channel.name,maxLines=1,overflow=TextOverflow.Ellipsis)
-                        }
+                FootballChannelActions(model, match.channels, Modifier.fillMaxWidth(), compact = true)
+            }
+        }
+    }
+}
+
+
+/** Two distinct broadcaster shortcuts plus every resolution/alternate stream in one menu. */
+@Composable private fun FootballChannelActions(
+    model: AuroraViewModel, channels: List<Channel>, modifier: Modifier = Modifier, compact: Boolean = false
+) {
+    val colors = LocalAuroraColors.current
+    val featured = remember(channels) { featuredFootballChannels(channels) }
+    val all = remember(channels) { rankedFootballChannels(channels) }
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        featured.forEachIndexed { index, channel ->
+            Surface(onClick = { model.playFootball(channel) }, modifier = Modifier.weight(1f).heightIn(min = 64.dp)
+                .testTag(if (compact && index == 0) "football_compact_watch" else "football_channel_" + index),
+                shape = RoundedCornerShape(14.dp), color = colors.mint.copy(alpha = .12f), contentColor = colors.mint) {
+                Row(Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.PlayCircleFilled, null, Modifier.size(23.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(tr(R.string.watch), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(channel.name, color = colors.muted, fontSize = 10.sp, maxLines = 2,
+                            overflow = TextOverflow.Ellipsis)
                     }
+                }
+            }
+        }
+        if (all.size > 1) Box {
+            OutlinedIconButton(onClick = { menuOpen = true }, modifier = Modifier.size(44.dp)
+                .testTag("football_channels_more"), shape = RoundedCornerShape(13.dp),
+                border = BorderStroke(1.dp, colors.muted.copy(alpha = .2f))) {
+                Icon(Icons.Default.MoreHoriz, tr(R.string.channels), tint = colors.muted)
+            }
+            DropdownMenu(menuOpen, { menuOpen = false }) {
+                all.forEach { channel ->
+                    DropdownMenuItem(text = { Text(channel.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                        onClick = { menuOpen = false; model.playFootball(channel) })
                 }
             }
         }
