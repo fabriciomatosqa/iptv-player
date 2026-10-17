@@ -93,7 +93,7 @@
     <string name="forward">10 seconden vooruit</string>
     <string name="back_football">Terug naar voetbal</string>
     <string name="search_team">Team zoeken</string>
-    <string name="minute_updates">Scores worden elke minuut bijgewerkt</string>
+    <string name="minute_updates">Scores worden elke 2 minuten bijgewerkt</string>
     <string name="scores_stale">Bijwerken mislukt. Laatste gegevens blijven staan.</string>
     <string name="no_matching_games">Geen wedstrijden voor dit filter.</string>
     <string name="games">Wedstrijden</string>

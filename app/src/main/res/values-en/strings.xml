@@ -93,7 +93,7 @@
     <string name="forward">Forward 10 seconds</string>
     <string name="back_football">Back to football</string>
     <string name="search_team">Search team</string>
-    <string name="minute_updates">Scores updated every minute</string>
+    <string name="minute_updates">Scores updated every 2 minutes</string>
     <string name="scores_stale">Unable to update. Keeping the latest data.</string>
     <string name="no_matching_games">No games match this filter.</string>
     <string name="games">Games</string>

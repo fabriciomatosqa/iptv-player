@@ -93,7 +93,7 @@
     <string name="forward">Przewiń o 10 sekund</string>
     <string name="back_football">Powrót do piłki nożnej</string>
     <string name="search_team">Szukaj drużyny</string>
-    <string name="minute_updates">Wyniki aktualizowane co minutę</string>
+    <string name="minute_updates">Wyniki aktualizowane co 2 minuty</string>
     <string name="scores_stale">Aktualizacja nieudana. Zachowano ostatnie dane.</string>
     <string name="no_matching_games">Brak meczów dla tego filtra.</string>
     <string name="games">Mecze</string>
