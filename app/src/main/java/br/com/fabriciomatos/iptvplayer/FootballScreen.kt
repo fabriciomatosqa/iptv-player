@@ -48,7 +48,8 @@ import java.util.Locale
     // A per-second state update invalidated every visible card and re-ran costly score matching.
     // Re-evaluate display timing only twice per minute; the network refresh remains independent.
     LaunchedEffect(Unit) { while (true) { delay(30000); now = System.currentTimeMillis() } }
-    val displayTime = now / 30000L * 30000L
+    // Recompute actual time when a fresh feed arrives, never round it earlier than its checked timestamp.
+    val displayTime = remember(now, model.footballFeed) { System.currentTimeMillis() }
     val matches = remember(model.football, model.footballFeed, model.footballTab, model.footballSearch, displayTime) {
         filterFootball(model.football, model.footballTab, model.footballSearch, displayTime, model.footballFeed)
     }
