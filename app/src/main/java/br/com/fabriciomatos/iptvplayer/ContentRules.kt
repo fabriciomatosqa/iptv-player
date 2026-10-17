@@ -21,7 +21,7 @@ fun footballDetails(title: String, category: String = "", metadata: FootballMeta
     if (Regex("\\b(americano|american|nfl|rugby|basquete|basketball|nba|baseball|beisebol|ufc|bjj|volei|voleibol|tenis|handebol|futsal)\\b").containsMatchIn(text)) return null
     if (Regex("\\b(resenha|debate|mesa redonda|central do|noticias|jornal|sportcenter|sportscenter|gols da rodada|melhores momentos|documentario|40 minutos)\\b").containsMatchIn(text)) return null
     val clean=title.replace(Regex("(?i)\\s*[\\[(](?:reprise|replay|ao vivo|live)[\\])]\\s*")," ")
-        .replace(Regex("(?i)^(?:reprise|replay)\\s*(?::|-)?\\s+|\\s+-\\s+(?:reprise|replay)$"),"")
+        .replace(Regex("(?i)^(?:reprise|replay)\\s*(?::|-)?\\s+|\\s+[-–—]\\s+(?:reprise|replay|ao vivo|live)$"),"")
     val parts = clean.split(Regex("[║|]+|\\s+·\\s+")).map(String::trim).filter(String::isNotBlank)
     val main = parts.firstOrNull { matchSeparator.containsMatchIn(it) } ?: return null
     val separator = matchSeparator.find(main) ?: return null
@@ -32,6 +32,7 @@ fun footballDetails(title: String, category: String = "", metadata: FootballMeta
     if (heading != null && isCompetitionLabel(heading.groupValues[1])) {
         titleCompetitions.add(heading.groupValues[1].trim())
         home = heading.groupValues[2].trim()
+        if(home.contains(':')) home=home.substringAfterLast(':').trim()
     } else if (home.contains(':')) {
         val prefix = home.substringBeforeLast(':').trim()
         if (isCompetitionLabel(prefix)) titleCompetitions.add(prefix)

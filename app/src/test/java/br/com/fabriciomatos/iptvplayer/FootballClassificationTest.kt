@@ -54,6 +54,8 @@ class FootballClassificationTest {
     @Test fun statusIsNeverACompetitionAndBothGeneralFiltersReuseTheSameRecords() {
         val unknown=footballDetails("Aurora x Norte","Futebol Ao Vivo")!!
         assertEquals("",unknown.competition)
+        assertEquals("Norte",footballDetails("Aurora x Norte - Ao Vivo","Futebol")!!.away)
+        assertEquals(2,footballTabs(listOf(game("Ao Vivo"))).size)
         val women=game("Libertadores Feminina","Belgrano","Palmeiras")
         assertSame(women,filterFootball(listOf(women),FOOTBALL_LIVE,"",now).single())
         assertSame(women,filterFootball(listOf(women),FOOTBALL_WOMEN,"Palmeiras",now).single())
@@ -74,6 +76,7 @@ class FootballClassificationTest {
         assertNotEquals(id("Premier League"),footballCompetitionIdentity(africa))
         assertTrue(footballScoreLeagues(africa).isEmpty())
         assertNull(footballLeagueSlug("Brasileirão Série C"))
+        assertEquals(listOf("fifa.wwc"),footballScoreLeagues(FootballDetails("Women's World Cup","Brasil","Argentina")))
     }
     @Test fun discoveryUsesStablePriorityGroupsAndConfigurableOverrides() {
         val names=listOf("J1 League","Campeonato Português","Bundesliga","Premier League","Campeonato Italiano",

@@ -83,7 +83,11 @@ fun footballCompetitionTitle(details: FootballDetails): String {
     return title + (if(details.gender == FootballGender.WOMEN && footballGender(title) != FootballGender.WOMEN) " Feminina" else "") +
         (if(details.ageGroup.isNotBlank() && footballAgeGroup(title).isBlank()) " Sub-${details.ageGroup}" else "")
 }
-fun isCompetitionValue(value: String): Boolean = normalized(value) !in setOf("", "ao vivo", "live", "jogos", "games", "futebol", "soccer", "football", "esportes", "sports", "jogos femininos")
+fun isCompetitionValue(value: String): Boolean {
+    val key=normalized(value)
+    return key.isNotBlank() && key != "jogos femininos" &&
+        !Regex("(?:(?:futebol|soccer|football|esportes|sports) ?)?(?:ao vivo|live|jogos|games)?").matches(key)
+}
 fun isCompetitionLabel(value: String): Boolean {
     val key = normalized(value)
     if(!isCompetitionValue(value)) return false

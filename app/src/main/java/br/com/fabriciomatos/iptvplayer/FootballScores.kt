@@ -42,13 +42,13 @@ private fun qualifierLeague(details: FootballDetails): String? {
 fun footballScoreLeagues(details: FootballDetails): List<String> {
     val name=normalized(details.competition)
     if(details.gender == FootballGender.CONFLICT || details.ageGroup.isNotBlank()) return emptyList()
-    if(nationalMatch(details)!=null || Regex("\\b(amistoso internacional|eliminatorias|copa do mundo|eurocopa|copa america)\\b").containsMatchIn(name)) {
+    if(nationalMatch(details)!=null || Regex("\\b(amistoso internacional|eliminatorias|copa do mundo|world cup|eurocopa|copa america)\\b").containsMatchIn(name)) {
         // Youth events must never be matched to the senior men's scoreboard.
         if(Regex("\\b(?:sub[- ]?|u|under[- ]?)\\d{2}\\b").containsMatchIn(normalized("${details.competition} ${details.home} ${details.away}")))return emptyList()
         val women=details.gender == FootballGender.WOMEN
         return when {
             name.contains("eliminatorias") -> if(women)emptyList() else qualifierLeague(details)?.let(::listOf) ?: emptyList()
-            name.contains("copa do mundo") -> listOf(if(women)"fifa.wwc"else"fifa.world")
+            name.contains("copa do mundo") || name.contains("world cup") -> listOf(if(women)"fifa.wwc"else"fifa.world")
             name.contains("amistoso") || name.contains("friendly") -> listOf(if(women)"fifa.friendly.w"else"fifa.friendly")
             name.contains("eurocopa") || name.contains("euro 20") -> listOf(if(women)"uefa.weuro"else"uefa.euro")
             name.contains("copa america") -> listOf(if(women)"conmebol.america.femenina"else"conmebol.america")
@@ -70,7 +70,7 @@ fun footballTabKey(details: FootballDetails): String {
     }
 }
 fun footballTabs(matches: List<FootballMatch>, priorities: Map<String, FootballCategoryPriority> = emptyMap()): List<FootballTab> {
-    val categories = matches.filter { it.details.competition.isNotBlank() || it.details.gender == FootballGender.WOMEN || nationalMatch(it.details)!=null }
+    val categories = matches.filter { isCompetitionValue(it.details.competition) || it.details.gender == FootballGender.WOMEN || nationalMatch(it.details)!=null }
         .groupBy { footballTabKey(it.details) }.map { (key,games) ->
             val details = games.map { it.details }.minBy { normalized(footballCompetitionTitle(it)) }
             val title = when(key) {
