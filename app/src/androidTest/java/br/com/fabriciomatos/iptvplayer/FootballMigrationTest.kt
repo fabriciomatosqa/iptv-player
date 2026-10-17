@@ -17,6 +17,7 @@ class FootballMigrationTest {
         PlaylistRepository(context).also {
             it.saveSource(source,"Minha lista");it.appendCache(source,Download(Playlist(listOf(channel)),"",""));it.saveFavorites(setOf(channel.url));it.saveGuide(source,guide);it.close()
         }
+        legacyHostCopies(context,source,0)
         SQLiteDatabase.openDatabase(context.getDatabasePath("aurora_catalog.db").path,null,SQLiteDatabase.OPEN_READWRITE).use {db->
             db.execSQL("ALTER TABLE guide_programmes RENAME TO guide_with_broadcast")
             db.execSQL("CREATE TABLE guide_programmes AS SELECT source_key,channel_id,start,end,title,image,is_game,show_now,category FROM guide_with_broadcast")
