@@ -95,6 +95,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var current by mutableStateOf<Channel?>(null); private set
     var recent by mutableStateOf<Channel?>(null); private set
     var playbackError by mutableStateOf<String?>(null); private set
+    var playbackErrorDetails by mutableStateOf<String?>(null); private set
     var buffering by mutableStateOf(false); private set
     var isPlaying by mutableStateOf(false); private set
     var page by mutableStateOf(Page.HOME)
@@ -536,11 +537,11 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         playJob?.cancel()
         playerSource=""
         playerInstance?.stop()
-        playbackError = null; buffering = true; current = channel; recent = channel; page = Page.LIBRARY
+        playbackError = null; playbackErrorDetails = null; buffering = true; current = channel; recent = channel; page = Page.LIBRARY
         val source=playlistUrl
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel,source) }
         val instance=try {playerInstance ?: createPlayer().also {playerInstance=it}}
-            catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.load_failed);return}
+            catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.load_failed);playbackErrorDetails=playbackDiagnosticText(-1);return}
         playJob=viewModelScope.launch { try {
             val saved=if(channel.kind==MediaKind.LIVE)null else playbackPositions[source to channel.url]
                 ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
@@ -564,7 +565,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             else instance.setMediaSource(mediaSource,saved?.resumePositionMs ?: 0L)
             instance.prepare(); instance.playWhenReady = true
         } catch(e: CancellationException) {throw e}
-        catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.load_failed) } }
+        catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.load_failed);playbackErrorDetails=playbackDiagnosticText(-1) } }
     }
 
     private fun checkpointPlayback() {
@@ -594,18 +595,14 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 override fun onPlayerError(error: PlaybackException) {
                     checkpointPlayback()
                     buffering = false
-                    playbackError = when (error.errorCode) {
-                        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> preferences.text(R.string.load_failed)
-                        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> preferences.text(R.string.load_failed)
-                        PlaybackException.ERROR_CODE_DECODING_FAILED, PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> preferences.text(R.string.load_failed)
-                        else -> preferences.text(R.string.load_failed)
-                    }
+                    playbackError = preferences.text(R.string.load_failed)
+                    playbackErrorDetails = playbackDiagnosticText(error)
                 }
             })
         }
 
     fun retry() { current?.let(::play) }
-    fun stop() { checkpointPlayback();playJob?.cancel();playerSource="";playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
+    fun stop() { checkpointPlayback();playJob?.cancel();playerSource="";playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; playbackErrorDetails = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
     fun foreground(active: Boolean) {
         foreground = active
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()

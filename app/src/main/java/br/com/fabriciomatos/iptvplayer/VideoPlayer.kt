@@ -113,6 +113,9 @@ internal fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: B
         if(model.buffering && model.playbackError==null)CircularProgressIndicator(Modifier.align(Alignment.Center).size(28.dp),strokeWidth=2.dp)
         model.playbackError?.let {error->Column(Modifier.align(Alignment.Center).background(Bg.copy(alpha=.9f)).padding(12.dp),horizontalAlignment=Alignment.CenterHorizontally) {
             Text(error,fontSize=12.sp,maxLines=3)
+            model.playbackErrorDetails?.let { details ->
+                Text(details,fontSize=11.sp,color=Mint,maxLines=3,modifier=Modifier.testTag("playback_error_details"))
+            }
             TextButton(onClick=model::retry){Text(tr(R.string.retry))}
         }}
     }
