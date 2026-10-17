@@ -34,17 +34,20 @@ jobs:
           path: .signing/aurora-debug.keystore
           key: aurora-test-signing-key-v2
 
-      - name: Create test signing key if missing
+      - name: Recover signing key from secret if needed
+        env:
+          AURORA_KEYSTORE_BASE64: ${{ secrets.AURORA_KEYSTORE_BASE64 }}
         run: |
           mkdir -p .signing
           if [ ! -f .signing/aurora-debug.keystore ]; then
-            keytool -genkeypair -v \
-              -keystore .signing/aurora-debug.keystore \
-              -storepass auroraTestKey123 \
-              -alias aurora \
-              -keypass auroraTestKey123 \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=AURORA IPTV Test, OU=Development, O=AURORA IPTV, L=Divinopolis, ST=MG, C=BR"
+            python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          key = os.environ.get('AURORA_KEYSTORE_BASE64', '')
+          if not key:
+              raise SystemExit('Signing key unavailable. Restore the original key or configure AURORA_KEYSTORE_BASE64; never generate a replacement for online updates.')
+          Path('.signing/aurora-debug.keystore').write_bytes(base64.b64decode(key, validate=True))
+          PY
           fi
 
       - name: Set up Gradle
@@ -55,6 +58,9 @@ jobs:
       - name: Test and build debug APK
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug compileDebugAndroidTestKotlin
 
+      - name: Test Android release metadata
+        run: python3 -m unittest discover -s release -p 'test_*.py'
+
       - name: Save persistent test signing key
         uses: actions/cache/save@v4
         with:
@@ -64,11 +70,17 @@ jobs:
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/aurora-iptv.apk
 
+      - name: Verify signature and prepare online update
+        run: python3 release/prepare_android.py app/build/outputs/apk/debug/aurora-iptv.apk app/build/outputs/apk/debug
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: aurora-iptv-apk
-          path: app/build/outputs/apk/debug/aurora-iptv.apk
+          path: |
+            app/build/outputs/apk/debug/aurora-iptv.apk
+            app/build/outputs/apk/debug/aurora-update.json
+            app/build/outputs/apk/debug/aurora-iptv.apk.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -106,3 +118,20 @@ jobs:
             app/build/reports/tests
             app/build/reports/lint-results-debug.html
           retention-days: 14
+
+  publish:
+    needs: build
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: aurora-iptv-apk
+          path: dist
+      - name: Publish complete Android release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release/publish_android.py

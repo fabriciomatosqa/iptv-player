@@ -2,6 +2,15 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.11.0
+
+- **Configurações → Atualizar online** verifica as versões Android estáveis do GitHub, compara o código da versão instalada e informa se há atualização. Versões de outras plataformas, rascunhos e prévias são ignoradas.
+- Baixa o APK dentro do aplicativo com porcentagem, verifica tamanho, SHA-256, pacote, versão, compatibilidade e assinatura antes de abrir o instalador oficial. Uma autorização do Android pode ser necessária; a instalação sempre depende da confirmação do usuário.
+- Mantém listas, catálogo, favoritos e posições de reprodução. Cancelar a instalação permite tentar novamente com o arquivo já verificado; arquivos incompletos não são instalados. Erros de rede e limites do GitHub têm mensagem e nova tentativa.
+- Builds aprovados na branch principal publicam um Release `android-vX.Y.Z` com `aurora-iptv.apk`, `aurora-update.json` e SHA-256. O Release só aparece para o app depois de todos os arquivos serem enviados. A publicação rejeita qualquer mudança na assinatura existente.
+
+Instale a versão 1.11 uma vez sobre a atual para habilitar esse recurso. Depois, use **Atualizar online**. Download: [versão Android 1.11.0](https://github.com/fabriciomatosqa/iptv-player/releases/tag/android-v1.11.0).
+
 ## Versão 1.10.0
 
 - Início ajustado ao espaço da tela, com o último conteúdo no topo e o total abaixo de Futebol. A reprodução em andamento continua na prévia; celulares muito pequenos ou com fonte ampliada mantêm a rolagem necessária para acessibilidade.
@@ -99,4 +108,6 @@ gradle testDebugUnitTest lintDebug assembleDebug
 
 O GitHub Actions executa testes de classificação, séries e calendário, testes de banco/migração/rollback, navegação e reprodução HTTP em um emulador. A verificação também encerra o processo com `am force-stop` duas vezes e confirma que o catálogo e os favoritos reaparecem.
 
-O APK fica em **Actions → Build AURORA IPTV APK → execução concluída → Artifacts → aurora-iptv-apk**. O pacote `br.com.fabriciomatos.iptvplayer` e a chave de teste em cache foram preservados para instalação sobre as versões anteriores.
+O APK está em **Releases → AURORA IPTV (Android) → aurora-iptv.apk**, além dos artefatos em Actions. O pacote `br.com.fabriciomatos.iptvplayer` e a assinatura foram preservados para instalação sobre versões anteriores. Publicar uma atualização exige aumentar `versionCode` e `versionName` em `app/build.gradle.kts` e atualizar `release/notes.md`.
+
+A chave original é recuperada do cache `aurora-test-signing-key-v2`; o secret opcional `AURORA_KEYSTORE_BASE64` permite restaurar exatamente o mesmo keystore se o cache for removido. Sem a chave original, a compilação para e pede restauração, evitando publicar um APK incompatível. Nenhuma chave, token de GitHub ou credencial de playlist é incluída no aplicativo.

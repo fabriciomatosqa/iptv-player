@@ -3,6 +3,7 @@
 **/build/
 local.properties
 .signing/
+__pycache__/
 *.apk
 *.zip
 app/src/androidTest/assets/tracks.mp4

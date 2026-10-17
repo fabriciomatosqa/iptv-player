@@ -48,6 +48,7 @@ enum class Page { HOME, LIBRARY, FOOTBALL }
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AuroraViewModel(application: Application) : AndroidViewModel(application) {
+    internal val onlineUpdate = AppUpdateController(AppUpdateRepository(application), viewModelScope)
     private val repository = PlaylistRepository(application)
     private val artwork = ArtworkResolver(repository)
     private val scores = FootballScoreRepository(repository)
