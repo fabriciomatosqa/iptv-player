@@ -88,6 +88,8 @@ class FootballScoresTest {
         assertEquals(FootballDetails("Campeonato Brasileiro","Botafogo-SP","Ceará"),
             footballDetails("Botafogo-SP x Ceará - Campeonato Brasileiro"))
         assertNull(footballDetails("Brasileirão x Santos"))
+        assertEquals(FootballDetails("Copa Libertadores da América","Fluminense","Palmeiras"),
+            footballDetails("Semifinal, Jogo de Ida: Fluminense x Palmeiras - Copa Libertadores da América"))
     }
     @Test fun competitionTabsHaveTheRequestedOrderAndTeamSearchDoesNotMatchOtherGames() {
         val matches=listOf(game("Premier League","Chelsea","Arsenal"),game("Campeonato Brasileiro","Fluminense","Botafogo"),

@@ -2,6 +2,12 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.8
+
+- Ajuste de compatibilidade do parser de Futebol: preserva a remoção de descrições de partida antes de dois-pontos, como "Semifinal, Jogo de Ida:", sem reintroduzir nomes de campeonatos nos times.
+- Mantém as funcionalidades da versão 1.12.7: detalhes ao vivo, reprises, Libertadores Feminina e menu Aurora de canais.
+- Sem migrações destrutivas, com mesma assinatura e atualização online incremental.
+
 ## Versão 1.12.7
 
 - **Futebol — detalhes em andamento:** partidas em transmissão agora oferecem "Ver detalhes" para gols, cartões, jogadores e minutos, quando o provedor disponibilizar uma súmula confiável. Reutiliza a mesma visão dos jogos encerrados. Os dados são carregados somente ao expandir e o cache de eventos ao vivo acompanha os 2 minutos do placar.

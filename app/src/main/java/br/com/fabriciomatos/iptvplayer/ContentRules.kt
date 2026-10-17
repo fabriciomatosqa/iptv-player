@@ -36,10 +36,9 @@ fun footballDetails(title: String, category: String = ""): FootballDetails? {
         home = heading.groupValues[2].trim()
     } else if (home.contains(':')) {
         val prefix = home.substringBeforeLast(':').trim()
-        if (footballCompetitions.containsMatchIn(normalized(prefix))) {
-            competition = prefix
-            home = home.substringAfterLast(':').trim()
-        }
+        if (footballCompetitions.containsMatchIn(normalized(prefix))) competition = prefix
+        // Descriptors such as "Semifinal, Jogo de Ida:" aren't part of the club name.
+        home = home.substringAfterLast(':').trim()
     }
     if (away.contains(" - ")) {
         competition = away.substringAfter(" - ").trim()
