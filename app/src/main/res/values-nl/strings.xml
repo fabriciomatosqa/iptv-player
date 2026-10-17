@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Kan Android-installatie of machtigingen niet openen.</string>
     <string name="one_game">1 wedstrijd</string>
     <string name="game_count">%1$s wedstrijden</string>
+    <string name="playback_http_not_found">Oeps... Video niet gevonden op de server. Het adres kan zijn gewijzigd. Probeer later opnieuw.</string>
+    <string name="playback_http_unavailable">Oeps... De server kan de video nu niet leveren. Je kunt AURORA blijven gebruiken.</string>
+    <string name="playback_network_failure">Oeps... Geen verbinding met de server. Controleer je internet.</string>
+    <string name="playback_format_failure">Oeps... Kan de video niet lezen. Het bestand is mogelijk onvolledig of niet compatibel.</string>
+    <string name="playback_codec_failure">Oeps... Het beeld- of geluidsformaat wordt mogelijk niet ondersteund.</string>
+    <string name="playback_generic_failure">Oeps... Kan de video nu niet starten. Probeer opnieuw.</string>
+    <string name="football_match_details">Details bekijken</string>
+    <string name="football_hide_details">Details verbergen</string>
+    <string name="football_incidents_unavailable">Wedstrijdgebeurtenissen zijn nu niet beschikbaar.</string>
+    <string name="football_incidents_empty">Geen doelpunten of kaarten gemeld voor deze wedstrijd.</string>
 </resources>

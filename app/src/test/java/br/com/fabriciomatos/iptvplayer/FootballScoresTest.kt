@@ -47,13 +47,30 @@ class FootballScoresTest {
         assertNull(footballDetails("Reprise: Futebol 24 horas"))
         assertNull(footballDetails("Melhores momentos: Fluminense x Botafogo - Campeonato Brasileiro"))
     }
+    @Test fun liveTabOnlyKeepsLiveMatchesAndExcludesReplays() {
+        val running=game("Campeonato Brasileiro","Fluminense","Botafogo",now-500000L,BroadcastHint.LIVE)
+        val replay=game("Campeonato Brasileiro","Vasco","Flamengo",now-500000L,BroadcastHint.REPLAY)
+        val planned=game("Premier League","Chelsea","Arsenal",now+3600000L)
+        val feed=FootballFeed(listOf(score("Fluminense","Botafogo",running.programme.start,MatchState.LIVE,"bra.1")),now)
+        assertEquals(listOf(running),filterFootball(listOf(running,replay,planned),FOOTBALL_LIVE,"",now,feed))
+        assertEquals(listOf(running),filterFootball(listOf(running,replay,planned),FOOTBALL_LIVE,"Fluminense",now,feed))
+        assertTrue(filterFootball(listOf(replay,planned),FOOTBALL_LIVE,"",now,feed).isEmpty())
+        assertEquals(3,filterFootball(listOf(running,replay,planned),FOOTBALL_GAMES,"",now,feed).size)
+    }
+    @Test fun replaysAndFinishedGamesAreCompactButActiveGamesRemainFullSize() {
+        val live=game("Campeonato Brasileiro","Fluminense","Botafogo",now-40000L,BroadcastHint.LIVE)
+        val replay=game("Campeonato Brasileiro","Fluminense","Botafogo",now,BroadcastHint.REPLAY)
+        assertTrue(compactFootballMatch(replay,null,now))
+        assertTrue(compactFootballMatch(live,score("Fluminense","Botafogo",live.programme.start,MatchState.FINISHED,"bra.1"),now))
+        assertFalse(compactFootballMatch(live,score("Fluminense","Botafogo",live.programme.start,MatchState.LIVE,"bra.1"),now))
+    }
     @Test fun competitionTabsHaveTheRequestedOrderAndTeamSearchDoesNotMatchOtherGames() {
         val matches=listOf(game("Premier League","Chelsea","Arsenal"),game("Campeonato Brasileiro","Fluminense","Botafogo"),
             game("Copa Libertadores","Fluminense","River Plate"),game("Amistoso Feminino","Brasil","Argentina"),
             game("Copa Sul-Americana","Santos","Independiente"),game("Campeonato Italiano","Milan","Sassuolo"))
         val tabs=footballTabs(matches)
-        assertEquals(listOf(FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,FOOTBALL_LIBERTADORES,FOOTBALL_SUDAMERICANA),tabs.take(5).map {it.key})
-        assertEquals(listOf("Campeonato Italiano","Premier League"),tabs.drop(5).map {it.title})
+        assertEquals(listOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,FOOTBALL_LIBERTADORES,FOOTBALL_SUDAMERICANA),tabs.take(6).map {it.key})
+        assertEquals(listOf("Campeonato Italiano","Premier League"),tabs.drop(6).map {it.title})
         assertEquals(2,filterFootball(matches,FOOTBALL_GAMES,"fluminense",now).size)
         assertEquals(1,filterFootball(matches,FOOTBALL_BRAZIL,"Fluminénse",now).size)
         assertTrue(filterFootball(matches,FOOTBALL_FIFA,"Fluminense",now).isEmpty())

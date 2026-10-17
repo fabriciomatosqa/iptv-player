@@ -119,6 +119,7 @@ import java.util.Locale
 }
 
 @Composable private fun footballTabTitle(tab: FootballTab): String = when (tab.key) {
+    FOOTBALL_LIVE -> tr(R.string.live_score)
     FOOTBALL_GAMES -> tr(R.string.games)
     FOOTBALL_FIFA -> "FIFA"
     FOOTBALL_BRAZIL -> tr(R.string.brasileirao)
@@ -141,6 +142,10 @@ import java.util.Locale
     val championship = match.details.competition.ifBlank { event?.competition.orEmpty().ifBlank { tr(R.string.football) } }
     val mode = broadcastMode(match.programme, event)
     val liveTransmission = transmissionIsLive(match.programme, event, now)
+    if(compactFootballMatch(match,event,now)) {
+        CompactFootballCard(model,match,matched,homeBadge,awayBadge,championship,now)
+        return
+    }
     val accent = if (mode == BroadcastMode.REPLAY) colors.violet else colors.mint
     Card(onClick = { model.playFootball(match.channels.first()) }, modifier = Modifier.fillMaxWidth().testTag("football_match"), shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = colors.panel), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -196,6 +201,102 @@ import java.util.Locale
                             DropdownMenu(expanded, { expanded = false }) { match.channels.forEach { channel ->
                                 DropdownMenuItem(text = { Text(channel.name) }, onClick = { expanded = false; model.playFootball(channel) })
                             } }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable private fun CompactFootballCard(
+    model: AuroraViewModel, match: FootballMatch, matched: MatchedScore?,
+    homeBadge: String, awayBadge: String, championship: String, now: Long
+) {
+    val colors=LocalAuroraColors.current
+    val event=matched?.event
+    val replay=broadcastMode(match.programme,event)==BroadcastMode.REPLAY
+    val accent=if(replay) colors.violet else colors.muted
+    var detailsExpanded by remember(match.id) { mutableStateOf(false) }
+    var incidents by remember(match.id,event?.id) { mutableStateOf<List<FootballIncident>?>(null) }
+    var incidentsLoaded by remember(match.id,event?.id) { mutableStateOf(false) }
+    var incidentsLoading by remember(match.id,event?.id) { mutableStateOf(false) }
+    LaunchedEffect(detailsExpanded,event?.id) {
+        if(detailsExpanded && event!=null && !incidentsLoaded) {
+            incidentsLoading=true
+            try { incidents=model.footballIncidents(event) }
+            finally { incidentsLoaded=true;incidentsLoading=false }
+        }
+    }
+    Card(onClick={ detailsExpanded=!detailsExpanded },modifier=Modifier.fillMaxWidth().testTag("football_match"),
+        shape=RoundedCornerShape(19.dp),colors=CardDefaults.cardColors(containerColor=colors.panel),
+        border=BorderStroke(1.dp,accent.copy(alpha=.28f))) {
+        Column(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=11.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                FootballBadge(homeBadge,match.details.home,Modifier.size(34.dp),colors.mint)
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                    Text(match.details.home+" × "+match.details.away,fontSize=12.sp,fontWeight=FontWeight.SemiBold,
+                        maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(championship,color=colors.muted,fontSize=10.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+                if(matched?.homeGoals!=null && matched.awayGoals!=null)
+                    Text("${matched.homeGoals}–${matched.awayGoals}",fontWeight=FontWeight.Black,fontSize=21.sp,
+                        modifier=Modifier.testTag("football_compact_score"))
+                FootballBadge(awayBadge,match.details.away,Modifier.size(34.dp),colors.mint)
+            }
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                FootballStatus(tr(if(replay)R.string.replay else R.string.full_time),
+                    if(replay) Icons.Default.Replay else Icons.Default.CheckCircle,accent)
+                Spacer(Modifier.weight(1f))
+                Text(tr(if(detailsExpanded)R.string.football_hide_details else R.string.football_match_details),
+                    color=colors.muted,fontSize=11.sp)
+                Icon(if(detailsExpanded)Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    null,Modifier.size(19.dp),tint=colors.muted)
+            }
+            if(detailsExpanded) {
+                HorizontalDivider(color=colors.muted.copy(alpha=.15f))
+                FootballConfrontation(match,matched,homeBadge,awayBadge,now,Modifier.fillMaxWidth())
+                FootballTransmission(model,match,false,now,Modifier.fillMaxWidth())
+                if(replay && event!=null) Text(tr(R.string.original_match,
+                    footballDay(event.kickoff,Locale.forLanguageTag(model.language))+" · "+
+                        footballTime(event.kickoff,Locale.forLanguageTag(model.language))),
+                    fontSize=11.sp,color=colors.muted)
+                HorizontalDivider(color=colors.muted.copy(alpha=.15f))
+                when {
+                    incidentsLoading -> CircularProgressIndicator(Modifier.size(20.dp))
+                    incidents==null -> Text(tr(R.string.football_incidents_unavailable),fontSize=11.sp,color=colors.muted)
+                    incidents!!.isEmpty() -> Text(tr(R.string.football_incidents_empty),fontSize=11.sp,color=colors.muted)
+                    else -> Column(Modifier.testTag("football_incidents"),verticalArrangement=Arrangement.spacedBy(7.dp)) {
+                        incidents!!.forEach { incident ->
+                            val homeSide=matched?.home?.id==event?.home?.id
+                            val side=if(homeSide)incident.isHome else !incident.isHome
+                            val icon=when(incident.kind) {
+                                FootballIncidentKind.GOAL->"⚽"
+                                FootballIncidentKind.YELLOW_CARD->"🟨"
+                                FootballIncidentKind.RED_CARD->"🟥"
+                            }
+                            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                                Text(icon,fontSize=13.sp)
+                                Text(incident.minute,fontSize=11.sp,color=colors.muted)
+                                Text(incident.player,Modifier.weight(1f),fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                Text(if(side)match.details.home else match.details.away,fontSize=10.sp,color=colors.muted,
+                                    maxLines=1,overflow=TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
+                FilledTonalButton(onClick={model.playFootball(match.channels.first())},
+                    modifier=Modifier.fillMaxWidth().testTag("football_compact_watch")) {
+                    Icon(Icons.Default.PlayCircle,null,Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(tr(R.string.watch))
+                }
+                if(match.channels.size>1) {
+                    Text(tr(R.string.channels),fontSize=11.sp,color=colors.muted)
+                    match.channels.drop(1).forEach { channel ->
+                        TextButton(onClick={model.playFootball(channel)},modifier=Modifier.fillMaxWidth()) {
+                            Text(channel.name,maxLines=1,overflow=TextOverflow.Ellipsis)
                         }
                     }
                 }

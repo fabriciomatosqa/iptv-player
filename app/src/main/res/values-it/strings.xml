@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Impossibile aprire l’installazione o i permessi Android.</string>
     <string name="one_game">1 partita</string>
     <string name="game_count">%1$s partite</string>
+    <string name="playback_http_not_found">Ops... Video non trovato sul server. L\'indirizzo potrebbe essere cambiato. Riprova più tardi.</string>
+    <string name="playback_http_unavailable">Ops... Il server non può fornire questo video ora. Puoi continuare a usare AURORA e riprovare più tardi.</string>
+    <string name="playback_network_failure">Ops... Impossibile connettersi al server. Controlla Internet.</string>
+    <string name="playback_format_failure">Ops... Impossibile leggere il video. Il file potrebbe essere incompleto o incompatibile.</string>
+    <string name="playback_codec_failure">Ops... Il formato audio o video potrebbe non essere supportato dal dispositivo.</string>
+    <string name="playback_generic_failure">Ops... Impossibile avviare il video. Riprova.</string>
+    <string name="football_match_details">Mostra dettagli</string>
+    <string name="football_hide_details">Nascondi dettagli</string>
+    <string name="football_incidents_unavailable">Gli eventi della partita non sono disponibili.</string>
+    <string name="football_incidents_empty">Nessun gol o cartellino registrato per questa partita.</string>
 </resources>

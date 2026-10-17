@@ -2,6 +2,14 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.5
+
+- **Reprodução:** mensagens mais humanas para HTTP 404 (endereço ausente), outras respostas do servidor, rede, formato e codec. O código técnico permanece visível em uma linha discreta para diagnóstico. Nenhum erro HTTP é tratado como prova de que todo o aplicativo está correto.
+- **Futebol:** nova aba **AO VIVO** antes de Jogos mostra somente transmissões em andamento confirmadas pelo placar recente ou sinalizadas como ao vivo pelo guia.
+- Reprises, partidas com placar final e transmissões encerradas ocupam cards compactos; tocar neles expande placar, data, canal e botão Assistir.
+- Detalhes de gols e cartões são solicitados somente ao expandir partidas com identificação confiável na fonte de placares. Há cache local, sem consultas massivas. Se os dados não estiverem disponíveis, a interface informa isso claramente.
+- Mantém o limite de remoção de jogos encerrados há mais de uma hora, filtros, favoritos, navegação e atualização online, com traduções nos 20 idiomas.
+
 ## Versão 1.12.4
 
 - Mostra detalhes técnicos seguros para erros de reprodução, incluindo classe/código Media3, status HTTP e codec/resolução quando disponíveis.

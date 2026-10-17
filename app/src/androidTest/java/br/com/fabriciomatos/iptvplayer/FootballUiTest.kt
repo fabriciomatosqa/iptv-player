@@ -54,6 +54,10 @@ class FootballUiTest {
             compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
             compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
             compose.onNodeWithText("83:21").assertExists()
+            compose.onNodeWithTag("football_tab_${FOOTBALL_LIVE}").performClick()
+            compose.onAllNodesWithTag("football_match").assertCountEquals(1)
+            compose.onNodeWithText("Fluminense").assertExists()
+            compose.onNodeWithTag("football_tab_${FOOTBALL_GAMES}").performClick()
             compose.onNodeWithTag("football_search").performTextInput("Fluminense")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Brasileirão").performClick()
@@ -82,6 +86,9 @@ class FootballUiTest {
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr")).assertTextContains("Reprise",substring=true)
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr")).assertTextContains("3")
             screenshot("football-replay-result")
+            compose.onNode(hasTestTag("football_match") and hasText("Al Nassr")).performClick()
+            compose.onNodeWithTag("football_compact_watch").assertExists()
+            compose.onNodeWithText("Ocultar detalhes").assertExists()
             scenario.onActivity {model.footballTab=FOOTBALL_FIFA}
             compose.waitUntil(10000) {compose.onAllNodesWithText("Brasil").fetchSemanticsNodes().isNotEmpty()}
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)

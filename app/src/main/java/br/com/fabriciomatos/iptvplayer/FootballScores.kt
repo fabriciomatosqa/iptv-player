@@ -2,6 +2,7 @@ package br.com.fabriciomatos.iptvplayer
 
 import kotlin.math.abs
 
+const val FOOTBALL_LIVE = "__live__"
 const val FOOTBALL_GAMES = "__games__"
 const val FOOTBALL_FIFA = "__fifa__"
 const val FOOTBALL_BRAZIL = "__brazil__"
@@ -64,7 +65,7 @@ fun footballTabKey(details: FootballDetails): String {
     }
 }
 fun footballTabs(matches: List<FootballMatch>): List<FootballTab> {
-    val leading=listOf(FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,FOOTBALL_LIBERTADORES,FOOTBALL_SUDAMERICANA)
+    val leading=listOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,FOOTBALL_LIBERTADORES,FOOTBALL_SUDAMERICANA)
     return leading.map(::FootballTab)+matches.map {FootballTab(footballTabKey(it.details),it.details.competition)}
         .filterNot {it.key in leading}.distinctBy {it.key}.sortedBy {normalized(it.title)}
 }
@@ -72,8 +73,10 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
     val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
     return matches.filter {match ->
         val teams=normalized("${match.details.home} ${match.details.away}")
-        (match.programme.end>now-FOOTBALL_RETENTION_MS || transmissionIsLive(match.programme,matchFootballScore(match,feed)?.event,now)) &&
-            (tab==FOOTBALL_GAMES || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
+        val event=matchFootballScore(match,feed)?.event
+        val live=transmissionIsLive(match.programme,event,now)
+        (match.programme.end>now-FOOTBALL_RETENTION_MS || live) &&
+            (tab==FOOTBALL_GAMES || (tab==FOOTBALL_LIVE && live) || footballTabKey(match.details)==tab) && words.all {teams.contains(it)}
     }
 }
 fun footballScoreTeamKey(name: String): String {
@@ -106,6 +109,12 @@ fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? 
     if(candidates.getOrNull(1)?.let {abs(abs(it.kickoff-match.programme.start)-abs(chosen.kickoff-match.programme.start))<30*60000L}==true)return null
     return if(matchesScoreTeam(match.details.home,chosen.home))MatchedScore(chosen,chosen.home,chosen.away,chosen.homeGoals,chosen.awayGoals)
         else MatchedScore(chosen,chosen.away,chosen.home,chosen.awayGoals,chosen.homeGoals)
+}
+/** Finished fixtures and repeats stay in the catalog but use a reduced card until expanded. */
+fun compactFootballMatch(match: FootballMatch, score: FootballScore?, now: Long): Boolean {
+    if(broadcastMode(match.programme,score)==BroadcastMode.REPLAY)return true
+    if(score?.state==MatchState.FINISHED)return true
+    return match.programme.end<=now && score?.state !in listOf(MatchState.LIVE,MatchState.HALFTIME)
 }
 fun broadcastMode(programme: Programme, score: FootballScore?): BroadcastMode {
     if(programme.broadcast==BroadcastHint.REPLAY)return BroadcastMode.REPLAY

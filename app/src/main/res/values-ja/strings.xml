@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Androidのインストーラーまたは権限設定を開けません。</string>
     <string name="one_game">1試合</string>
     <string name="game_count">%1$s試合</string>
+    <string name="playback_http_not_found">おっと…サーバーに動画が見つかりません。アドレスが変更された可能性があります。後でお試しください。</string>
+    <string name="playback_http_unavailable">おっと…サーバーがこの動画を提供できません。AURORA は引き続き利用できます。後でお試しください。</string>
+    <string name="playback_network_failure">おっと…サーバーに接続できません。インターネット接続を確認してください。</string>
+    <string name="playback_format_failure">おっと…動画を読み込めません。ファイルが不完全か、対応していない形式です。</string>
+    <string name="playback_codec_failure">おっと…映像や音声の形式が端末に対応していない可能性があります。</string>
+    <string name="playback_generic_failure">おっと…動画を開始できません。もう一度お試しください。</string>
+    <string name="football_match_details">詳細を見る</string>
+    <string name="football_hide_details">詳細を閉じる</string>
+    <string name="football_incidents_unavailable">試合の出来事は現在取得できません。</string>
+    <string name="football_incidents_empty">この試合のゴールやカードの記録はありません。</string>
 </resources>

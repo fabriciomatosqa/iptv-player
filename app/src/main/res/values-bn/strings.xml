@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Android ইনস্টলার বা অনুমতির সেটিং খোলা যায়নি।</string>
     <string name="one_game">১টি ম্যাচ</string>
     <string name="game_count">%1$sটি ম্যাচ</string>
+    <string name="playback_http_not_found">ওহ... সার্ভারে ভিডিওটি পাওয়া যায়নি। ঠিকানা বদলে যেতে পারে। পরে চেষ্টা করুন।</string>
+    <string name="playback_http_unavailable">ওহ... সার্ভার এখন ভিডিওটি দিতে পারছে না। আপনি AURORA ব্যবহার চালিয়ে যেতে পারেন।</string>
+    <string name="playback_network_failure">ওহ... সার্ভারে সংযোগ করা যায়নি। ইন্টারনেট পরীক্ষা করুন।</string>
+    <string name="playback_format_failure">ওহ... ভিডিও পড়া যায়নি। ফাইল অসম্পূর্ণ বা অসঙ্গত হতে পারে।</string>
+    <string name="playback_codec_failure">ওহ... ভিডিও বা অডিও ফরম্যাট ডিভাইসে সমর্থিত নাও হতে পারে।</string>
+    <string name="playback_generic_failure">ওহ... ভিডিও শুরু করা যায়নি। আবার চেষ্টা করুন।</string>
+    <string name="football_match_details">বিস্তারিত দেখুন</string>
+    <string name="football_hide_details">বিস্তারিত লুকান</string>
+    <string name="football_incidents_unavailable">ম্যাচের ঘটনাগুলো এখন পাওয়া যাচ্ছে না।</string>
+    <string name="football_incidents_empty">এই ম্যাচে গোল বা কার্ডের তথ্য নেই।</string>
 </resources>

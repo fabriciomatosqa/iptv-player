@@ -177,4 +177,14 @@
     <string name="app_update_install_error">無法開啟 Android 安裝程式或權限設定。</string>
     <string name="one_game">1 場比賽</string>
     <string name="game_count">%1$s 場比賽</string>
+    <string name="playback_http_not_found">哎呀……伺服器找不到此影片，網址可能已變更，請稍後再試。</string>
+    <string name="playback_http_unavailable">哎呀……伺服器暫時無法提供此影片。您仍可使用 AURORA，稍後再試。</string>
+    <string name="playback_network_failure">哎呀……無法連線至伺服器。請檢查網路。</string>
+    <string name="playback_format_failure">哎呀……無法讀取影片。檔案可能不完整或不相容。</string>
+    <string name="playback_codec_failure">哎呀……裝置可能不支援此影片的影像或音訊格式。</string>
+    <string name="playback_generic_failure">哎呀……目前無法播放此影片。請再試一次。</string>
+    <string name="football_match_details">查看詳情</string>
+    <string name="football_hide_details">收起詳情</string>
+    <string name="football_incidents_unavailable">目前無法取得比賽事件。</string>
+    <string name="football_incidents_empty">此場比賽沒有進球或紅黃牌紀錄。</string>
 </resources>

@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Не удалось открыть установщик или разрешения Android.</string>
     <string name="one_game">1 матч</string>
     <string name="game_count">Матчи: %1$s</string>
+    <string name="playback_http_not_found">Упс... Видео не найдено на сервере. Адрес мог измениться. Попробуйте позже.</string>
+    <string name="playback_http_unavailable">Упс... Сервер не может предоставить видео. Можно продолжать пользоваться AURORA и попробовать позже.</string>
+    <string name="playback_network_failure">Упс... Не удалось подключиться к серверу. Проверьте интернет.</string>
+    <string name="playback_format_failure">Упс... Не удаётся прочитать видео. Файл может быть неполным или несовместимым.</string>
+    <string name="playback_codec_failure">Упс... Формат видео или аудио может не поддерживаться устройством.</string>
+    <string name="playback_generic_failure">Упс... Не удалось запустить видео. Попробуйте ещё раз.</string>
+    <string name="football_match_details">Подробнее</string>
+    <string name="football_hide_details">Скрыть подробности</string>
+    <string name="football_incidents_unavailable">События матча сейчас недоступны.</string>
+    <string name="football_incidents_empty">Нет данных о голах и карточках в этом матче.</string>
 </resources>
