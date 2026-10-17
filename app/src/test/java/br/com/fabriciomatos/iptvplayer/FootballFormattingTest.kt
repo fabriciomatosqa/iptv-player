@@ -22,7 +22,7 @@ class FootballFormattingTest {
         assertTrue(filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3600000L).isEmpty())
         val live=FootballScore("1","bra.1","Brasileirão",p.start,ScoreTeam("1",listOf("Fluminense")),ScoreTeam("2",listOf("Botafogo")),1,0,MatchState.LIVE,"120:00",now+3600000L)
         assertEquals(1,filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3600000L,FootballFeed(listOf(live))).size)
-        assertTrue(filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3720001L,FootballFeed(listOf(live))).isEmpty())
+        assertTrue(filterFootball(listOf(match),FOOTBALL_GAMES,"",now+3600000L+2*FOOTBALL_REFRESH_MS+1,FootballFeed(listOf(live))).isEmpty())
     }
     @Test fun upgradingAfterTheGameFinishedStillCorrectsAnOldFutureDateWithoutChangingIdentifiedReplays() {
         val now=1000000000L
@@ -31,7 +31,7 @@ class FootballFormattingTest {
         assertTrue(footballTimeCanBeConfirmed(future,finished,now))
         assertFalse(footballTimeCanBeConfirmed(future.copy(broadcast=BroadcastHint.REPLAY),finished,now))
         assertFalse(footballTimeCanBeConfirmed(future.copy(start=now+2*3600000L),finished,now))
-        assertFalse(footballTimeCanBeConfirmed(future,finished.copy(checked=now-180000L),now))
+        assertFalse(footballTimeCanBeConfirmed(future,finished.copy(checked=now-2*FOOTBALL_REFRESH_MS-1),now))
         assertFalse(footballTimeCanBeConfirmed(future,finished.copy(state=MatchState.UNKNOWN),now))
     }
     @Test fun blinkingLiveTransmissionRequiresACurrentGameAndNeverAppliesToAReplay() {
@@ -40,7 +40,7 @@ class FootballFormattingTest {
         assertTrue(transmissionIsLive(p,score,now))
         assertFalse(transmissionIsLive(p.copy(broadcast=BroadcastHint.REPLAY),score,now))
         assertFalse(transmissionIsLive(p,score.copy(state=MatchState.FINISHED),now))
-        assertFalse(transmissionIsLive(p,score.copy(checked=now-180000),now))
+        assertFalse(transmissionIsLive(p,score.copy(checked=now-2*FOOTBALL_REFRESH_MS-1),now))
         assertFalse(transmissionIsLive(p.copy(start=now+60000),score,now))
         assertFalse(transmissionIsLive(p,null,now))
         assertTrue(transmissionIsLive(p.copy(broadcast=BroadcastHint.LIVE),null,now))
