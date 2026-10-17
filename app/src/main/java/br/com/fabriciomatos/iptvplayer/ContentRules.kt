@@ -48,7 +48,8 @@ fun footballDetails(title: String, category: String = "", metadata: FootballMeta
         else raw.takeIf(::isCompetitionLabel)
     }
     val explicitCompetition = metadata.competition.takeIf(::isCompetitionValue).orEmpty()
-    val identifiedCompetition = (titleCompetitions + listOf(explicitCompetition) + rawCompetitions + listOf(category) + playlistGroups + channelNames)
+    val describedCompetition = footballCompetitionMention(metadata.description).orEmpty()
+    val identifiedCompetition = (titleCompetitions + listOf(explicitCompetition) + rawCompetitions + listOf(category,describedCompetition) + playlistGroups + channelNames)
         .firstOrNull { it == explicitCompetition && it.isNotBlank() || isCompetitionLabel(it) }.orEmpty()
     val competition = identifiedCompetition + metadata.division.takeIf { it.isNotBlank() && !normalized(identifiedCompetition).contains(normalized(it)) }?.let { " — $it" }.orEmpty()
     val evidence = listOf(titleCompetitions.joinToString(" "), metadata.competition + " " + metadata.gender,

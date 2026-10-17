@@ -187,5 +187,5 @@
     <string name="football_hide_details">Скрыть подробности</string>
     <string name="football_incidents_unavailable">События матча сейчас недоступны.</string>
     <string name="football_incidents_empty">Нет данных о голах и карточках в этом матче.</string>
-    <string name="womens_games">Women’s Games</string>
+    <string name="womens_games">Женский футбол</string>
 </resources>

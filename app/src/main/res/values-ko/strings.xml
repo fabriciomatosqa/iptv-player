@@ -187,5 +187,5 @@
     <string name="football_hide_details">자세히 숨기기</string>
     <string name="football_incidents_unavailable">경기 이벤트를 현재 불러올 수 없습니다.</string>
     <string name="football_incidents_empty">이 경기에 기록된 득점이나 카드가 없습니다.</string>
-    <string name="womens_games">Women’s Games</string>
+    <string name="womens_games">여자 축구</string>
 </resources>

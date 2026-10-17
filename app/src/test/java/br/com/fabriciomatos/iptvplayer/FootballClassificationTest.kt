@@ -38,6 +38,9 @@ class FootballClassificationTest {
         assertEquals(FootballGender.WOMEN,footballDetails("Belgrano x Palmeiras","Libertadores Feminina")!!.gender)
         assertEquals(FootballGender.WOMEN,footballDetails("Belgrano x Palmeiras","Futebol",channelNames=listOf("Libertadores Feminina HD"))!!.gender)
         assertEquals(FootballGender.WOMEN,footballDetails("Belgrano x Palmeiras","Futebol",playlistGroups=listOf("Jogos Femininos"))!!.gender)
+        assertEquals("Copa Libertadores Feminina",footballDetails("Belgrano x Palmeiras","Futebol",
+            FootballMetadata(description="Disputa da Copa Libertadores Feminina."))!!.competition)
+        assertNull(footballLeagueSlug(footballCompetitionMention("Disputa do Campeonato Brasileiro Série C.").orEmpty()))
     }
     @Test fun clubIdentityNeverDeterminesGenderAndExplicitCompetitionBeatsGenericGroup() {
         for(home in listOf("Palmeiras","Corinthians","Flamengo","Belgrano")) {

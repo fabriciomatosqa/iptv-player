@@ -187,5 +187,5 @@
     <string name="football_hide_details">詳細を閉じる</string>
     <string name="football_incidents_unavailable">試合の出来事は現在取得できません。</string>
     <string name="football_incidents_empty">この試合のゴールやカードの記録はありません。</string>
-    <string name="womens_games">Women’s Games</string>
+    <string name="womens_games">女子サッカー</string>
 </resources>

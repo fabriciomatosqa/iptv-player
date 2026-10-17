@@ -54,6 +54,12 @@ fun footballCompetitionRule(value: String): FootballCompetitionRule? {
     val key = competitionBase(value)
     return compiledFootballRules.firstOrNull { it.second.matches(key) }?.first
 }
+/** Preserve qualifiers in prose; a partial alias must never erase a country or lower division. */
+fun footballCompetitionMention(value: String): String? {
+    val candidate=Regex("(?i)\\b((?:campeonato|copa|taça|libertadores|brasileirão|(?:women['’]s\\s+)?(?:champions league|super league|world cup)|premier league|bundesliga|j1 league|liga)\\b[^.;|\\n]*)")
+        .find(value)?.groupValues?.get(1)?.trim()?.takeIf { it.length <= 160 && !hasFootballMatchup(it) } ?: return null
+    return candidate + if(footballGender(value)==FootballGender.WOMEN && footballGender(candidate)==FootballGender.UNKNOWN) " Feminina" else ""
+}
 fun footballCompetitionRule(details: FootballDetails): FootballCompetitionRule? {
     val rule = footballCompetitionRule(details.competition) ?: return null
     if(details.country.isBlank()) return rule

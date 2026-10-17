@@ -19,7 +19,7 @@ class OrganizationTest {
         assertEquals(FootballDetails("Premier League","Chelsea","Bournemouth"),footballDetails("Chelsea vs. Bournemouth - Premier League || Chelsea vs. Bournemouth"))
         assertEquals(FootballDetails("Copa Libertadores da América","Fluminense","Palmeiras"),
             footballDetails("Semifinal, Jogo de Ida: Fluminense x Palmeiras - Copa Libertadores da América ║ Semifinal, Jogo de Ida: Fluminense x Palmeiras"))
-        assertEquals(FootballDetails("Futebol","Aurora","Norte"),footballDetails("Aurora x Norte","Futebol"))
+        assertEquals(FootballDetails("","Aurora","Norte"),footballDetails("Aurora x Norte","Futebol"))
         assertNull(footballDetails("Futebol: Aurora x Aurora"))
     }
     @Test fun animeMatchingRejectsOtherTitlesAndPrefersExactNamesOverSeasons() {

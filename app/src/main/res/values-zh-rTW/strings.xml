@@ -187,5 +187,5 @@
     <string name="football_hide_details">收起詳情</string>
     <string name="football_incidents_unavailable">目前無法取得比賽事件。</string>
     <string name="football_incidents_empty">此場比賽沒有進球或紅黃牌紀錄。</string>
-    <string name="womens_games">Women’s Games</string>
+    <string name="womens_games">女子足球</string>
 </resources>
