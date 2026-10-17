@@ -6,4 +6,4 @@ gradle --no-daemon assembleDebug
 python3 test/generate-track-fixture.py
 python3 test/generate-update-fixture.py
 gradle --no-daemon connectedDebugAndroidTest
-python3 test/verify-force-stop.py
+python3 -u test/verify-force-stop.py
