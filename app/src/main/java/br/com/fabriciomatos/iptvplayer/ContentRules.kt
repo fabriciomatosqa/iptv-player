@@ -10,7 +10,7 @@ fun canonicalAnimeTitle(title: String): String = normalized(title.replace(Regex(
     .replace(Regex("(?i)\\s*[\\[(](?:l|leg|dub|hd|fhd|4k)[\\])]\\s*$"), ""))
 
 data class FootballDetails(val competition: String, val home: String, val away: String,
-    val gender: FootballGender = footballGender(competition),
+    val gender: FootballGender = footballGender(competition).takeUnless { it == FootballGender.UNKNOWN } ?: footballGender("$home $away"),
     val ageGroup: String = footballAgeGroup("$competition $home $away"), val country: String = "")
 private val matchSeparator = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
 
@@ -54,7 +54,7 @@ fun footballDetails(title: String, category: String = "", metadata: FootballMeta
         .firstOrNull { it == explicitCompetition && it.isNotBlank() || isCompetitionLabel(it) }.orEmpty()
     val competition = identifiedCompetition + metadata.division.takeIf { it.isNotBlank() && !normalized(identifiedCompetition).contains(normalized(it)) }?.let { " — $it" }.orEmpty()
     val evidence = listOf(titleCompetitions.joinToString(" "), metadata.competition + " " + metadata.gender,
-        listOf(metadata.originalTitle,metadata.subtitle,metadata.description,category,metadata.retainedEvidence).joinToString(" "),
+        listOf(title,metadata.originalTitle,metadata.subtitle,metadata.description,category,metadata.retainedEvidence).joinToString(" "),
         playlistGroups.joinToString(" "), channelNames.joinToString(" "))
     val gender = evidence.map(::footballGender).firstOrNull { it != FootballGender.UNKNOWN } ?: FootballGender.UNKNOWN
     val footballContext = competition.isNotBlank() || Regex("\\b(futebol|soccer|football)\\b").containsMatchIn(text) ||

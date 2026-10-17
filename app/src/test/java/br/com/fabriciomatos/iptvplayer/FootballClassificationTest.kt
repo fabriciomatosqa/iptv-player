@@ -54,6 +54,8 @@ class FootballClassificationTest {
         assertEquals(FootballGender.MEN,men.gender)
         assertEquals(FOOTBALL_LIBERTADORES,footballTabKey(men))
         assertEquals(FootballGender.CONFLICT,footballDetails("Palmeiras x Santos","Futebol",FootballMetadata(gender="men women"))!!.gender)
+        assertEquals(FootballGender.WOMEN,footballDetails("Brasil Feminino x Argentina Feminino","Futebol")!!.gender)
+        assertEquals(listOf("fifa.friendly.w"),footballScoreLeagues(FootballDetails("Amistoso","Brasil Feminino","Argentina Feminino")))
     }
     @Test fun statusIsNeverACompetitionAndBothGeneralFiltersReuseTheSameRecords() {
         val unknown=footballDetails("Aurora x Norte","Futebol Ao Vivo")!!
