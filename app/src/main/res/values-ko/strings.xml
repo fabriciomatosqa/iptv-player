@@ -93,7 +93,7 @@
     <string name="forward">10초 앞으로</string>
     <string name="back_football">축구로 돌아가기</string>
     <string name="search_team">팀 검색</string>
-    <string name="minute_updates">점수는 매분 업데이트됩니다</string>
+    <string name="minute_updates">점수는 2분마다 업데이트됩니다</string>
     <string name="scores_stale">업데이트할 수 없습니다. 최신 데이터를 유지합니다.</string>
     <string name="no_matching_games">이 필터에 해당하는 경기가 없습니다.</string>
     <string name="games">경기</string>

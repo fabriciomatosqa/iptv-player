@@ -25,7 +25,7 @@ class FootballScoresTest {
         assertEquals("83:21",matchFootballScore(game,FootballFeed(listOf(live)))?.event?.clock)
         assertEquals(BroadcastMode.LIVE,broadcastMode(game.programme,live))
         assertTrue(scoreIsFresh(live,now+60000L));assertFalse(scoreIsFresh(live,now+120001L))
-        assertFalse(footballRefreshDue(now,now+59999L));assertTrue(footballRefreshDue(now,now+60000L))
+        assertFalse(footballRefreshDue(now,now+119999L));assertTrue(footballRefreshDue(now,now+120000L))
         assertTrue(footballRefreshDue(now,now-1))
     }
     @Test fun resultsRequireExactTeamsCompatibleCompetitionAndAnUnambiguousDate() {
@@ -63,6 +63,11 @@ class FootballScoresTest {
         assertTrue(compactFootballMatch(replay,null,now))
         assertTrue(compactFootballMatch(live,score("Fluminense","Botafogo",live.programme.start,MatchState.FINISHED,"bra.1"),now))
         assertFalse(compactFootballMatch(live,score("Fluminense","Botafogo",live.programme.start,MatchState.LIVE,"bra.1"),now))
+    }
+    @Test fun refreshRunsEveryTwoMinutes() {
+        assertEquals(120000L, FOOTBALL_REFRESH_MS)
+        assertFalse(footballRefreshDue(now,now+119999L))
+        assertTrue(footballRefreshDue(now,now+120000L))
     }
     @Test fun competitionTabsHaveTheRequestedOrderAndTeamSearchDoesNotMatchOtherGames() {
         val matches=listOf(game("Premier League","Chelsea","Arsenal"),game("Campeonato Brasileiro","Fluminense","Botafogo"),

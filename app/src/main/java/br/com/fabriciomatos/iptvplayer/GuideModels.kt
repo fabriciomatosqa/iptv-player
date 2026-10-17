@@ -1,6 +1,7 @@
 package br.com.fabriciomatos.iptvplayer
 
 import java.text.SimpleDateFormat
+import kotlin.math.abs
 import java.util.Locale
 import java.util.TimeZone
 
@@ -23,18 +24,42 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
     val byName = live.groupBy { guideChannelName(it.name) }
     val epgNames = guide.names.entries.groupBy({ it.value }, { guideChannelName(it.key) })
     val result = linkedMapOf<String, FootballMatch>()
-    guide.matches.filter { it.programme.end > now-FOOTBALL_RETENTION_MS }.forEach { entry ->
+    val mostRecentByTeams = mutableMapOf<String, String>()
+    // The same fixture may appear with slightly different EPG start times across providers.
+    // Sort once and merge only compatible competitions, teams and broadcast types.
+    guide.matches.asSequence().filter { it.programme.end > now-FOOTBALL_RETENTION_MS }
+        .sortedBy { it.programme.start }.forEach { entry ->
         val details = footballDetails(entry.programme.title, entry.programme.category) ?: return@forEach
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
         if (available.isNotEmpty()) {
-            val id = normalized("${details.competition}:${details.home}:${details.away}") + ":" + entry.programme.start
-            val previous = result[id]
-            result[id] = FootballMatch(id, entry.programme, (previous?.channels.orEmpty() + available).distinctBy { it.url }, details)
+            val teams = listOf(footballScoreTeamKey(details.home), footballScoreTeamKey(details.away)).sorted()
+            val competition = footballLeagueSlug(details.competition) ?: normalized(details.competition)
+            val category = if (entry.programme.broadcast == BroadcastHint.REPLAY) "replay" else "game"
+            val groupKey = listOf(competition, teams[0], teams[1], category).joinToString(":")
+            val previous = mostRecentByTeams[groupKey]?.let(result::get)
+                ?.takeIf { abs(it.programme.start - entry.programme.start) <= 90 * 60000L }
+            val id = previous?.id ?: groupKey + ":" + entry.programme.start
+            result[id] = FootballMatch(id, previous?.programme ?: entry.programme,
+                (previous?.channels.orEmpty() + available).distinctBy { it.url }
+                    .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name }), details)
+            mostRecentByTeams[groupKey] = id
         }
     }
     return result.values.sortedWith(compareBy<FootballMatch> { it.programme.start }.thenBy { it.programme.title })
 }
+/** Prefer HD/FHD variants of different broadcasters as the two main buttons.
+ * Every underlying stream remains available through the overflow menu. */
+fun footballChannelQuality(name: String): Int = when {
+    Regex("(?i)\\b(?:4k|uhd)\\b").containsMatchIn(name) -> 4
+    Regex("(?i)\\bfhd\\b").containsMatchIn(name) -> 3
+    Regex("(?i)\\bhd\\b").containsMatchIn(name) -> 2
+    else -> 1
+}
+fun footballFeaturedChannels(channels: List<Channel>): List<Channel> =
+    channels.distinctBy { it.url }
+        .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name })
+        .distinctBy { guideChannelName(it.name) }.take(2)
 fun guideChannelName(name: String) = normalized(name.replace(Regex("(?i)\\b(?:fhd|uhd|hd|sd|4k|h265|h264|alt)\\b|[\\[\\]]"), " "))
 data class Guide(val programmes: Map<String, List<Programme>> = emptyMap(), val names: Map<String, String> = emptyMap(), val matches: List<GuideMatch> = emptyList()) {
     fun forChannel(channel: Channel): List<Programme> = if (channel.kind != MediaKind.LIVE) emptyList() else programmes[channel.tvgId]

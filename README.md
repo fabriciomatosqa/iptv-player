@@ -2,6 +2,14 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.6
+
+- **Futebol sem duplicatas:** transmissões da mesma partida na mesma competição, com os mesmos times e horários de EPG próximos, agora compartilham um único card, sem misturar reprises e outros jogos.
+- **Canais:** até duas emissoras com botões de assistir lado a lado; o botão `...` abre todos os fluxos e variantes HD/FHD/SD. Preserva a navegação do player e os cards compactos de reprises.
+- **Performance:** remove o recálculo por segundo de todos os resultados na rolagem, reduz gravações contínuas de posição e ignora placares ao filtrar jogos que já não correspondem à aba/busca.
+- Atualização automática dos placares **a cada dois minutos**. A atualização manual continua disponível; cache e avisos traduzidos acompanham o intervalo.
+- Mantém assinatura, playlists, favoritos, dados locais e mecanismo de atualização online.
+
 ## Versão 1.12.5
 
 - **Reprodução:** mensagens mais humanas para HTTP 404 (endereço ausente), outras respostas do servidor, rede, formato e codec. O código técnico permanece visível em uma linha discreta para diagnóstico. Nenhum erro HTTP é tratado como prova de que todo o aplicativo está correto.
