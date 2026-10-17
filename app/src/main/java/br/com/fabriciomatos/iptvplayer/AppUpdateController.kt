@@ -61,7 +61,7 @@ internal class AppUpdateController(private val repository: AppUpdateRepository, 
         state = AppUpdateState(if (state.update == null) UpdatePhase.IDLE else UpdatePhase.AVAILABLE, state.update)
     }
 
-    fun install(launch: (Intent) -> Unit) {
+    fun install(launch: (Intent) -> Boolean) {
         val update = state.update ?: return
         if (state.busy) return
         state = AppUpdateState(UpdatePhase.VERIFYING, update, 100)
@@ -69,7 +69,10 @@ internal class AppUpdateController(private val repository: AppUpdateRepository, 
             try {
                 repository.validateReady(update)
                 if (!repository.canInstall()) state = AppUpdateState(UpdatePhase.PERMISSION, update, 100)
-                else { launch(repository.installIntent()); state = AppUpdateState(UpdatePhase.INSTALLER, update, 100) }
+                else {
+                    val opened = launch(repository.installIntent())
+                    state = AppUpdateState(if (opened) UpdatePhase.INSTALLER else UpdatePhase.READY, update, 100)
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { fail(if(e is android.content.ActivityNotFoundException) UpdateFailure(R.string.app_update_install_error) else e, update) }
         }

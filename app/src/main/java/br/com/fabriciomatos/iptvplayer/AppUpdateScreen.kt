@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
     var active by remember { mutableStateOf(true) }
     DisposableEffect(Unit) { onDispose { active = false } }
     val installer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { controller.installerReturned() }
-    val install = { if (active) controller.install { if (active) installer.launch(it) else controller.installerReturned() } }
+    val install = { if (active) controller.install { if (active) { installer.launch(it); true } else false } }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { install() }
     Column(Modifier.fillMaxWidth().testTag("online_update_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Icon(Icons.Default.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))

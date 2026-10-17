@@ -157,9 +157,16 @@ class AppUpdateUiTest {
             compose.waitUntil(30000) { controller.state.phase == UpdatePhase.READY }
             compose.onNodeWithTag("update_install").assertIsDisplayed()
             val device = UiDevice.getInstance(instrumentation)
+            device.executeShellCommand("appops set ${context.packageName} REQUEST_INSTALL_PACKAGES deny")
+            instrumentation.runOnMainSync { controller.install { fail("Permission must be requested first"); false } }
+            compose.waitUntil(15000) { controller.state.phase == UpdatePhase.PERMISSION }
+            compose.onNodeWithTag("update_permission").assertIsDisplayed()
             device.executeShellCommand("appops set ${context.packageName} REQUEST_INSTALL_PACKAGES allow")
+            // Leaving settings during verification keeps the verified APK ready rather than pretending the installer opened.
+            instrumentation.runOnMainSync { controller.install { false } }
+            compose.waitUntil(15000) { controller.state.phase == UpdatePhase.READY }
             var intent: Intent? = null
-            instrumentation.runOnMainSync { controller.install { intent = it } }
+            instrumentation.runOnMainSync { controller.install { intent = it; true } }
             compose.waitUntil(15000) { intent != null }
             // Open the real platform confirmation, then cancel rather than kill instrumentation by reinstalling itself.
             val target = intent!!.resolveActivity(context.packageManager)!!
