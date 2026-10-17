@@ -2,6 +2,10 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.2
+
+Completa o reconhecimento dos identificadores de 64 caracteres URL-safe, incluindo letras maiúsculas/minúsculas, dígitos, hífen e sublinhado. Esse é o formato presente em todas as 315.906 entradas da lista analisada. A migração para o banco v9 corrige tanto as bases v7 quanto as v8 da 1.12.1, consolidando os mesmos identificadores entre servidores e mantendo favoritos, progresso e registro diário. Os testes grandes usam tokens desse formato, além dos testes para tokens hexadecimais, formatos distintos e URLs comuns.
+
 ## Versão 1.12.1
 
 Corrige o crescimento indevido do catálogo quando o provedor alterna os servidores dos endereços `/play/<identificador de 64 dígitos hexadecimais>`. A identidade fica vinculada à playlist e ao caminho completo, incluindo formato, query e fragmento; outros endereços continuam separados pela URL integral. O endereço de reprodução é atualizado sem inserir outra cópia. A migração do banco v7 para v8 remove cópias acumuladas, preserva a ordem original e o endereço mais recente, remapeia favoritos, último conteúdo e progresso e recalcula os totais. Séries favoritas, listas e registro diário são mantidos. O banco reparado é compactado quando possível; a limpeza não depende de um novo download da lista.

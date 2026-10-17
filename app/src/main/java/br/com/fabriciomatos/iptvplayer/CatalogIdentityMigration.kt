@@ -30,10 +30,16 @@ internal fun repairCatalogProgress(db: SQLiteDatabase, key: String) {
 }
 
 /** SQLiteOpenHelper wraps this migration in a transaction, including URL aliases and progress. */
-internal fun upgradeCatalogIdentity(db: SQLiteDatabase, prefs: SharedPreferences): Boolean {
-    db.execSQL("ALTER TABLE channels ADD COLUMN content_key TEXT NOT NULL DEFAULT ''")
-    db.execSQL("CREATE TABLE channel_url_aliases(source_key TEXT NOT NULL,old_url TEXT NOT NULL,content_key TEXT NOT NULL,PRIMARY KEY(source_key,old_url))")
-    db.execSQL("CREATE INDEX catalog_alias_url ON channel_url_aliases(old_url)")
+internal fun upgradeCatalogIdentity(db: SQLiteDatabase, prefs: SharedPreferences, createSchema: Boolean = true): Boolean {
+    if(createSchema) {
+        db.execSQL("ALTER TABLE channels ADD COLUMN content_key TEXT NOT NULL DEFAULT ''")
+        db.execSQL("CREATE TABLE channel_url_aliases(source_key TEXT NOT NULL,old_url TEXT NOT NULL,content_key TEXT NOT NULL,PRIMARY KEY(source_key,old_url))")
+        db.execSQL("CREATE INDEX catalog_alias_url ON channel_url_aliases(old_url)")
+    } else {
+        // v8 recognized only hexadecimal tokens. Re-key its URL-safe IDs before enforcing uniqueness again.
+        db.execSQL("DROP INDEX channel_content_identity")
+        db.execSQL("UPDATE channel_url_aliases SET content_key="+catalogContentKeySql("old_url"))
+    }
     db.execSQL("UPDATE channels SET content_key="+catalogContentKeySql("url"))
     db.execSQL("CREATE INDEX catalog_identity_migration ON channels(source_key,content_key,seen_generation DESC,position DESC)")
     val sources=db.rawQuery("SELECT source_key FROM playlists",null).use { cursor -> buildList {while(cursor.moveToNext())add(cursor.getString(0))} }

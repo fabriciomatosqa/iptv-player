@@ -659,7 +659,7 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,8){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,9){
     private val prefs=context.applicationContext.getSharedPreferences("aurora_iptv_preferences",Context.MODE_PRIVATE)
     private var compactAfterUpgrade=false
     init{setWriteAheadLoggingEnabled(true)}
@@ -678,6 +678,7 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         if(oldVersion<6)upgradeSynopses(db)
         if(oldVersion<7)upgradePlayback(db)
         if(oldVersion<8)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs)
+        else if(oldVersion<9)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs,createSchema=false)
     }
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)

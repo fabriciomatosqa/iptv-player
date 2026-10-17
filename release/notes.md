@@ -1,6 +1,7 @@
-Correção do catálogo duplicado no AURORA IPTV 1.12.1 para Android.
+Correção do catálogo duplicado no AURORA IPTV 1.12.2 para Android.
 
 - Reconhece o mesmo conteúdo quando o provedor troca o servidor mantendo seu identificador.
+- Reconhece o formato completo dos identificadores da lista, incluindo letras, números, hífen e sublinhado, e repara também bases da 1.12.1.
 - Atualiza o endereço do vídeo sem multiplicar o catálogo nas atualizações da lista.
 - Repara automaticamente as cópias já acumuladas e recalcula os totais ao abrir cada playlist.
 - Preserva favoritos, séries favoritas, último conteúdo, progresso e atualização diária. Versões e identificadores diferentes continuam separados.

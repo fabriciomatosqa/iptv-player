@@ -15,7 +15,7 @@ class LargeCatalogFixtureTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val source = "https://example.test/large.m3u"
     private val movieUrl = streamUrl(1_043_791)
-    private fun streamUrl(id: Int) = "https://example.test/play/"+id.toString(16).padStart(64,'0')
+    private fun streamUrl(id: Int) = "https://example.test/play/aZ_"+id.toString(16).padStart(61,'0')
     private val title = "100 Dias para Morar Comecando do Zero"
     private val cover = "https://example.test/correct-series.jpg"
 
