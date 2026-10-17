@@ -47,6 +47,8 @@ val footballCompetitionRules = listOf(
 )
 private fun competitionBase(value: String) = normalized(value)
     .replace(Regex("\\b(feminin[oa]s?|femenin[oa]s?|women(?: s)?|female|ladies|masculin[oa]s?|men(?: s)?)\\b"), " ")
+    .replace(Regex("\\b(?:sub|u|under)\\s*\\d{2}\\b"), " ")
+    .replace(Regex("\\b(?:fhd|hd|sd|uhd|4k|2160p|1080p|720p|ao vivo|live)\\b|^(?:canais|channels)\\s+"), " ")
     .replace(Regex("\\b(?:de )?futebol\\b|\\bfootball\\b|\\bsoccer\\b"), " ")
     .replace(Regex("\\s+"), " ").trim()
 private val compiledFootballRules = footballCompetitionRules.map { it to Regex("(?:${it.aliases})") }

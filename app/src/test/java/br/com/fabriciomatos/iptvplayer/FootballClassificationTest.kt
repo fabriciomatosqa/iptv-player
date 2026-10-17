@@ -17,6 +17,8 @@ class FootballClassificationTest {
                 assertEquals(FootballGender.WOMEN,details.gender)
                 assertEquals(FOOTBALL_WOMEN,footballTabKey(details))
                 assertTrue(footballScoreLeagues(details).isEmpty())
+                val status=footballDetails("$prefix - $home x $away - Ao Vivo")!!
+                assertEquals(details,status)
             }
         }
     }
@@ -99,7 +101,16 @@ class FootballClassificationTest {
         assertEquals("bra.2",footballTabKey(details))
         val youth=FootballDetails("Libertadores Sub-20","Palmeiras","Flamengo")
         assertTrue(footballScoreLeagues(youth).isEmpty())
+        assertEquals(footballCompetitionIdentity(youth),footballCompetitionIdentity(youth.copy(competition="Copa Libertadores U20")))
         assertNotEquals(footballCompetitionIdentity(youth),footballCompetitionIdentity(youth.copy(ageGroup="17")))
+    }
+    @Test fun competitionEvidenceFromHdAndFhdChannelNamesGroupsAllStreams() {
+        val channels=listOf(Channel("Libertadores Feminina HD","https://example.test/live/a","Futebol",tvgId="a"),
+            Channel("Libertadores Feminino FHD","https://example.test/live/b","Futebol",tvgId="b"))
+        val p=Programme("Belgrano x Palmeiras",now,now+7200000,category="Futebol")
+        val games=footballMatches(Guide(matches=listOf(GuideMatch("a",p),GuideMatch("b",p))),channels,now)
+        assertEquals(1,games.size);assertEquals(2,games.single().channels.size)
+        assertEquals(FOOTBALL_WOMEN,footballTabKey(games.single().details))
     }
     @Test fun refreshRetainsEvidenceOnlyForAnUnchangedFixtureAndRespectsCorrections() {
         val old=Programme("Libertadores Feminina - Belgrano x Palmeiras",now,now+7200000)
