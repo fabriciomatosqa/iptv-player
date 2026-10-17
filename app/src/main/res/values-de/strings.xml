@@ -187,4 +187,5 @@
     <string name="football_hide_details">Details ausblenden</string>
     <string name="football_incidents_unavailable">Spielereignisse sind derzeit nicht verfügbar.</string>
     <string name="football_incidents_empty">Keine Tore oder Karten für dieses Spiel gemeldet.</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

@@ -187,4 +187,5 @@
     <string name="football_hide_details">إخفاء التفاصيل</string>
     <string name="football_incidents_unavailable">أحداث المباراة غير متاحة حاليًا.</string>
     <string name="football_incidents_empty">لم تُسجل أهداف أو بطاقات لهذه المباراة.</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

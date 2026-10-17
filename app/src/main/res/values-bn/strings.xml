@@ -187,4 +187,5 @@
     <string name="football_hide_details">বিস্তারিত লুকান</string>
     <string name="football_incidents_unavailable">ম্যাচের ঘটনাগুলো এখন পাওয়া যাচ্ছে না।</string>
     <string name="football_incidents_empty">এই ম্যাচে গোল বা কার্ডের তথ্য নেই।</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

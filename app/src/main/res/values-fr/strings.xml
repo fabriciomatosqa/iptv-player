@@ -187,4 +187,5 @@
     <string name="football_hide_details">Masquer les détails</string>
     <string name="football_incidents_unavailable">Les événements du match sont actuellement indisponibles.</string>
     <string name="football_incidents_empty">Aucun but ni carton enregistré pour ce match.</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

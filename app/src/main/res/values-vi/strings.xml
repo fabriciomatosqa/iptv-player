@@ -187,4 +187,5 @@
     <string name="football_hide_details">Ẩn chi tiết</string>
     <string name="football_incidents_unavailable">Hiện chưa có dữ liệu diễn biến trận đấu.</string>
     <string name="football_incidents_empty">Không có dữ liệu bàn thắng hoặc thẻ phạt cho trận này.</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

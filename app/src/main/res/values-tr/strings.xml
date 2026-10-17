@@ -187,4 +187,5 @@
     <string name="football_hide_details">Ayrıntıları gizle</string>
     <string name="football_incidents_unavailable">Maç olayları şu anda kullanılamıyor.</string>
     <string name="football_incidents_empty">Bu maç için gol veya kart bilgisi yok.</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

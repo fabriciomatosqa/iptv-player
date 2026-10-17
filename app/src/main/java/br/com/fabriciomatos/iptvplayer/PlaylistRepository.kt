@@ -618,17 +618,20 @@ class PlaylistRepository(context: Context) {
     }
     fun saveGuide(source: String, guide: Guide, now: Long = System.currentTimeMillis()) {
         val db=helper.writableDatabase;val key=digest(source)
+        val previous = savedGuide(source).let { old -> (old.matches + old.programmes.flatMap { (id,ps) -> ps.map { GuideMatch(id,it) } }) }
+            .associateBy { it.channelId to it.programme.start }
         db.beginTransactionNonExclusive()
         try {
             db.delete("guide_names","source_key=?",arrayOf(key));db.delete("guide_programmes","source_key=?",arrayOf(key))
             db.compileStatement("INSERT INTO guide_names VALUES(?,?,?)").use { statement ->
                 guide.names.forEach { (name,id)->statement.bindString(1,key);statement.bindString(2,name);statement.bindString(3,id);statement.executeInsert() }
             }
-            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?,?,?)").use { insert ->
+            db.compileStatement("INSERT OR IGNORE INTO guide_programmes VALUES(?,?,?,?,?,?,?,?,?,?,?)").use { insert ->
                 db.compileStatement("UPDATE guide_programmes SET is_game=MAX(is_game,?),show_now=MAX(show_now,?) WHERE source_key=? AND channel_id=? AND start=? AND title=?").use { update ->
                     fun row(id:String,p:Programme,game:Boolean,current:Boolean) {
                         insert.bindString(1,key);insert.bindString(2,id);insert.bindLong(3,p.start);insert.bindLong(4,p.end)
                         insert.bindString(5,p.title);insert.bindString(6,p.image);insert.bindLong(7,if(game)1L else 0L);insert.bindLong(8,if(current)1L else 0L);insert.bindString(9,p.category);insert.bindLong(10,p.broadcast.ordinal.toLong())
+                        insert.bindString(11,encodeFootballMetadata(retainFootballEvidence(p,previous[id to p.start]?.programme).metadata))
                         if(insert.executeInsert()==-1L) {
                             update.bindLong(1,if(game)1L else 0L);update.bindLong(2,if(current)1L else 0L);update.bindString(3,key)
                             update.bindString(4,id);update.bindLong(5,p.start);update.bindString(6,p.title);update.executeUpdateDelete()
@@ -659,11 +662,11 @@ class PlaylistRepository(context: Context) {
         val db=helper.readableDatabase;val key=digest(source)
         val names=HashMap<String,String>();val shows=HashMap<String,MutableList<Programme>>();val matches=ArrayList<GuideMatch>()
         db.rawQuery("SELECT name,channel_id FROM guide_names WHERE source_key=?",arrayOf(key)).use {while(it.moveToNext())names[it.getString(0)]=it.getString(1)}
-        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now,category,broadcast FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
+        db.rawQuery("SELECT channel_id,start,end,title,image,is_game,show_now,category,broadcast,football_metadata FROM guide_programmes WHERE source_key=? ORDER BY start",arrayOf(key)).use {
             while(it.moveToNext()) {
                 val hint=BroadcastHint.entries.getOrElse(it.getInt(8)){BroadcastHint.UNKNOWN}
-                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4),it.getString(7),hint)
-                if(it.getInt(5)==1)matches.add(GuideMatch(it.getString(0),programme))
+                val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4),it.getString(7),hint,decodeFootballMetadata(it.getString(9)))
+                if(it.getInt(5)==1 || hasFootballMatchup(programme.title))matches.add(GuideMatch(it.getString(0),programme))
                 if(it.getInt(6)==1)shows.getOrPut(it.getString(0)){ArrayList()}.add(programme)
             }
         }
@@ -680,7 +683,7 @@ class PlaylistRepository(context: Context) {
     }
 }
 
-private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,9){
+private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"aurora_catalog.db",null,10){
     private val prefs=context.applicationContext.getSharedPreferences("aurora_iptv_preferences",Context.MODE_PRIVATE)
     private var compactAfterUpgrade=false
     init{setWriteAheadLoggingEnabled(true)}
@@ -689,7 +692,7 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         db.execSQL("CREATE TABLE playlists(source_key TEXT PRIMARY KEY,etag TEXT NOT NULL DEFAULT '',modified TEXT NOT NULL DEFAULT '',epg_url TEXT NOT NULL DEFAULT '',checked INTEGER NOT NULL DEFAULT 0,updated INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE channels(source_key TEXT NOT NULL,url TEXT NOT NULL,position INTEGER NOT NULL,name TEXT NOT NULL,group_name TEXT NOT NULL,image_url TEXT NOT NULL,tvg_id TEXT NOT NULL,user_agent TEXT NOT NULL,referrer TEXT NOT NULL,mime_type TEXT NOT NULL,type_hint TEXT NOT NULL,series_id TEXT NOT NULL,series_title TEXT NOT NULL,series_image TEXT NOT NULL,season INTEGER NOT NULL,episode INTEGER NOT NULL,PRIMARY KEY(source_key,url),FOREIGN KEY(source_key) REFERENCES playlists(source_key))")
         upgrade(db); upgradePreferences(db); upgradeArtwork(db);upgradeBroadcast(db);upgradeSynopses(db);upgradePlayback(db)
-        upgradeCatalogIdentity(db,prefs)
+        upgradeCatalogIdentity(db,prefs);upgradeFootballMetadata(db)
     }
     override fun onUpgrade(db: SQLiteDatabase,oldVersion: Int,newVersion: Int){
         if(oldVersion<2)upgrade(db)
@@ -700,6 +703,7 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         if(oldVersion<7)upgradePlayback(db)
         if(oldVersion<8)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs)
         else if(oldVersion<9)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs,createSchema=false)
+        if(oldVersion<10)upgradeFootballMetadata(db)
     }
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
@@ -708,6 +712,16 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
             runCatching { db.execSQL("VACUUM") }
             compactAfterUpgrade=false
         }
+    }
+    private fun upgradeFootballMetadata(db: SQLiteDatabase) {
+        val exists=db.rawQuery("PRAGMA table_info(guide_programmes)",null).use { cursor ->
+            var found=false
+            while(cursor.moveToNext()) if(cursor.getString(1)=="football_metadata") found=true
+            found
+        }
+        if(!exists) db.execSQL("ALTER TABLE guide_programmes ADD COLUMN football_metadata TEXT NOT NULL DEFAULT '{}'")
+        // Reinterpret saved raw titles immediately; refresh fills metadata unavailable in older guides.
+        db.execSQL("UPDATE guide_cache SET updated=0")
     }
     private fun upgradePlayback(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS series_favorites(source_key TEXT NOT NULL,series_key TEXT NOT NULL,PRIMARY KEY(source_key,series_key))")

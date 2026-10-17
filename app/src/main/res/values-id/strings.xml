@@ -187,4 +187,5 @@
     <string name="football_hide_details">Sembunyikan detail</string>
     <string name="football_incidents_unavailable">Peristiwa pertandingan belum tersedia.</string>
     <string name="football_incidents_empty">Tidak ada informasi gol atau kartu untuk pertandingan ini.</string>
+    <string name="womens_games">Women’s Games</string>
 </resources>

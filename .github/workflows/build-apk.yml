@@ -56,7 +56,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      # Only compile, original signing identity and valid update metadata gate releases.
+      # Compilation, original signing identity and update metadata are validated before QA.
       - name: Compile Android APK
         run: gradle --no-daemon assembleDebug
 
@@ -84,11 +84,9 @@ jobs:
           retention-days: 14
 
 
-  # Keep QA informative, independent from publishing for the current private testing phase.
+  # Every verification gates publication, including manual workflow dispatch.
   verify:
     needs: build
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
-    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -127,18 +125,15 @@ jobs:
       - name: Test Android release metadata
         run: python3 -m unittest discover -s release -p 'test_*.py'
       - name: Enable emulator acceleration
-        if: github.event_name == 'pull_request'
         run: |
           sudo chmod 666 /dev/kvm
 
       - name: Install media fixture tools
-        if: github.event_name == 'pull_request'
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y ffmpeg
 
       - name: Check navigation, persistence and actual video playback
-        if: github.event_name == 'pull_request'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -149,7 +144,7 @@ jobs:
             bash test/run-android-checks.sh
 
       - name: Upload UI verification
-        if: always() && github.event_name == 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: aurora-ui-verification
@@ -162,7 +157,7 @@ jobs:
           retention-days: 14
 
   publish:
-    needs: build
+    needs: [build, verify]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
