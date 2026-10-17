@@ -84,7 +84,7 @@ class FootballUiTest {
             compose.onNodeWithText("Jogos").performClick()
             compose.onNodeWithTag("football_list").performScrollToNode(hasText("Al Nassr", substring = true))
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).assertTextContains("Reprise",substring=true)
-            compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).assertTextContains("3")
+            compose.onNodeWithTag("football_compact_score", useUnmergedTree = true).assertTextContains("3", substring = true)
             screenshot("football-replay-result")
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).performClick()
             compose.onNodeWithTag("football_compact_watch").assertExists()
