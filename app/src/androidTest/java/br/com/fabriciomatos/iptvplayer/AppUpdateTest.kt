@@ -117,7 +117,7 @@ class AppUpdateTest {
             failure(R.string.app_update_signature_error) { repository.download(wrongSignature, {}, {}) }
         } finally { wrongSigner.delete() }
         assertFalse(repository.apkFile.exists()); assertNull(repository.restorePrepared())
-        assertTrue(File(context.cacheDir, "app-updates").listFiles().orEmpty().none { it.extension == "part" })
+        assertTrue(File(context.cacheDir, "app-updates").listFiles().orEmpty().isEmpty())
     }
 
     @Test fun cancellationRemovesPartialDownloadAndNeverStartsInstallation() = runBlocking {

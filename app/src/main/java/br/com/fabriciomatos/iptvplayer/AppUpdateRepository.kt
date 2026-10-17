@@ -33,7 +33,7 @@ internal data class AppUpdate(val versionCode: Long, val versionName: String, va
         .put("size", size).put("sha256", sha256).put("notes", notes).toString()
 }
 
-internal class UpdateFailure(val text: Int) : Exception()
+internal class UpdateFailure(val text: Int, detail: String? = null) : Exception(detail)
 private fun invalidUpdate(): Nothing = throw UpdateFailure(R.string.app_update_invalid)
 
 internal fun updateAssetUrl(url: String, tag: String, name: String): Boolean = runCatching {
@@ -145,7 +145,8 @@ internal class AppUpdateRepository(
 
     suspend fun download(update: AppUpdate, progress: suspend (Int) -> Unit, verifying: suspend () -> Unit): File = withContext(Dispatchers.IO) {
         if (update.versionCode <= currentCode) invalidUpdate()
-        val temporary = File.createTempFile("aurora-", ".part", directory)
+        // PackageManager implementations expect APK archives, even before the verified file is promoted.
+        val temporary = File.createTempFile("aurora-", ".apk", directory)
         try {
             val digest = MessageDigest.getInstance("SHA-256")
             var received = 0L; var lastPercent = -1
@@ -203,7 +204,7 @@ internal class AppUpdateRepository(
 
     @Suppress("DEPRECATION")
     internal fun validateArchive(file: File, update: AppUpdate) {
-        val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+        val flags = PackageManager.GET_SIGNATURES or if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else 0
         val pm = context.packageManager
         val archive = pm.getPackageArchiveInfo(file.absolutePath, flags) ?: invalidUpdate()
         val installed = pm.getPackageInfo(context.packageName, flags)
@@ -211,10 +212,12 @@ internal class AppUpdateRepository(
             update.versionCode <= currentCode || archive.versionName != update.versionName ||
             (Build.VERSION.SDK_INT >= 24 && (archive.applicationInfo?.minSdkVersion ?: Int.MAX_VALUE) > Build.VERSION.SDK_INT)) invalidUpdate()
         fun certificates(info: PackageInfo): Set<String> =
-            (if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures)
+            (if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners ?: info.signatures else info.signatures)
                 ?.map { MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).hex() }?.toSet().orEmpty()
         val expected = certificates(installed)
-        if (expected.isEmpty() || certificates(archive) != expected) throw UpdateFailure(R.string.app_update_signature_error)
+        val received = certificates(archive)
+        if (expected.isEmpty() || received != expected) throw UpdateFailure(R.string.app_update_signature_error,
+            "Installed signing certificates: $expected; archive signing certificates: $received")
     }
 
     fun canInstall() = Build.VERSION.SDK_INT < 26 || context.packageManager.canRequestPackageInstalls()
