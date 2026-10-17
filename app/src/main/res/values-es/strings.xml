@@ -175,4 +175,6 @@
     <string name="app_update_permission">Permitir instalación</string>
     <string name="app_update_check">Buscar actualizaciones</string>
     <string name="app_update_install_error">No se pudo abrir el instalador o los permisos de Android.</string>
+    <string name="one_game">1 partido</string>
+    <string name="game_count">%1$s partidos</string>
 </resources>

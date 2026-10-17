@@ -175,4 +175,6 @@
     <string name="app_update_permission">Installation erlauben</string>
     <string name="app_update_check">Nach Updates suchen</string>
     <string name="app_update_install_error">Android-Installation oder Berechtigungen konnten nicht geöffnet werden.</string>
+    <string name="one_game">1 Spiel</string>
+    <string name="game_count">%1$s Spiele</string>
 </resources>

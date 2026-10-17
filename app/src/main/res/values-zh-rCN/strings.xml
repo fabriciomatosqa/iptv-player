@@ -175,4 +175,6 @@
     <string name="app_update_permission">允许安装</string>
     <string name="app_update_check">检查更新</string>
     <string name="app_update_install_error">无法打开 Android 安装程序或权限设置。</string>
+    <string name="one_game">1 场比赛</string>
+    <string name="game_count">%1$s 场比赛</string>
 </resources>

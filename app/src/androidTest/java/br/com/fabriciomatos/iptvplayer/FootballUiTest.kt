@@ -23,6 +23,7 @@ class FootballUiTest {
     @Test fun scoreReplayTeamSearchAndTabsWorkAndBackReturnsToFootball() {
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
         resetCatalog(context)
+        AppSettings(context).saveAppearance(AppAppearance.DARK)
         val now=System.currentTimeMillis();val source="https://example.test/football.m3u"
         val file=File(context.cacheDir,"football.mp4")
         instrumentation.context.assets.open("smoke.mp4").use {input->file.outputStream().use {input.copyTo(it)}}
@@ -32,7 +33,7 @@ class FootballUiTest {
         fun p(title: String, start: Long, hint: BroadcastHint = BroadcastHint.UNKNOWN)=Programme(title,start,start+3*3600000L,broadcast=hint)
         val programmes=listOf(p("Fluminense x Botafogo - Campeonato Brasileiro",now-83*60000L,BroadcastHint.LIVE),
             p("Al Nassr x Neftchi Fergana - AFC Champions League Elite",now+2*3600000L),
-            p("Chelsea x Arsenal - Premier League",now+5*3600000L),p("Brasil x Argentina - Amistoso de Futebol",now+6*3600000L))
+            p("Chelsea x Wolverhampton Wanderers - Premier League",now+5*3600000L),p("Brasil x Argentina - Amistoso de Futebol",now+6*3600000L))
         val guide=Guide(matches=programmes.mapIndexed {i,p->GuideMatch("sport$i",p)})
         val repository=PlaylistRepository(context)
         repository.saveSource(source,"Agenda de teste");repository.appendCache(source,Download(Playlist(channels,"https://example.test/guide.xml"),"",""));repository.saveGuide(source,guide)
@@ -85,6 +86,25 @@ class FootballUiTest {
             compose.waitUntil(10000) {compose.onAllNodesWithText("Brasil").fetchSemanticsNodes().isNotEmpty()}
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithText("Brasil").assertExists();compose.onNodeWithText("Argentina").assertExists()
+            val portraitTeams=compose.onNodeWithTag("football_confrontation",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+            val portraitTime=compose.onNodeWithTag("football_broadcast",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+            assertTrue(portraitTeams.bottom<=portraitTime.top)
+            screenshot("football-aurora-dark-portrait")
+            scenario.onActivity {model.chooseAppearance(AppAppearance.LIGHT)}
+            compose.waitForIdle();screenshot("football-aurora-light-portrait")
+            scenario.onActivity {it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE}
+            compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE}
+            compose.waitForIdle()
+            val landscapeTeams=compose.onNodeWithTag("football_confrontation",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+            val landscapeTime=compose.onNodeWithTag("football_broadcast",useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+            assertTrue(landscapeTeams.right<=landscapeTime.left)
+            compose.onNodeWithTag("football_search").assertIsDisplayed()
+            screenshot("football-aurora-light-landscape")
+            scenario.onActivity {model.chooseAppearance(AppAppearance.DARK)}
+            compose.waitForIdle();screenshot("football-aurora-dark-landscape")
+            scenario.onActivity {model.footballTab="eng.1";it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
+            compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_PORTRAIT && compose.onAllNodesWithText("Wolverhampton Wanderers").fetchSemanticsNodes().isNotEmpty()}
+            screenshot("football-aurora-long-name")
         }
     }
     private fun screenshot(name: String) {

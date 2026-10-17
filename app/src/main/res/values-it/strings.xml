@@ -175,4 +175,6 @@
     <string name="app_update_permission">Consenti installazione</string>
     <string name="app_update_check">Cerca aggiornamenti</string>
     <string name="app_update_install_error">Impossibile aprire l’installazione o i permessi Android.</string>
+    <string name="one_game">1 partita</string>
+    <string name="game_count">%1$s partite</string>
 </resources>

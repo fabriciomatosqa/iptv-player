@@ -175,4 +175,6 @@
     <string name="app_update_permission">Installatie toestaan</string>
     <string name="app_update_check">Updates zoeken</string>
     <string name="app_update_install_error">Kan Android-installatie of machtigingen niet openen.</string>
+    <string name="one_game">1 wedstrijd</string>
+    <string name="game_count">%1$s wedstrijden</string>
 </resources>

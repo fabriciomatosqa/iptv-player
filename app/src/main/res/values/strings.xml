@@ -175,4 +175,6 @@
     <string name="app_update_permission">Autorizar instalação</string>
     <string name="app_update_check">Verificar atualizações</string>
     <string name="app_update_install_error">Não foi possível abrir o instalador ou a autorização do Android.</string>
+    <string name="one_game">1 jogo</string>
+    <string name="game_count">%1$s jogos</string>
 </resources>

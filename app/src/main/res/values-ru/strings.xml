@@ -175,4 +175,6 @@
     <string name="app_update_permission">Разрешить установку</string>
     <string name="app_update_check">Проверить обновления</string>
     <string name="app_update_install_error">Не удалось открыть установщик или разрешения Android.</string>
+    <string name="one_game">1 матч</string>
+    <string name="game_count">Матчи: %1$s</string>
 </resources>

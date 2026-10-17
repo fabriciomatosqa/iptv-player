@@ -175,4 +175,6 @@
     <string name="app_update_permission">Izinkan pemasangan</string>
     <string name="app_update_check">Periksa pembaruan</string>
     <string name="app_update_install_error">Tidak dapat membuka pemasang atau izin Android.</string>
+    <string name="one_game">1 pertandingan</string>
+    <string name="game_count">%1$s pertandingan</string>
 </resources>

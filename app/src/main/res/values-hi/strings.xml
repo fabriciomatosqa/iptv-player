@@ -175,4 +175,6 @@
     <string name="app_update_permission">इंस्टॉल करने दें</string>
     <string name="app_update_check">अपडेट जाँचें</string>
     <string name="app_update_install_error">Android इंस्टॉलर या अनुमति सेटिंग नहीं खुल सकीं।</string>
+    <string name="one_game">1 मैच</string>
+    <string name="game_count">%1$s मैच</string>
 </resources>

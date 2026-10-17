@@ -175,4 +175,6 @@
     <string name="app_update_permission">Kuruluma izin ver</string>
     <string name="app_update_check">Güncellemeleri denetle</string>
     <string name="app_update_install_error">Android yükleyicisi veya izin ayarları açılamadı.</string>
+    <string name="one_game">1 maç</string>
+    <string name="game_count">%1$s maç</string>
 </resources>
