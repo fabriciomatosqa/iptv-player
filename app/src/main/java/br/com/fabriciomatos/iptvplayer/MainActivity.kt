@@ -397,7 +397,14 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
             val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
             if (series == null && groups.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { GroupChip(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
-                items(groups, key = { it }) { group -> GroupChip(groupLabel(group), model.group == group) { model.selectGroup(group) } }
+                items(groups, key = { it }) { group ->
+                    val source = model.playlistUrl
+                    var image by remember(source, model.catalog, group) { mutableStateOf("") }
+                    LaunchedEffect(source, model.catalog, group, model.selectedKind) {
+                        image = if (model.selectedKind == MediaKind.LIVE) model.groupLogo(source, group) else ""
+                    }
+                    GroupChip(groupDisplayName(groupLabel(group)), model.group == group, image) { model.selectGroup(group) }
+                }
             }
             if (model.loading) CatalogLoadingIndicator(model)
             if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp))
@@ -596,7 +603,7 @@ private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
         item { Text(if (series == null) tr(R.string.categories) else tr(R.string.seasons), color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
         if (series == null) {
             item { GroupRow(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
-            items(groups, key = { it }) { category -> GroupRow(groupLabel(category), model.group == category) { model.selectGroup(category) } }
+            items(groups, key = { it }) { category -> GroupRow(groupDisplayName(groupLabel(category)), model.group == category) { model.selectGroup(category) } }
         } else {
             items(series.seasons, key = { it }) { season -> GroupRow(tr(R.string.season,season), model.selectedSeason == season) { model.selectSeason(season) } }
         }
@@ -636,9 +643,18 @@ private fun TypeChips(model: AuroraViewModel) {
 }
 
 @Composable
-private fun GroupChip(title: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(selected, onClick, label = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp) },
-        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Mint.copy(alpha = 0.18f), selectedLabelColor = Mint, labelColor = Muted))
+private fun GroupChip(title: String, selected: Boolean, logoUrl: String = "", onClick: () -> Unit) {
+    var logoFailed by remember(logoUrl) { mutableStateOf(false) }
+    FilterChip(selected, onClick, label = {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (logoUrl.isNotBlank() && !logoFailed) {
+                AsyncImage(catalogImage(logoUrl), null, Modifier.size(20.dp),
+                    contentScale = ContentScale.Fit, onError = { logoFailed = true })
+            }
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
+        }
+    }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Mint.copy(alpha = 0.18f),
+        selectedLabelColor = Mint, labelColor = Muted))
 }
 
 @Composable
@@ -727,7 +743,7 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(if (guideMode) 1.2f else 1f)) {
             Text(channel.name, fontSize = if (guideMode) 11.sp else 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = if (selected) Mint else Txt)
-            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) Episode(channel, channel.seasonNumber.coerceAtLeast(1), channel.episodeNumber, channel.name).label else groupLabel(if(channel.kind==MediaKind.MOVIES)movieCategory(channel.group)else channel.group),
+            if (!guideMode) Text(if (channel.kind == MediaKind.SERIES) Episode(channel, channel.seasonNumber.coerceAtLeast(1), channel.episodeNumber, channel.name).label else groupDisplayName(groupLabel(if(channel.kind==MediaKind.MOVIES)movieCategory(channel.group)else channel.group)),
                 fontSize = 11.sp, color = if (channel.kind == MediaKind.SERIES) Cyan else Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (guideMode) {

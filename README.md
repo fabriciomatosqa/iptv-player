@@ -2,6 +2,12 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.3
+
+- Subcategorias de **Ao Vivo** mostram mini logos reais das emissoras quando há uma imagem compatível na playlist M3U. A busca é limitada, feita fora da interface e reutiliza o cache de imagens existente; grupos sem logo confiável ficam apenas com o nome.
+- Removido o losango vermelho (♦️) dos nomes exibidos nas subcategorias e da linha secundária dos cards, sem alterar o identificador do grupo, os filtros, os canais e os favoritos.
+- Atualização incremental compatível com a versão anterior, preservando catálogo, listas, favoritos e reprodução.
+
 ## Versão 1.12.2
 
 Completa o reconhecimento dos identificadores de 64 caracteres URL-safe, incluindo letras maiúsculas/minúsculas, dígitos, hífen e sublinhado. Esse é o formato presente em todas as 315.906 entradas da lista analisada. A migração para o banco v9 corrige tanto as bases v7 quanto as v8 da 1.12.1, consolidando os mesmos identificadores entre servidores e mantendo favoritos, progresso e registro diário. Os testes grandes usam tokens desse formato, além dos testes para tokens hexadecimais, formatos distintos e URLs comuns.
