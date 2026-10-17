@@ -175,4 +175,6 @@
     <string name="app_update_permission">Cho phép cài đặt</string>
     <string name="app_update_check">Kiểm tra cập nhật</string>
     <string name="app_update_install_error">Không thể mở trình cài đặt hoặc quyền Android.</string>
+    <string name="one_game">1 trận</string>
+    <string name="game_count">%1$s trận</string>
 </resources>

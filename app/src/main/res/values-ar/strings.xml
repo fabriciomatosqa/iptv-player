@@ -175,4 +175,6 @@
     <string name="app_update_permission">السماح بالتثبيت</string>
     <string name="app_update_check">التحقق من التحديثات</string>
     <string name="app_update_install_error">تعذر فتح مثبت Android أو إعدادات الإذن.</string>
+    <string name="one_game">مباراة واحدة</string>
+    <string name="game_count">المباريات: %1$s</string>
 </resources>

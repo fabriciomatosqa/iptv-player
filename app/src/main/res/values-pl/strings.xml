@@ -175,4 +175,6 @@
     <string name="app_update_permission">Zezwól na instalację</string>
     <string name="app_update_check">Sprawdź aktualizacje</string>
     <string name="app_update_install_error">Nie można otworzyć instalatora lub uprawnień Androida.</string>
+    <string name="one_game">1 mecz</string>
+    <string name="game_count">%1$s meczów</string>
 </resources>

@@ -2,6 +2,14 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.0
+
+- Futebol com nova apresentação Aurora: cards com bordas e luzes suaves em verde, ciano e violeta, escudos maiores, nomes abaixo dos escudos e placares centralizados com melhor contraste.
+- Transmissão em um painel próprio com calendário, dia completo, horário em `HH:mm` e indicação de ao vivo ou reprise. Botão **Assistir** destaca o canal, mantendo as transmissões alternativas e o retorno ao futebol.
+- Busca e campeonatos com visual renovado e contagem dos jogos filtrados. Em paisagem, busca no cabeçalho e confronto ao lado da transmissão aproveitam o espaço horizontal; fontes ampliadas reorganizam os times e o placar.
+- Escudo vetorial com iniciais quando a imagem não carrega. As iniciais desaparecem ao carregar um escudo real, sem sobreposição em imagens transparentes. Temas claro e escuro preservam as cores da Aurora.
+- Disponível pelo atualizador online da versão 1.11, com a mesma assinatura, preservando listas e favoritos.
+
 ## Versão 1.11.0
 
 - **Configurações → Atualizar online** verifica as versões Android estáveis do GitHub, compara o código da versão instalada e informa se há atualização. Versões de outras plataformas, rascunhos e prévias são ignoradas.

@@ -175,4 +175,6 @@
     <string name="app_update_permission">インストールを許可</string>
     <string name="app_update_check">更新を確認</string>
     <string name="app_update_install_error">Androidのインストーラーまたは権限設定を開けません。</string>
+    <string name="one_game">1試合</string>
+    <string name="game_count">%1$s試合</string>
 </resources>

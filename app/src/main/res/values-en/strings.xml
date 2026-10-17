@@ -175,4 +175,6 @@
     <string name="app_update_permission">Allow installation</string>
     <string name="app_update_check">Check for updates</string>
     <string name="app_update_install_error">Could not open the Android installer or permission settings.</string>
+    <string name="one_game">1 match</string>
+    <string name="game_count">%1$s matches</string>
 </resources>

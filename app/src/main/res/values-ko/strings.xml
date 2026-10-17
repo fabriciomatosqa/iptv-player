@@ -175,4 +175,6 @@
     <string name="app_update_permission">설치 허용</string>
     <string name="app_update_check">업데이트 확인</string>
     <string name="app_update_install_error">Android 설치 프로그램 또는 권한 설정을 열 수 없습니다.</string>
+    <string name="one_game">1경기</string>
+    <string name="game_count">%1$s경기</string>
 </resources>
