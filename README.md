@@ -2,6 +2,12 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.4
+
+- Mostra detalhes técnicos seguros para erros de reprodução, incluindo classe/código Media3, status HTTP e codec/resolução quando disponíveis.
+- Não expõe URLs ou credenciais de playlist. O diagnóstico desaparece ao tentar novamente, trocar o vídeo ou fechá-lo.
+- Permite investigar problemas 4K e Dolby Vision sem alterar buffers, decodificadores ou fluxos que já funcionam. **Não corrige automaticamente formatos incompatíveis nem erros do provedor.**
+
 ## Versão 1.12.3
 
 - Subcategorias de **Ao Vivo** mostram mini logos reais das emissoras quando há uma imagem compatível na playlist M3U. A busca é limitada, feita fora da interface e reutiliza o cache de imagens existente; grupos sem logo confiável ficam apenas com o nome.
