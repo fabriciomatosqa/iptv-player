@@ -44,3 +44,20 @@ internal fun playbackDiagnosticText(
     }
     return parts.joinToString(" · ")
 }
+
+/** Human-readable advice without assuming that every error is caused by the provider. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+internal fun playbackFriendlyResource(error: PlaybackException): Int {
+    val httpStatus=generateSequence(error as Throwable?) { it.cause }
+        .take(12).filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+        .firstOrNull()?.responseCode
+    return playbackFriendlyResource(error.errorCode,httpStatus)
+}
+internal fun playbackFriendlyResource(code: Int,httpStatus: Int? = null): Int = when {
+    code in 2000..2999 && httpStatus==404 -> R.string.playback_http_not_found
+    code in 2000..2999 && httpStatus!=null -> R.string.playback_http_unavailable
+    code in 2000..2999 -> R.string.playback_network_failure
+    code in 3000..3999 -> R.string.playback_format_failure
+    code in 4000..5999 -> R.string.playback_codec_failure
+    else -> R.string.playback_generic_failure
+}

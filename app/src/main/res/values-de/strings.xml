@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Android-Installation oder Berechtigungen konnten nicht geöffnet werden.</string>
     <string name="one_game">1 Spiel</string>
     <string name="game_count">%1$s Spiele</string>
+    <string name="playback_http_not_found">Ups... Video nicht auf dem Server gefunden. Die Adresse wurde möglicherweise geändert. Bitte später erneut versuchen.</string>
+    <string name="playback_http_unavailable">Ups... Der Server kann das Video gerade nicht liefern. AURORA bleibt nutzbar. Bitte später erneut versuchen.</string>
+    <string name="playback_network_failure">Ups... Keine Verbindung zum Server. Prüfe deine Internetverbindung.</string>
+    <string name="playback_format_failure">Ups... Video kann nicht gelesen werden. Die Datei ist möglicherweise unvollständig oder inkompatibel.</string>
+    <string name="playback_codec_failure">Ups... Das Bild- oder Tonformat wird vom Gerät möglicherweise nicht unterstützt.</string>
+    <string name="playback_generic_failure">Ups... Video kann gerade nicht gestartet werden. Bitte erneut versuchen.</string>
+    <string name="football_match_details">Details anzeigen</string>
+    <string name="football_hide_details">Details ausblenden</string>
+    <string name="football_incidents_unavailable">Spielereignisse sind derzeit nicht verfügbar.</string>
+    <string name="football_incidents_empty">Keine Tore oder Karten für dieses Spiel gemeldet.</string>
 </resources>

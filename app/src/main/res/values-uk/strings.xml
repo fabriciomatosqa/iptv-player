@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Не вдалося відкрити інсталятор або дозволи Android.</string>
     <string name="one_game">1 матч</string>
     <string name="game_count">Матчі: %1$s</string>
+    <string name="playback_http_not_found">Ой... Відео не знайдено на сервері. Адресу могли змінити. Спробуйте пізніше.</string>
+    <string name="playback_http_unavailable">Ой... Сервер не може надати відео. Ви можете користуватися AURORA та спробувати пізніше.</string>
+    <string name="playback_network_failure">Ой... Не вдалося підключитися до сервера. Перевірте інтернет.</string>
+    <string name="playback_format_failure">Ой... Не вдається прочитати відео. Файл може бути неповним або несумісним.</string>
+    <string name="playback_codec_failure">Ой... Формат відео чи аудіо може не підтримуватися пристроєм.</string>
+    <string name="playback_generic_failure">Ой... Не вдалося запустити відео. Спробуйте ще раз.</string>
+    <string name="football_match_details">Деталі</string>
+    <string name="football_hide_details">Сховати деталі</string>
+    <string name="football_incidents_unavailable">Події матчу зараз недоступні.</string>
+    <string name="football_incidents_empty">Немає даних про голи й картки в цьому матчі.</string>
 </resources>

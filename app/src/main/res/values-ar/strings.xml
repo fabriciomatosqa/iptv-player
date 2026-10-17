@@ -177,4 +177,14 @@
     <string name="app_update_install_error">تعذر فتح مثبت Android أو إعدادات الإذن.</string>
     <string name="one_game">مباراة واحدة</string>
     <string name="game_count">المباريات: %1$s</string>
+    <string name="playback_http_not_found">عذرًا... لم يتم العثور على الفيديو على الخادم. ربما تغيّر العنوان. حاول لاحقًا.</string>
+    <string name="playback_http_unavailable">عذرًا... لا يستطيع الخادم تقديم الفيديو الآن. يمكنك متابعة استخدام AURORA والمحاولة لاحقًا.</string>
+    <string name="playback_network_failure">عذرًا... تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.</string>
+    <string name="playback_format_failure">عذرًا... تعذرت قراءة الفيديو. قد يكون الملف غير مكتمل أو غير متوافق.</string>
+    <string name="playback_codec_failure">عذرًا... قد لا يدعم جهازك تنسيق الصورة أو الصوت في هذا الفيديو.</string>
+    <string name="playback_generic_failure">عذرًا... تعذر بدء الفيديو الآن. حاول مجددًا.</string>
+    <string name="football_match_details">عرض التفاصيل</string>
+    <string name="football_hide_details">إخفاء التفاصيل</string>
+    <string name="football_incidents_unavailable">أحداث المباراة غير متاحة حاليًا.</string>
+    <string name="football_incidents_empty">لم تُسجل أهداف أو بطاقات لهذه المباراة.</string>
 </resources>

@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Không thể mở trình cài đặt hoặc quyền Android.</string>
     <string name="one_game">1 trận</string>
     <string name="game_count">%1$s trận</string>
+    <string name="playback_http_not_found">Rất tiếc... Không tìm thấy video trên máy chủ. Địa chỉ có thể đã thay đổi. Thử lại sau.</string>
+    <string name="playback_http_unavailable">Rất tiếc... Máy chủ chưa thể cung cấp video. Bạn vẫn có thể dùng AURORA và thử lại sau.</string>
+    <string name="playback_network_failure">Rất tiếc... Không thể kết nối máy chủ. Hãy kiểm tra Internet.</string>
+    <string name="playback_format_failure">Rất tiếc... Không thể đọc video. Tệp có thể chưa hoàn chỉnh hoặc không tương thích.</string>
+    <string name="playback_codec_failure">Rất tiếc... Thiết bị có thể không hỗ trợ định dạng hình ảnh hoặc âm thanh này.</string>
+    <string name="playback_generic_failure">Rất tiếc... Chưa thể phát video. Vui lòng thử lại.</string>
+    <string name="football_match_details">Xem chi tiết</string>
+    <string name="football_hide_details">Ẩn chi tiết</string>
+    <string name="football_incidents_unavailable">Hiện chưa có dữ liệu diễn biến trận đấu.</string>
+    <string name="football_incidents_empty">Không có dữ liệu bàn thắng hoặc thẻ phạt cho trận này.</string>
 </resources>

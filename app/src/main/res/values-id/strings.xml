@@ -177,4 +177,14 @@
     <string name="app_update_install_error">Tidak dapat membuka pemasang atau izin Android.</string>
     <string name="one_game">1 pertandingan</string>
     <string name="game_count">%1$s pertandingan</string>
+    <string name="playback_http_not_found">Ups... Video tidak ditemukan di server. Alamat mungkin berubah. Coba lagi nanti.</string>
+    <string name="playback_http_unavailable">Ups... Server belum dapat menyediakan video ini. Anda tetap dapat menggunakan AURORA dan mencoba lagi nanti.</string>
+    <string name="playback_network_failure">Ups... Tidak dapat terhubung ke server. Periksa internet Anda.</string>
+    <string name="playback_format_failure">Ups... Video tidak dapat dibaca. Berkas mungkin tidak lengkap atau tidak kompatibel.</string>
+    <string name="playback_codec_failure">Ups... Perangkat Anda mungkin tidak mendukung format gambar atau suara ini.</string>
+    <string name="playback_generic_failure">Ups... Video tidak dapat dimulai. Coba lagi.</string>
+    <string name="football_match_details">Lihat detail</string>
+    <string name="football_hide_details">Sembunyikan detail</string>
+    <string name="football_incidents_unavailable">Peristiwa pertandingan belum tersedia.</string>
+    <string name="football_incidents_empty">Tidak ada informasi gol atau kartu untuk pertandingan ini.</string>
 </resources>

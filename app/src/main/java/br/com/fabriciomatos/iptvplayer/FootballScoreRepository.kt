@@ -56,6 +56,22 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
             .none {!it.failed && !footballRefreshDue(it.checked,now)}
         FootballFeed(events,responses.maxOfOrNull {it.checked} ?: 0L,currentFailed)
     }
+    /** Fetch incidents only when a user expands a card, never while scrolling the match list. */
+    suspend fun incidents(score: FootballScore): List<FootballIncident>? = withContext(Dispatchers.IO) {
+        val id=score.id.takeIf {it.startsWith("fotmob:")}
+            ?.removePrefix("fotmob:")?.takeIf {it.length in 1..12 && it.all(Char::isDigit)}
+            ?: return@withContext null
+        val key="football-incidents:$id"
+        repository.cachedArtwork(key)?.let { cached ->
+            runCatching { decodeFootballIncidents(JSONObject(cached)) }.getOrNull()?.let { return@withContext it }
+        }
+        val result=runCatching {
+            val json=readJson("https://www.fotmob.com/api/data/matchDetails?matchId=$id")
+            parseFotMobIncidents(json,id)
+        }.getOrNull() ?: return@withContext null
+        repository.saveArtwork(key,encodeFootballIncidents(result).toString(),60*60000L)
+        result
+    }
     /** Correct conflicting guide dates only from an exact, fresh match. Keep the correction after reopening. */
     fun confirmedBroadcasts(source: String, matches: List<FootballMatch>, feed: FootballFeed, now: Long = System.currentTimeMillis()): List<FootballMatch> = matches.map {match->
         if(match.programme.broadcast==BroadcastHint.REPLAY)return@map match

@@ -434,6 +434,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun showFootball() { page=Page.FOOTBALL;refreshGuide() }
     fun refreshFootball() {refreshGuide(true);viewModelScope.launch {updateFootballScores(force=true)}}
     fun playFootball(channel: Channel) {play(channel);fromFootball=true}
+    suspend fun footballIncidents(score: FootballScore): List<FootballIncident>? = scores.incidents(score)
     private suspend fun updateFootballScores(force: Boolean = false) = scoreRefresh.withLock {
         if(!foreground || page!=Page.FOOTBALL)return@withLock
         val source=playlistUrl
@@ -541,7 +542,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val source=playlistUrl
         viewModelScope.launch(Dispatchers.IO) { repository.saveLast(channel,source) }
         val instance=try {playerInstance ?: createPlayer().also {playerInstance=it}}
-            catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.load_failed);playbackErrorDetails=playbackDiagnosticText(-1);return}
+            catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.playback_generic_failure);playbackErrorDetails=playbackDiagnosticText(-1);return}
         playJob=viewModelScope.launch { try {
             val saved=if(channel.kind==MediaKind.LIVE)null else playbackPositions[source to channel.url]
                 ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
@@ -565,7 +566,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             else instance.setMediaSource(mediaSource,saved?.resumePositionMs ?: 0L)
             instance.prepare(); instance.playWhenReady = true
         } catch(e: CancellationException) {throw e}
-        catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.load_failed);playbackErrorDetails=playbackDiagnosticText(-1) } }
+        catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.playback_generic_failure);playbackErrorDetails=playbackDiagnosticText(-1) } }
     }
 
     private fun checkpointPlayback() {
@@ -595,7 +596,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 override fun onPlayerError(error: PlaybackException) {
                     checkpointPlayback()
                     buffering = false
-                    playbackError = preferences.text(R.string.load_failed)
+                    playbackError = preferences.text(playbackFriendlyResource(error))
                     playbackErrorDetails = playbackDiagnosticText(error)
                 }
             })

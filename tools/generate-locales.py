@@ -131,6 +131,18 @@ for lang,row in rows.items():
     data['total_count']='%1$s '+u[12];data['saved_count']='%1$s '+u[13];data['season']=u[14]+' %1$d'
     data['update_date']='%1$s';data['episode_in_season']='%1$s · %2$s'
     folder=root/('values' if lang=='pt' else 'values-'+lang);folder.mkdir(exist_ok=True)
+    # Preserve the new friendly error and football-detail translations when rebuilding the legacy catalogs.
+    existing=folder/'strings.xml'
+    if existing.exists():
+        import xml.etree.ElementTree as ET
+        previous=ET.parse(existing).getroot()
+        for node in previous.findall('string'):
+            name=node.get('name','')
+            if name.startswith('playback_') and name.endswith('_failure') or name in (
+                'playback_http_not_found','playback_http_unavailable','football_match_details',
+                'football_hide_details','football_incidents_unavailable','football_incidents_empty'
+            ):
+                data[name]=(node.text or '').replace("\\'","'")
     xml='<resources>\n'+''.join('    <string name="'+k+'">'+escape(v).replace("'","\\'")+'</string>\n' for k,v in data.items())+'</resources>\n'
     (folder/'strings.xml').write_text(xml)
 print('Languages:',len(rows),'strings per language:',len(data))
