@@ -14,14 +14,15 @@ import java.io.File
 class LargeCatalogFixtureTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val source = "https://example.test/large.m3u"
-    private val movieUrl = "https://example.test/play/movie-43791"
+    private val movieUrl = streamUrl(1_043_791)
+    private fun streamUrl(id: Int) = "https://example.test/play/"+id.toString(16).padStart(64,'0')
     private val title = "100 Dias para Morar Comecando do Zero"
     private val cover = "https://example.test/correct-series.jpg"
 
     @Test fun seed() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("forceStopPhase") == "seed")
         resetCatalog(context)
-        val repository = PlaylistRepository(context)
+        var repository = PlaylistRepository(context)
         repository.saveSource(source, "Catálogo completo")
         val metadata = ProviderMetadata(mapOf("FILMES E SÉRIES" to MediaKind.LIVE, "Ação" to MediaKind.MOVIES,
             "Netflix" to MediaKind.SERIES), mapOf(normalized(title) to SeriesPoster(title, cover, "1")))
@@ -33,16 +34,16 @@ class LargeCatalogFixtureTest {
             fun row(name: String, group: String, url: String, image: String = "") {
                 writer.write("#EXTINF:-1 group-title=\"$group\" tvg-logo=\"$image\",$name\n$url\n")
             }
-            repeat(2034) { row("Canal $it", "FILMES E SÉRIES", "https://example.test/play/live-$it/ts") }
-            repeat(43792) { row("Filme $it", "Ação", "https://example.test/play/movie-$it") }
+            repeat(2034) { row("Canal $it", "FILMES E SÉRIES", streamUrl(it)+"/ts") }
+            repeat(43792) { row("Filme $it", "Ação", streamUrl(1_000_000+it)) }
             repeat(270072) {
                 val show = it % 9447
                 val episode = it / 9447 + 1
                 val name = if (show == 0) title else "Serie $show"
-                row("$name S01E" + episode.toString().padStart(2, '0'), "Netflix", "https://example.test/play/episode-$it",
+                row("$name S01E" + episode.toString().padStart(2, '0'), "Netflix", streamUrl(2_000_000+it),
                     "https://example.test/wrong-series.jpg")
             }
-            repeat(8) { row("Filme duplicado $it", "Ação", "https://example.test/play/movie-$it") }
+            repeat(8) { row("Filme duplicado $it", "Ação", streamUrl(1_000_000+it)) }
         }
         assertTrue(repository.hasPending(source))
         val started = System.nanoTime()
@@ -51,6 +52,15 @@ class LargeCatalogFixtureTest {
         assertEquals(315898, result.added)
         assertFalse(repository.hasPending(source))
         repository.saveFavorites(setOf(movieUrl))
+        repository.savePlaybackProgress(source,movieUrl,PlaybackProgress(42000,120000,false))
+        repository.close()
+        legacyHostCopies(context,source,3,originalNewest=true)
+        val repairStarted=System.nanoTime()
+        repository=PlaylistRepository(context)
+        repository.restore(source)
+        Log.i("AuroraScale","Repaired 1,263,592 legacy rows to ${repository.overview(source).total} in ${(System.nanoTime()-repairStarted)/1_000_000} ms")
+        assertEquals(setOf(movieUrl),repository.favorites())
+        assertEquals(42000L,repository.playbackProgress(source,movieUrl)!!.positionMs)
         checkCatalog(repository)
         // A partial next-day response must preserve the entire previous catalog.
         repository.importReader(source, "#EXTM3U\n#EXTINF:-1 group-title=\"Ação\",Renomeado\n$movieUrl\n".reader(), metadata)

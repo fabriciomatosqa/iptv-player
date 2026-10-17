@@ -215,6 +215,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (source != playlistUrl) return
         catalog = data.first; updated = data.second.updated; epgUrl = data.second.epgUrl
+        favorites = withContext(Dispatchers.IO) { repository.favorites() }
+        recent?.let { old -> recent=withContext(Dispatchers.IO) {repository.channel(source,old.url)} ?: old }
         seriesFavorites = withContext(Dispatchers.IO) { repository.seriesFavorites(source) }
         if (openedSeriesId != null) openedSeries = data.third
         if (recent == null && catalog.total > 0) recent = withContext(Dispatchers.IO) {
