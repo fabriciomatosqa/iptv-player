@@ -51,15 +51,19 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
 /** Prefer HD/FHD variants of different broadcasters as the two main buttons.
  * Every underlying stream remains available through the overflow menu. */
 fun footballChannelQuality(name: String): Int = when {
-    Regex("(?i)\\b(?:4k|uhd)\\b").containsMatchIn(name) -> 4
-    Regex("(?i)\\bfhd\\b").containsMatchIn(name) -> 3
-    Regex("(?i)\\bhd\\b").containsMatchIn(name) -> 2
+    Regex("(?i)\\b(?:4k|uhd|2160p)\\b").containsMatchIn(name) -> 4
+    Regex("(?i)\\b(?:fhd|full\\s*hd|1080p)\\b").containsMatchIn(name) -> 3
+    Regex("(?i)\\b(?:hd|720p)\\b").containsMatchIn(name) -> 2
     else -> 1
 }
+private fun footballBroadcasterKey(name: String): String = normalized(
+    name.replace(Regex("(?i)\\b(?:full\\s*hd|fhd|uhd|hd|sd|4k|2160p|1080p|720p|480p|h265|h264|hevc|alt)\\b|[\\[\\]]"), " ")
+        .replace(Regex("\\s+"), " ").trim()
+)
 fun footballFeaturedChannels(channels: List<Channel>): List<Channel> =
     channels.distinctBy { it.url }
         .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name })
-        .distinctBy { guideChannelName(it.name) }.take(2)
+        .distinctBy { footballBroadcasterKey(it.name) }.take(2)
 fun guideChannelName(name: String) = normalized(name.replace(Regex("(?i)\\b(?:fhd|uhd|hd|sd|4k|h265|h264|alt)\\b|[\\[\\]]"), " "))
 data class Guide(val programmes: Map<String, List<Programme>> = emptyMap(), val names: Map<String, String> = emptyMap(), val matches: List<GuideMatch> = emptyList()) {
     fun forChannel(channel: Channel): List<Programme> = if (channel.kind != MediaKind.LIVE) emptyList() else programmes[channel.tvgId]
