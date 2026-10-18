@@ -1,10 +1,12 @@
 package br.com.fabriciomatos.iptvplayer
 
 enum class FootballGender { UNKNOWN, MEN, WOMEN, CONFLICT }
+private val footballWomenMarker=Regex("\\b(feminin[oa]s?|femenin[oa]s?|women(?: s)?|female|ladies)\\b")
+private val footballMenMarker=Regex("\\b(masculin[oa]s?|men(?: s)?|male)\\b")
 fun footballGender(text: String): FootballGender {
     val key = normalized(text)
-    val women = Regex("\\b(feminin[oa]s?|femenin[oa]s?|women(?: s)?|female|ladies)\\b").containsMatchIn(key)
-    val men = Regex("\\b(masculin[oa]s?|men(?: s)?|male)\\b").containsMatchIn(key)
+    val women = footballWomenMarker.containsMatchIn(key)
+    val men = footballMenMarker.containsMatchIn(key)
     return when { women && men -> FootballGender.CONFLICT; women -> FootballGender.WOMEN; men -> FootballGender.MEN; else -> FootballGender.UNKNOWN }
 }
 

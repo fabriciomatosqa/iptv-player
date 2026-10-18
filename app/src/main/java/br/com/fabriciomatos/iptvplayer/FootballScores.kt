@@ -20,7 +20,10 @@ enum class BroadcastMode { LIVE, REPLAY, UNCONFIRMED }
 data class ScoreTeam(val id: String, val names: List<String>, val badge: String = "")
 data class FootballScore(val id: String, val league: String, val competition: String, val kickoff: Long,
     val home: ScoreTeam, val away: ScoreTeam, val homeGoals: Int?, val awayGoals: Int?, val state: MatchState,
-    val clock: String = "", val checked: Long = 0L, val badge: String = "")
+    val clock: String = "", val checked: Long = 0L, val badge: String = "") {
+    // Derived once when decoding the source, rather than for every card/score candidate.
+    val gender: FootballGender = footballGender(competition)
+}
 data class FootballFeed(val events: List<FootballScore> = emptyList(), val checked: Long = 0L, val failed: Boolean = false)
 data class MatchedScore(val event: FootballScore, val home: ScoreTeam, val away: ScoreTeam, val homeGoals: Int?, val awayGoals: Int?)
 data class FootballTab(val key: String, val title: String = "")
@@ -121,7 +124,7 @@ fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? 
     val compatible=feed.events.filter {event ->
         // Providers (and older caches) may assign a men's league ID to a women's title.
         // Original sports metadata remains authoritative even when that ID looks compatible.
-        val gender=footballGender(event.competition)
+        val gender=event.gender
         if(gender == FootballGender.CONFLICT || gender == FootballGender.WOMEN && match.details.gender != FootballGender.WOMEN ||
             gender == FootballGender.MEN && match.details.gender == FootballGender.WOMEN) return@filter false
         event.league in leagues && event.kickoff in (match.programme.start-7*86400000L)..(match.programme.start+90*60000L) &&
