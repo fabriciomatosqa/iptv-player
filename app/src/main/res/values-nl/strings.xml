@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">Wedstrijdgebeurtenissen zijn nu niet beschikbaar.</string>
     <string name="football_incidents_empty">Geen doelpunten of kaarten gemeld voor deze wedstrijd.</string>
     <string name="womens_games">Vrouwenvoetbal</string>
+    <string name="sports">Sport</string>
+    <string name="sports_help">Sporten en competities uit je lijst</string>
+    <string name="search_sport_events">Zoek teams, races of evenementen</string>
+    <string name="one_sport_event">1 evenement</string>
+    <string name="sport_event_count">%1$d evenementen</string>
+    <string name="no_sport_events">Geen evenementen gevonden voor deze sport.</string>
+    <string name="sport_basketball">Basketbal</string>
+    <string name="sport_american_football">American football</string>
+    <string name="sport_baseball">Honkbal</string>
+    <string name="sport_hockey">Hockey</string>
+    <string name="sport_motorsport">Autosport</string>
+    <string name="sport_volleyball">Volleybal</string>
+    <string name="sport_tennis">Tennis</string>
 </resources>

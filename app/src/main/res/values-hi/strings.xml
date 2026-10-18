@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">मैच की घटनाएँ अभी उपलब्ध नहीं हैं।</string>
     <string name="football_incidents_empty">इस मैच में गोल या कार्ड की जानकारी नहीं है।</string>
     <string name="womens_games">महिला फ़ुटबॉल</string>
+    <string name="sports">खेल</string>
+    <string name="sports_help">आपकी सूची के खेल और प्रतियोगिताएँ</string>
+    <string name="search_sport_events">टीम, रेस या इवेंट खोजें</string>
+    <string name="one_sport_event">1 इवेंट</string>
+    <string name="sport_event_count">%1$d इवेंट</string>
+    <string name="no_sport_events">इस खेल में कोई इवेंट नहीं मिला।</string>
+    <string name="sport_basketball">बास्केटबॉल</string>
+    <string name="sport_american_football">अमेरिकी फ़ुटबॉल</string>
+    <string name="sport_baseball">बेसबॉल</string>
+    <string name="sport_hockey">हॉकी</string>
+    <string name="sport_motorsport">मोटरस्पोर्ट</string>
+    <string name="sport_volleyball">वॉलीबॉल</string>
+    <string name="sport_tennis">टेनिस</string>
 </resources>

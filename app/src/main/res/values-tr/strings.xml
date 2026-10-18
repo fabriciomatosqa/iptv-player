@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">Maç olayları şu anda kullanılamıyor.</string>
     <string name="football_incidents_empty">Bu maç için gol veya kart bilgisi yok.</string>
     <string name="womens_games">Kadın Futbolu</string>
+    <string name="sports">Spor</string>
+    <string name="sports_help">Listenizdeki sporlar ve ligler</string>
+    <string name="search_sport_events">Takım, yarış veya etkinlik ara</string>
+    <string name="one_sport_event">1 etkinlik</string>
+    <string name="sport_event_count">%1$d etkinlik</string>
+    <string name="no_sport_events">Bu spor için etkinlik bulunamadı.</string>
+    <string name="sport_basketball">Basketbol</string>
+    <string name="sport_american_football">Amerikan futbolu</string>
+    <string name="sport_baseball">Beyzbol</string>
+    <string name="sport_hockey">Hokey</string>
+    <string name="sport_motorsport">Motor sporları</string>
+    <string name="sport_volleyball">Voleybol</string>
+    <string name="sport_tennis">Tenis</string>
 </resources>

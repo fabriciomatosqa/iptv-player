@@ -2,6 +2,16 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.10
+
+- **Esportes em dois níveis:** substitui a entrada Futebol por Esportes, com modalidades na primeira linha e competições na segunda. Mostra somente as modalidades e ligas encontradas na programação da playlist.
+- **Futebol preservado:** placares, gols/cartões, partidas femininas, reprises, busca, filtros Ao Vivo/Jogos, escudos e múltiplas transmissões continuam com a mesma identidade.
+- **Outras modalidades:** basquete (NBA, WNBA, NBB, EuroLeague), futebol americano (NFL/NCAA), beisebol (MLB e divisões), hóquei (NHL/KHL), automobilismo (F1, F2, F3, WRC, Stock Car, IndyCar, NASCAR e MotoGP), vôlei e tênis com identificação confiável no EPG.
+- **Fim das abas enormes:** trata descrições como “Premier League, a divisão de elite...” como metadados, exibindo a categoria curta Premier League — Inglaterra. NFL e MLB deixam de ser tratados como futebol.
+- **Sem placares inventados:** as outras modalidades usam o horário e o estado de transmissão do guia, e não o provedor de placares de futebol. Cada esporte possui seus próprios cards, canais e menu temático.
+- **Desempenho:** interpretação do guia em thread de trabalho, preservação de posições por modalidade e campeonato, redução de categorias duplicadas e descoberta dinâmica de novas competições quando identificáveis.
+- Mantém dados, favoritos, listas, retomada, assinatura e atualizador online.
+
 ## Versão 1.12.9
 
 - **Futebol feminino:** identificação estruturada pelo título original, competição, categoria e dados disponíveis, preservando o nome correto dos clubes. A aba **Jogos Femininos** agrupa torneios femininos sem confundir status "Ao Vivo" com nome de campeonato.

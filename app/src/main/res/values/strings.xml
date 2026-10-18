@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">Os acontecimentos da partida não estão disponíveis no momento.</string>
     <string name="football_incidents_empty">Não há gols ou cartões registrados para esta partida.</string>
     <string name="womens_games">Jogos Femininos</string>
+    <string name="sports">Esportes</string>
+    <string name="sports_help">Modalidades e campeonatos da sua lista</string>
+    <string name="search_sport_events">Buscar equipe, prova ou evento</string>
+    <string name="one_sport_event">1 evento</string>
+    <string name="sport_event_count">%1$d eventos</string>
+    <string name="no_sport_events">Nenhum evento encontrado nesta modalidade.</string>
+    <string name="sport_basketball">Basquete</string>
+    <string name="sport_american_football">Futebol americano</string>
+    <string name="sport_baseball">Beisebol</string>
+    <string name="sport_hockey">Hóquei</string>
+    <string name="sport_motorsport">Automobilismo</string>
+    <string name="sport_volleyball">Vôlei</string>
+    <string name="sport_tennis">Tênis</string>
 </resources>

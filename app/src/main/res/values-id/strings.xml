@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">Peristiwa pertandingan belum tersedia.</string>
     <string name="football_incidents_empty">Tidak ada informasi gol atau kartu untuk pertandingan ini.</string>
     <string name="womens_games">Sepak Bola Wanita</string>
+    <string name="sports">Olahraga</string>
+    <string name="sports_help">Cabang olahraga dan liga di daftar Anda</string>
+    <string name="search_sport_events">Cari tim, balapan, atau acara</string>
+    <string name="one_sport_event">1 acara</string>
+    <string name="sport_event_count">%1$d acara</string>
+    <string name="no_sport_events">Tidak ada acara untuk olahraga ini.</string>
+    <string name="sport_basketball">Bola basket</string>
+    <string name="sport_american_football">Sepak bola Amerika</string>
+    <string name="sport_baseball">Bisbol</string>
+    <string name="sport_hockey">Hoki</string>
+    <string name="sport_motorsport">Olahraga bermotor</string>
+    <string name="sport_volleyball">Bola voli</string>
+    <string name="sport_tennis">Tenis</string>
 </resources>

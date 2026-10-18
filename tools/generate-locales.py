@@ -164,8 +164,9 @@ for lang,row in rows.items():
             name=node.get('name','')
             if name.startswith('playback_') and name.endswith('_failure') or name in (
                 'playback_http_not_found','playback_http_unavailable','football_match_details',
-                'football_hide_details','football_incidents_unavailable','football_incidents_empty'
-            ):
+                'football_hide_details','football_incidents_unavailable','football_incidents_empty',
+                'sports','sports_help','search_sport_events','one_sport_event','no_sport_events'
+            ) or name.startswith('sport_'):
                 data[name]=(node.text or '').replace("\\'","'")
     xml='<resources>\n'+''.join('    <string name="'+k+'">'+escape(v).replace("'","\\'")+'</string>\n' for k,v in data.items())+'</resources>\n'
     (folder/'strings.xml').write_text(xml)
