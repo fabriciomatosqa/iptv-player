@@ -59,9 +59,10 @@ fun footballCompetitionRule(value: String): FootballCompetitionRule? {
     // Respect full names and explicit divisions before attempting to discard editorial prose.
     compiledFootballRules.firstOrNull { it.second.matches(key.replace(',', ' ').replace(Regex("\\s+")," ").trim()) }
         ?.let { return it.first }
-    val prose = key.substringAfter(',', "").trim()
+    // Normalization discards punctuation; split editorial descriptions before normalizing.
+    val prose = normalized(value.substringAfter(',', "")).trim()
     if (prose.isNotBlank() && !Regex("^(?:serie|series|segunda|segunda divisao|2\\b|feminin|sub\\s*\\d)").containsMatchIn(prose)) {
-        val heading = key.substringBefore(',').trim()
+        val heading = competitionBase(value.substringBefore(',')).trim()
         return compiledFootballRules.firstOrNull { it.second.matches(heading) }?.first
     }
     return null
