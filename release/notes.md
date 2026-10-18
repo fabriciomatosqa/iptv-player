@@ -1,11 +1,11 @@
-AURORA IPTV Android 1.12.13 — correção de modalidades e escudos esportivos.
+AURORA IPTV Android 1.12.14 — logos inteligentes nas categorias Ao Vivo.
 
-- Corrige a classificação que colocava partidas de hóquei (incluindo Vegas Golden Knights x Tampa Bay Lightning), basquete, beisebol e outros esportes na seção Futebol.
-- Prioriza a modalidade informada na programação antes de interpretar um confronto ou usar descrições longas de campeonatos.
-- A liga descritiva de hóquei mostrada na programação passa a ser identificada como NHL, com aba curta e correta.
-- Mantém os eventos no esporte correspondente e reúne canais da mesma partida sem duplicar cartões.
-- Reforça a busca de escudos de clubes por ligas oficiais com correspondência segura do nome do time, sem inventar imagens.
-- Adiciona testes de regressão para a separação dos esportes e para os escudos Vegas Golden Knights/Tampa Bay Lightning.
-- Preserva dados locais, favoritos, atualização online e assinatura de instalação.
+- Reconhece os nomes com prefixos, acentos, emojis e qualidade de transmissão: Globo Capitais e Regionais, SBT, Prime Video, Disney+, DAZN, CazéTV e Canal GOAT.
+- Exibe a identidade visual oficial dessas marcas em PNG; não depende de encontrar uma imagem coincidente na própria lista de canais.
+- Os grupos e seus identificadores permanecem exatamente separados e inalterados.
+- Recupera logos de canais individuais conhecidos quando a playlist não fornece a imagem ou a URL da imagem falha.
+- Mantém a busca original por logos para grupos que não possuem correspondência confiável.
+- Evita confundir GloboNews/Globoplay com Globo, SBT News com SBT e Disney Channel com Disney+.
+- Acrescenta testes de regressão para aliases e identidade de categorias, preservando a assinatura Android e atualizações online.
 
-Atualize no app: Configurações → Atualizar online → Verificar atualizações.
+Atualize pelo app: Configurações → Atualizar online → Verificar atualizações.

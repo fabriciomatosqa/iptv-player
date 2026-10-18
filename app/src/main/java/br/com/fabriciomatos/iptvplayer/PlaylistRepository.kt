@@ -197,6 +197,9 @@ class PlaylistRepository(context: Context) {
     /** Bounded, indexed lookup: only reuse a channel's real M3U logo when its name matches the group. */
     fun groupLogo(source: String, group: String): String {
         if (source.isBlank() || group.isBlank()) return ""
+        // Identical broadcaster logo, independent playlist categories. No DB scan
+        // or provider lookup is needed for a registered visual brand.
+        groupBrandLogoUrl(group).takeIf(String::isNotBlank)?.let { return it }
         return helper.readableDatabase.rawQuery(
             "SELECT name,image_url FROM channels WHERE source_key=? AND kind=? AND group_name=? AND image_url<>'' ORDER BY position LIMIT 80",
             arrayOf(digest(source), MediaKind.LIVE.ordinal.toString(), group)

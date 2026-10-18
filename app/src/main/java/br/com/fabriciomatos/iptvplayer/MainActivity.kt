@@ -648,7 +648,12 @@ private fun GroupChip(title: String, selected: Boolean, logoUrl: String = "", on
     FilterChip(selected, onClick, label = {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (logoUrl.isNotBlank() && !logoFailed) {
-                AsyncImage(catalogImage(logoUrl), null, Modifier.size(20.dp),
+                val brand=channelBrand(title)
+                val imageModifier=if(brand != null) Modifier.size(27.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(if(brand.darkBackground) Color(0xFF111218) else Color.White)
+                    .padding(3.dp) else Modifier.size(20.dp)
+                AsyncImage(catalogImage(logoUrl), null, imageModifier,
                     contentScale = ContentScale.Fit, onError = { logoFailed = true })
             }
             Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
@@ -738,7 +743,19 @@ private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Bool
             .clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {
             Icon(if (isLive) Icons.Default.LiveTv else Icons.Default.Movie, null, tint = Cyan, modifier = Modifier.size(20.dp))
             val cover = if (channel.kind == MediaKind.SERIES) channel.seriesImageUrl.ifBlank { channel.imageUrl } else channel.imageUrl
-            if (cover.isNotBlank()) AsyncImage(catalogImage(cover), null, Modifier.fillMaxSize(), contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop)
+            // Respect a provider's channel logo, but recover a known broadcaster logo
+            // when the provider did not supply one or its URL can no longer load.
+            var coverFailed by remember(cover) { mutableStateOf(false) }
+            val brand=if(isLive)channelBrand(channel.name) else null
+            val logo=if(cover.isNotBlank() && !coverFailed) cover else brand?.logoUrl.orEmpty()
+            if (logo.isNotBlank()) {
+                val logoModifier=if(brand!=null && (cover.isBlank() || coverFailed))
+                    Modifier.fillMaxSize().background(if(brand.darkBackground) Color(0xFF111218) else Color.White)
+                        .padding(4.dp) else Modifier.fillMaxSize()
+                AsyncImage(catalogImage(logo), null, logoModifier,
+                    contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop,
+                    onError = { if(logo==cover) coverFailed=true })
+            }
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(if (guideMode) 1.2f else 1f)) {
