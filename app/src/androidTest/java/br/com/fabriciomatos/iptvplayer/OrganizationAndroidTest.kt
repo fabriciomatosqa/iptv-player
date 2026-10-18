@@ -36,6 +36,32 @@ class OrganizationAndroidTest {
         repository.close()
         PlaylistRepository(context).also {assertEquals(setOf("Novo filme","Filme 6"),it.channels(recent).map {c->c.name}.toSet());it.close()}
     }
+    @Test fun storedChannelImagesSupplyIndependentGroupChips() {
+        val repository=PlaylistRepository(context)
+        val samples=mapOf(
+            "PPV | MAX ⚽" to ("MAX 01" to "https://example.test/max.png"),
+            "PPV | NFL" to ("NFL Network" to "https://example.test/nfl.png"),
+            "PPV | INSPORTS ⚽" to ("NSPORTS 1 HD" to "https://example.test/nsports.png"),
+            "PPV | PARAMOUNT+ ⚽" to ("PARAMOUNT+ 1 HD" to "https://example.test/paramount.png"),
+            "UFC PARAMOUNT+ ⭐" to ("UFC - HD" to "https://example.test/ufc.png"),
+            "GLOBO | CAPITAIS" to ("GLOBO RJ" to "https://example.test/globo.png"),
+            "GLOBO | REGIONAIS" to ("GLOBO SP" to "https://example.test/globo.png")
+        )
+        val channels=samples.flatMap { (group,pair) ->
+            (1..4).map {i -> Channel(pair.first+" "+i,
+                "https://example.test/live/"+normalized(group).replace(" ","-")+"/"+i,
+                group,pair.second)}
+        }
+        repository.appendCache(source,Download(Playlist(channels),"",""))
+        samples.forEach { (group,pair) ->
+            assertEquals(group,pair.second,repository.groupLogo(source,group))
+        }
+        val names=repository.overview(source).groups[MediaKind.LIVE].orEmpty()
+        assertTrue(names.contains("GLOBO | CAPITAIS"))
+        assertTrue(names.contains("GLOBO | REGIONAIS"))
+        repository.close()
+    }
+
     @Test fun importProgressOnlyReaches100AfterFullCatalogIsCommitted() {
         val repository=PlaylistRepository(context)
         repository.appendCache(source,Download(Playlist(listOf(Channel("Antigo","https://example.test/movie/old","Filmes"))),"",""))

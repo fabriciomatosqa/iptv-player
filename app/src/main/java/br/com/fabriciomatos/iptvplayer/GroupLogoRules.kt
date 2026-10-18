@@ -11,10 +11,10 @@ private val genericGroupsWithoutLogo = setOf(
 )
 
 /**
- * Exact, opt-in brand identities. Only the visual identity is shared:
+ * Fallback brand identities only. Provider logos always have priority:
  * "GLOBO | CAPITAIS" and "GLOBO | REGIONAIS" keep independent group IDs.
  *
- * The URLs are fixed PNG renderings of identified Wikimedia Commons logos;
+ * URLs are fallback PNG renderings of identified Wikimedia Commons logos;
  * Coil handles network loading and disk caching. No provider data is transmitted.
  * These are Wikimedia thumbnails, not the gallery's HTML pages or unsupported SVG files.
  */
@@ -62,31 +62,65 @@ internal fun groupBrandLogoUrl(group: String): String = channelBrand(group)?.log
  * Unknown brands may still use a logo supplied by their own M3U channel.
  * Compare meaningful brand names and never take arbitrary artwork from a group.
  */
+internal data class ChannelLogoCandidate(val name: String, val logo: String)
+
+/** Group IDs are never rewritten: normalizing only helps match logo identity. */
+private fun groupCore(group: String): String = normalized(groupDisplayName(group))
+    .replace(Regex("""^(?:(?:ppv|pay per view)\s+)+"""),"")
+    .replace(Regex("""^(?:(?:tv|rede)\s+)+"""),"")
+    .replace(Regex("""\b(?:4k|uhd|fhd|full hd|sd|1080p|720p)\b""")," ")
+    .replace(Regex("""\s+""")," ").trim()
+
+private fun groupAliases(core: String): List<String> = when(core) {
+    "insports" -> listOf("nsports", "in sports")
+    "cazetv" -> listOf("caze tv", "cazetv")
+    "amazon prime" -> listOf("amazon prime", "prime video", "amazon prime video")
+    "bandeirantes", "band" -> listOf("band", "bandeirantes")
+    else -> listOf(core)
+}
+
+/** Name match must use complete tokens, not arbitrary shared substrings. */
 internal fun groupLogoMatchScore(group: String, channelName: String): Int {
-    val key = normalized(groupDisplayName(group))
-        .replace(Regex("\\b(?:hd|fhd|sd|4k|uhd)\\b"), "").trim()
-    if (key.isBlank() || key in genericGroupsWithoutLogo) return 0
-    val groupBrand = channelBrand(group)
-    if(groupBrand!=null) {
-        return if(channelBrand(channelName)==groupBrand) 100 else 0
-    }
-    val aliases = when {
-        key.contains("bandeirantes") || key == "band" -> listOf("band", "bandeirantes")
-        key.contains("premiere") -> listOf("premiere")
-        key.contains("record") -> listOf("record")
-        key.contains("rede globo") -> listOf("globo")
-        key == "sbt" || key.contains("sistema brasileiro de televisao") -> listOf("sbt")
-        key.startsWith("rede ") -> listOf(key.removePrefix("rede "))
-        key.startsWith("tv ") -> listOf(key.removePrefix("tv "))
-        else -> listOf(key)
-    }
-    val name = normalized(channelName)
-    return aliases.maxOfOrNull { alias ->
-        when {
-            name == alias -> 100
-            name.startsWith("$alias ") -> 90
-            name.contains(" $alias ") -> 60
+    val core=groupCore(group)
+    if(core.isBlank() || core in genericGroupsWithoutLogo) return 0
+    val expected=channelBrand(group)
+    if(expected!=null && expected==channelBrand(channelName)) return 120
+    val name=normalized(channelName)
+        .replace(Regex("""^(?:\d+\s+)?(?:us|br|uk|pt)\s+"""),"").trim()
+    return groupAliases(core).maxOfOrNull { alias ->
+        if(alias.isBlank() || alias in genericGroupsWithoutLogo) 0 else when {
+            name==alias -> 110
+            name.startsWith(alias+" ") -> 95
+            alias.length>=3 && Regex("(?:^|\\s)"+Regex.escape(alias)+"(?:\\s|$)").containsMatchIn(name) -> 70
             else -> 0
         }
     } ?: 0
 }
+
+/** Use the very same image_url/tvg-logo already displayed on the channel cards. */
+internal fun providerGroupLogo(group: String, candidates: List<ChannelLogoCandidate>,
+    allowConsensus: Boolean = true): String {
+    val core=groupCore(group)
+    if(core.isBlank() || core in genericGroupsWithoutLogo) return ""
+    val valid=candidates.filter {it.logo.startsWith("https://") || it.logo.startsWith("http://")}
+    if(valid.isEmpty())return ""
+    val matching=valid.filter {groupLogoMatchScore(group,it.name)>0}
+    fun pick(rows: List<ChannelLogoCandidate>, ratio: Double): String {
+        if(rows.isEmpty())return ""
+        val counts=rows.groupingBy {it.logo}.eachCount().entries
+            .sortedWith(compareByDescending<Map.Entry<String,Int>> {it.value}.thenBy {it.key})
+        val top=counts.first()
+        return if(top.value.toDouble()/rows.size>ratio &&
+            (counts.size==1 || top.value>counts[1].value))top.key else ""
+    }
+    val reliable=pick(matching,if(matching.size==1)0.0 else 0.5)
+    if(reliable.isNotBlank())return reliable
+    // Generic or inconsistent channel names are acceptable only with broad
+    // agreement on the image, never when a group mixes unrelated channel logos.
+    return if(allowConsensus && valid.size>=2)pick(valid,0.66) else ""
+}
+
+/** A sports LEAGUE may use a provider image only when a channel explicitly
+ * names that league. Never display an ESPN logo as if it were an NHL crest. */
+internal fun sportsLeagueLogo(competition: String, channels: List<Channel>): String =
+    providerGroupLogo(competition,channels.map {ChannelLogoCandidate(it.name,it.imageUrl)},false)

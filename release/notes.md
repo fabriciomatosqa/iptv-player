@@ -1,11 +1,11 @@
-AURORA IPTV Android 1.12.14 — logos inteligentes nas categorias Ao Vivo.
+AURORA IPTV Android 1.12.15 — imagens originais da playlist nos grupos e nos Esportes.
 
-- Reconhece os nomes com prefixos, acentos, emojis e qualidade de transmissão: Globo Capitais e Regionais, SBT, Prime Video, Disney+, DAZN, CazéTV e Canal GOAT.
-- Exibe a identidade visual oficial dessas marcas em PNG; não depende de encontrar uma imagem coincidente na própria lista de canais.
-- Os grupos e seus identificadores permanecem exatamente separados e inalterados.
-- Recupera logos de canais individuais conhecidos quando a playlist não fornece a imagem ou a URL da imagem falha.
-- Mantém a busca original por logos para grupos que não possuem correspondência confiável.
-- Evita confundir GloboNews/Globoplay com Globo, SBT News com SBT e Disney Channel com Disney+.
-- Acrescenta testes de regressão para aliases e identidade de categorias, preservando a assinatura Android e atualizações online.
+- Os chips Ao Vivo passam a aproveitar primeiro o próprio tvg-logo salvo nos canais M3U.
+- Seleção por nome do canal e concordância entre os logos do grupo; corrige MAX, NFL, NSports, Paramount+ e UFC Paramount+ mesmo com PPV, qualidade e símbolos.
+- Preserva separadamente GLOBO | CAPITAIS e GLOBO | REGIONAIS.
+- Logos externas conhecidas permanecem apenas como alternativa quando não existir uma imagem confiável na playlist.
+- Nos Esportes, os botões Assistir e o seletor de transmissões usam a imagem do canal. Categorias só recebem imagem de um canal quando o nome dele identifica a própria competição; ESPN nunca substitui o escudo da NHL.
+- Evita logos arbitrárias em categorias mistas, sem reclassificar canais, eventos ou playlists.
+- Inclui testes de regressão e Android, mantém favoritos, dados locais, assinatura e atualizações online.
 
-Atualize pelo app: Configurações → Atualizar online → Verificar atualizações.
+Atualize em Configurações → Atualizar online → Verificar atualizações.

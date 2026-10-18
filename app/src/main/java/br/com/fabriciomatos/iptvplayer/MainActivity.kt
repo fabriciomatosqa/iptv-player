@@ -403,7 +403,8 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                     LaunchedEffect(source, model.catalog, group, model.selectedKind) {
                         image = if (model.selectedKind == MediaKind.LIVE) model.groupLogo(source, group) else ""
                     }
-                    GroupChip(groupDisplayName(groupLabel(group)), model.group == group, image) { model.selectGroup(group) }
+                    GroupChip(groupDisplayName(groupLabel(group)), model.group == group,
+                        image, fallbackLogoUrl=groupBrandLogoUrl(group)) { model.selectGroup(group) }
                 }
             }
             if (model.loading) CatalogLoadingIndicator(model)
@@ -643,18 +644,22 @@ private fun TypeChips(model: AuroraViewModel) {
 }
 
 @Composable
-private fun GroupChip(title: String, selected: Boolean, logoUrl: String = "", onClick: () -> Unit) {
+private fun GroupChip(title: String, selected: Boolean, logoUrl: String = "",
+    fallbackLogoUrl: String = "", onClick: () -> Unit) {
     var logoFailed by remember(logoUrl) { mutableStateOf(false) }
+    var fallbackFailed by remember(fallbackLogoUrl) { mutableStateOf(false) }
+    val displayed=if(!logoFailed)logoUrl else fallbackLogoUrl.takeIf {it!=logoUrl && !fallbackFailed}.orEmpty()
     FilterChip(selected, onClick, label = {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (logoUrl.isNotBlank() && !logoFailed) {
+            if (displayed.isNotBlank()) {
                 val brand=channelBrand(title)
                 val imageModifier=if(brand != null) Modifier.size(27.dp)
                     .clip(RoundedCornerShape(7.dp))
                     .background(if(brand.darkBackground) Color(0xFF111218) else Color.White)
                     .padding(3.dp) else Modifier.size(20.dp)
-                AsyncImage(catalogImage(logoUrl), null, imageModifier,
-                    contentScale = ContentScale.Fit, onError = { logoFailed = true })
+                AsyncImage(catalogImage(displayed), null, imageModifier,
+                    contentScale = ContentScale.Fit,
+                    onError = { if(displayed==logoUrl)logoFailed=true else fallbackFailed=true })
             }
             Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
         }

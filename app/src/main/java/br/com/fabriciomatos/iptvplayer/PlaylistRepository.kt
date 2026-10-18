@@ -194,28 +194,17 @@ class PlaylistRepository(context: Context) {
             if (it.moveToFirst()) CatalogOverview(it.getInt(0), it.getInt(1), it.getInt(2), it.getInt(3), it.getInt(4), groups) else CatalogOverview()
         }
     }
-    /** Bounded, indexed lookup: only reuse a channel's real M3U logo when its name matches the group. */
+    /** Reuse existing tvg-logo metadata first; branded URLs are only fallbacks. */
     fun groupLogo(source: String, group: String): String {
         if (source.isBlank() || group.isBlank()) return ""
-        // Identical broadcaster logo, independent playlist categories. No DB scan
-        // or provider lookup is needed for a registered visual brand.
-        groupBrandLogoUrl(group).takeIf(String::isNotBlank)?.let { return it }
-        return helper.readableDatabase.rawQuery(
-            "SELECT name,image_url FROM channels WHERE source_key=? AND kind=? AND group_name=? AND image_url<>'' ORDER BY position LIMIT 80",
+        val candidates=helper.readableDatabase.rawQuery(
+            "SELECT name,image_url FROM channels WHERE source_key=? AND kind=? AND group_name=? AND image_url<>'' ORDER BY position LIMIT 180",
             arrayOf(digest(source), MediaKind.LIVE.ordinal.toString(), group)
         ).use { rows ->
-            var bestImage = ""
-            var bestScore = 0
-            while (rows.moveToNext()) {
-                val score = groupLogoMatchScore(group, rows.getString(0))
-                if (score > bestScore) {
-                    bestScore = score
-                    bestImage = rows.getString(1)
-                }
-                if (score == 100) break
-            }
-            bestImage
+            buildList { while(rows.moveToNext())
+                add(ChannelLogoCandidate(rows.getString(0),rows.getString(1))) }
         }
+        return providerGroupLogo(group,candidates).ifBlank {groupBrandLogoUrl(group)}
     }
 
     private fun <T : Any> tracked(page: CatalogPage<T>): PagingSource<Int, T> {

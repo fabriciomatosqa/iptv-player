@@ -61,6 +61,51 @@ class GroupLogoRulesTest {
         assertEquals(100,groupLogoMatchScore("PPV | PRIME VIDEO","AMAZON PRIME HD"))
     }
 
+    @Test fun existingTvgLogosCoverPpvGroupScreenshots() {
+        val examples=listOf(
+            Triple("PPV | MAX ⚽","MAX 01","max"),
+            Triple("PPV | NFL","(00) |US| NFL Network HD","nfl"),
+            Triple("PPV | INSPORTS ⚽","NSPORTS 1 HD","nsports"),
+            Triple("PPV | PARAMOUNT+ ⚽","PARAMOUNT+ 1 FHD","paramount"),
+            Triple("UFC PARAMOUNT+ ⭐","UFC - HD","ufc"),
+            Triple("PPV | AMAZON PRIME ⚽","AMAZON PRIME 1","prime"),
+            Triple("PPV | DISNEY+ ⚽","DISNEY+ FHD","disney")
+        )
+        for((group,title,key) in examples) {
+            val url="https://provider.example/"+key+".png"
+            val channels=(1..4).map {ChannelLogoCandidate(title+" "+it,url)}
+            assertEquals(group,url,providerGroupLogo(group,channels))
+        }
+        val two=listOf(ChannelLogoCandidate("GLOBO RJ","https://provider/globo.png"),
+            ChannelLogoCandidate("GLOBO SP","https://provider/globo.png"))
+        assertEquals("https://provider/globo.png",providerGroupLogo("GLOBO | CAPITAIS",two))
+        assertEquals("https://provider/globo.png",providerGroupLogo("GLOBO | REGIONAIS",two))
+        assertEquals("GLOBO | CAPITAIS",groupDisplayName("GLOBO | CAPITAIS"))
+        assertEquals("GLOBO | REGIONAIS",groupDisplayName("GLOBO | REGIONAIS"))
+    }
+
+    @Test fun avoidUnrelatedGroupAndSportLogos() {
+        val logo="https://provider.example/nfl.png"
+        val channels=listOf(
+            ChannelLogoCandidate("Jets x Browns",logo),
+            ChannelLogoCandidate("Miami x Bengals",logo),
+            ChannelLogoCandidate("NFL Network",logo),
+            ChannelLogoCandidate("Other","https://provider.example/other.png")
+        )
+        assertEquals(logo,providerGroupLogo("PPV | NFL",channels))
+        assertEquals("",providerGroupLogo("PPV | MIXED",listOf(
+            ChannelLogoCandidate("A","https://example/a.png"),
+            ChannelLogoCandidate("B","https://example/b.png"))))
+        assertEquals("",providerGroupLogo("ESPORTES",channels))
+        val espn=Channel("ESPN HD","https://example.test/live","Esportes",
+            imageUrl="https://provider.example/espn.png")
+        assertEquals("",sportsLeagueLogo("NHL",listOf(espn)))
+        assertEquals("",sportsLeagueLogo("Fórmula 1",listOf(espn)))
+        val nfl=Channel("NFL Network","https://example.test/nfl","PPV | NFL",
+            imageUrl=logo)
+        assertEquals(logo,sportsLeagueLogo("NFL",listOf(nfl)))
+    }
+
     @Test fun unrelatedChannelsAndGenericGroupsNeverSupplyLogos() {
         assertEquals(0, groupLogoMatchScore("REDE BANDEIRANTES", "RECORD TV"))
         assertEquals(0, groupLogoMatchScore("REDE RECORD", "BAND CURITIBA HD"))

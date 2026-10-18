@@ -142,10 +142,24 @@ import java.util.Locale
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(tabs,key={it.key}) { tab ->
                     val selected=activeTab==tab.key
+                    val leagueLogo=remember(tab.key,model.sports,model.selectedSport) {
+                        if(soccer || tab.key==SPORTS_LIVE || tab.key==SPORTS_GAMES) ""
+                        else sportsLeagueLogo(tab.title,model.sports
+                            .filter {it.sport==model.selectedSport && it.competitionId==tab.key}
+                            .flatMap {it.channels}.distinctBy {it.url})
+                    }
                     FilterChip(selected,{
                         if(soccer) model.footballTab=tab.key else model.sportsCategory=tab.key
-                    },label={Text(if(soccer)footballTabTitle(tab) else tab.title,maxLines=1,
-                        fontWeight=if(selected)FontWeight.Bold else FontWeight.Medium)},
+                    },label={
+                        Row(verticalAlignment=Alignment.CenterVertically,
+                            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            if(leagueLogo.isNotBlank()) AsyncImage(catalogImage(leagueLogo),null,
+                                Modifier.size(22.dp).clip(RoundedCornerShape(5.dp))
+                                    .background(Color.White).padding(2.dp),contentScale=ContentScale.Fit)
+                            Text(if(soccer)footballTabTitle(tab) else tab.title,maxLines=1,
+                                fontWeight=if(selected)FontWeight.Bold else FontWeight.Medium)
+                        }
+                    },
                         modifier=Modifier.testTag("football_tab_"+tab.key),
                         shape=RoundedCornerShape(14.dp),
                         colors=FilterChipDefaults.filterChipColors(
@@ -433,7 +447,13 @@ import java.util.Locale
                 color = colors.mint.copy(alpha = .12f), contentColor = colors.mint) {
                 Row(Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Default.PlayCircleFilled, null, Modifier.size(20.dp))
+                    var logoFailed by remember(channel.imageUrl) { mutableStateOf(false) }
+                    if(channel.imageUrl.isNotBlank() && !logoFailed)
+                        AsyncImage(catalogImage(channel.imageUrl),null,
+                            Modifier.size(24.dp).clip(RoundedCornerShape(6.dp))
+                                .background(Color.White).padding(2.dp),
+                            contentScale=ContentScale.Fit,onError={logoFailed=true})
+                    else Icon(Icons.Default.PlayCircleFilled, null, Modifier.size(20.dp))
                     Column(Modifier.weight(1f)) {
                         Text(tr(R.string.watch), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                         Text(channel.name, color = colors.muted, fontSize = 10.sp,
@@ -552,7 +572,13 @@ import java.util.Locale
                             Row(Modifier.padding(horizontal=12.dp,vertical=12.dp),
                                 verticalAlignment=Alignment.CenterVertically,
                                 horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                                Icon(Icons.Default.PlayCircleFilled,null,
+                                var logoFailed by remember(channel.imageUrl) { mutableStateOf(false) }
+                                if(channel.imageUrl.isNotBlank() && !logoFailed)
+                                    AsyncImage(catalogImage(channel.imageUrl),null,
+                                        Modifier.size(26.dp).clip(RoundedCornerShape(6.dp))
+                                            .background(Color.White).padding(2.dp),
+                                        contentScale=ContentScale.Fit,onError={logoFailed=true})
+                                else Icon(Icons.Default.PlayCircleFilled,null,
                                     tint=colors.mint,modifier=Modifier.size(23.dp))
                                 Text(channel.name,Modifier.weight(1f),fontSize=12.sp,
                                     maxLines=2,lineHeight=16.sp,overflow=TextOverflow.Ellipsis,
