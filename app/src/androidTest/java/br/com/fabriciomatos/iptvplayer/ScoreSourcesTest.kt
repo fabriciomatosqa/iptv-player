@@ -22,7 +22,11 @@ class ScoreSourcesTest {
         val match=FootballMatch("nassr",Programme("Al Nassr x Neftchi Fergana",final.kickoff+4*3600000,final.kickoff+8*3600000),
             emptyList(),FootballDetails("AFC Champions League Elite","Al Nassr","Neftchi Fergana"))
         assertEquals(3,matchFootballScore(match,FootballFeed(scores))?.homeGoals)
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme,final))
+        // The captured final result is independent of this later EPG slot.
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(match.programme,final))
+        assertFalse(compactFootballMatch(match,final,match.programme.start-1))
+        assertFalse(transmissionIsLive(match.programme,final,match.programme.start))
+        assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme.copy(broadcast=BroadcastHint.REPLAY),final))
     }
     @Test fun theDailyFootballEndpointsAreReachableFromNativeAndroid() {
         val day=footballDateKey(System.currentTimeMillis())
