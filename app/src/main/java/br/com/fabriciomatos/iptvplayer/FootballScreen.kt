@@ -57,7 +57,10 @@ import java.util.Locale
     }
     val tabs = remember(model.football,model.sports,model.selectedSport) {
         if (soccer) footballTabs(model.football)
-        else sportsCategories(model.sports,model.selectedSport).map { FootballTab(it.id,it.title) }
+        else sportsCategories(model.sports,model.selectedSport).map {
+            FootballTab(it.id,if(model.selectedSport==SportKind.MOTORSPORT && it.id==SPORTS_GAMES)
+                "Eventos" else it.title)
+        }
     }
     val activeTab = if (soccer) canonicalFootballTab(model.footballTab) else model.sportsCategory
     LaunchedEffect(model.selectedSport,tabs) {
@@ -159,7 +162,10 @@ import java.util.Locale
                 Icon(Icons.Default.Update,null,Modifier.size(13.dp),tint=colors.mint)
                 Text(if(soccer)tr(R.string.minute_updates) else tr(R.string.sports_filter_help),
                     Modifier.weight(1f).padding(start=6.dp),fontSize=10.sp,color=colors.muted)
-                Text(if(gameCount==1)tr(R.string.one_game)
+                Text(if(!soccer && model.selectedSport==SportKind.MOTORSPORT)
+                    NumberFormat.getIntegerInstance(Locale.forLanguageTag(model.language)).format(gameCount)+
+                        if(gameCount==1)" evento" else " eventos"
+                    else if(gameCount==1)tr(R.string.one_game)
                     else tr(R.string.game_count,
                         NumberFormat.getIntegerInstance(Locale.forLanguageTag(model.language)).format(gameCount)),
                     fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=colors.mint)
@@ -188,7 +194,8 @@ import java.util.Locale
                 if(soccer) items(footballMatches,key={it.id}) { match ->
                     FootballCard(model,match,displayTime)
                 } else items(otherEvents,key={it.id}) { event ->
-                    SportsEventCard(model,event,displayTime)
+                    if(event.sport==SportKind.MOTORSPORT) MotorsportEventCard(model,event,displayTime)
+                    else SportsEventCard(model,event,displayTime)
                 }
             }
         }
@@ -276,7 +283,8 @@ import java.util.Locale
 @Composable private fun FootballSearch(model: AuroraViewModel, modifier: Modifier) {
     val colors = LocalAuroraColors.current
     OutlinedTextField(model.footballSearch, { model.footballSearch = it }, modifier.testTag("football_search"),
-        placeholder = { Text(tr(R.string.search_team), fontSize = 14.sp) }, leadingIcon = { Icon(Icons.Default.Search, null, tint = colors.mint) }, singleLine = true, shape = RoundedCornerShape(18.dp),
+        placeholder = { Text(if(model.selectedSport==SportKind.MOTORSPORT)
+             "Buscar GP, corrida ou sessão" else tr(R.string.search_team), fontSize = 14.sp) }, leadingIcon = { Icon(Icons.Default.Search, null, tint = colors.mint) }, singleLine = true, shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = colors.panel.copy(alpha = .7f), focusedContainerColor = colors.panel,
             unfocusedBorderColor = colors.muted.copy(alpha = .24f), focusedBorderColor = colors.mint),
         trailingIcon = { if (model.footballSearch.isNotBlank()) IconButton(onClick = { model.footballSearch = "" }) { Icon(Icons.Default.Close, tr(R.string.clear_search)) } })
@@ -411,7 +419,7 @@ import java.util.Locale
 }
 
 /** Two compact broadcaster buttons, with every channel and quality variant available in the menu. */
-@Composable private fun FootballChannelActions(model: AuroraViewModel, channels: List<Channel>, compact: Boolean = false) {
+@Composable internal fun FootballChannelActions(model: AuroraViewModel, channels: List<Channel>, compact: Boolean = false) {
     val colors = LocalAuroraColors.current
     val featured = remember(channels) { footballFeaturedChannels(channels) }
     var menuOpen by remember(channels) { mutableStateOf(false) }

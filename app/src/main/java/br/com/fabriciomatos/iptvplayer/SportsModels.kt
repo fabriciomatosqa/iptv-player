@@ -42,7 +42,17 @@ val sportsCompetitionRules = listOf(
     SportsCompetitionRule("wrc", SportKind.MOTORSPORT, "Mundial de Rally — WRC", listOf("wrc", "world rally championship", "mundial de rally"), 40),
     SportsCompetitionRule("stockcar", SportKind.MOTORSPORT, "Stock Car", listOf("stock car", "stockcar brasil", "stock car pro series"), 50),
     SportsCompetitionRule("motogp", SportKind.MOTORSPORT, "MotoGP", listOf("motogp", "moto gp"), 60),
-    SportsCompetitionRule("indycar", SportKind.MOTORSPORT, "IndyCar", listOf("indycar", "indy 500"), 70),
+    SportsCompetitionRule("indycar", SportKind.MOTORSPORT, "IndyCar", listOf("indycar", "indy 500", "indy 500 milhas", "500 milhas de indianapolis"), 70),
+    SportsCompetitionRule("formula-e", SportKind.MOTORSPORT, "Fórmula E", listOf("formula e", "formula-e", "formula e world championship"), 80),
+    SportsCompetitionRule("wec", SportKind.MOTORSPORT, "WEC — Endurance", listOf("wec", "world endurance championship", "mundial de endurance", "24 horas de le mans", "24h le mans"), 90),
+    SportsCompetitionRule("nascar", SportKind.MOTORSPORT, "NASCAR", listOf("nascar", "cup series", "xfinity series"), 100),
+    SportsCompetitionRule("dtm", SportKind.MOTORSPORT, "DTM", listOf("dtm", "deutsche tourenwagen masters"), 110),
+    SportsCompetitionRule("porsche-cup", SportKind.MOTORSPORT, "Porsche Cup", listOf("porsche cup", "porsche carrera cup"), 120),
+    SportsCompetitionRule("super-formula", SportKind.MOTORSPORT, "Super Formula", listOf("super formula", "super formula championship"), 130),
+    SportsCompetitionRule("dakar", SportKind.MOTORSPORT, "Rally Dakar", listOf("rally dakar", "rali dakar", "dakar rally"), 140),
+    SportsCompetitionRule("moto2", SportKind.MOTORSPORT, "Moto2", listOf("moto2", "moto 2"), 150),
+    SportsCompetitionRule("moto3", SportKind.MOTORSPORT, "Moto3", listOf("moto3", "moto 3"), 160),
+    SportsCompetitionRule("worldsbk", SportKind.MOTORSPORT, "WorldSBK", listOf("worldsbk", "world superbike", "superbike world championship"), 170),
     SportsCompetitionRule("tennis.atp", SportKind.TENNIS, "ATP", listOf("atp", "atp tour"), 10),
     SportsCompetitionRule("tennis.wta", SportKind.TENNIS, "WTA", listOf("wta", "wta tour"), 20),
     SportsCompetitionRule("volley.superliga", SportKind.VOLLEYBALL, "Superliga de Vôlei", listOf("superliga de volei", "superliga de voleibol"), 10)
@@ -63,7 +73,7 @@ private val sportsMarkers = listOf(
     SportKind.BASEBALL to Regex("\\b(mlb|beisebol|baseball|npb|major league baseball)\\b"),
     SportKind.BASKETBALL to Regex("\\b(nba|wnba|nbb|basquete|basketball|euroleague|euroliga)\\b"),
     SportKind.HOCKEY to Regex("\\b(nhl|khl|hoquei|hockey)\\b"),
-    SportKind.MOTORSPORT to Regex("\\b(formula ?[123]|formula one|f1|f2|f3|wrc|rally|stock ?car|motogp|moto gp|indycar|automobilismo)\\b"),
+    SportKind.MOTORSPORT to Regex("\\b(formula ?[123e]|formula one|f1|f2|f3|wrc|rally|rali|stock ?car|motogp|moto ?[23]|indycar|indy 500|automobilismo|wec|endurance|nascar|dtm|porsche cup|super formula|worldsbk|superbike|dakar|24 horas de le mans)\\b"),
     SportKind.TENNIS to Regex("\\b(tenis|tennis|atp|wta)\\b"),
     SportKind.VOLLEYBALL to Regex("\\b(voleibol|volei|volleyball)\\b"),
     SportKind.HANDBALL to Regex("\\b(handebol|handball)\\b")
@@ -75,9 +85,14 @@ fun detectOtherSport(programme: Programme): SportKind? {
 fun sportsProgrammeCandidate(programme: Programme): Boolean {
     val kind=detectOtherSport(programme) ?: return false
     if(headToHead.containsMatchIn(programme.title)) return true
-    return kind==SportKind.MOTORSPORT && Regex(
-        "\\b(grand prix|grande premio|gp\\b|formula ?[123]|f[123]\\b|rally|wrc\\b|stock ?car|motogp|indycar|corrida|qualifica|treino livre)"
-    ).containsMatchIn(normalized(programme.title))
+    if (kind != SportKind.MOTORSPORT) return false
+    val title=normalized(programme.title)
+    val strong=Regex("""\b(grand prix|grande premio|gp|formula ?[123e]|f[123]|indycar|indy 500|motogp|moto ?[23]|rally|rali|wrc|stock ?car|nascar|wec|endurance|24h|24 horas|le mans|porsche cup|dtm|super formula|worldsbk|superbike|dakar)\b""")
+    if (strong.containsMatchIn(title)) return true
+    // A generic "treino" or "corrida" is not sufficient without trusted sport metadata.
+    val context=normalized(listOf(programme.metadata.sport,programme.metadata.competition,programme.category).joinToString(" "))
+    return Regex("""\b(treino|practice|fp[1234]|tl[1234]|classificacao|qualificacao|qualifying|sprint|corrida|race)\b""").containsMatchIn(title) &&
+        Regex("""\b(automobilismo|motorsport|formula ?[123e]|f[123]|wec|nascar|indycar|motogp|wrc|rally|endurance|stock ?car)\b""").containsMatchIn(context)
 }
 
 data class SportsEvent(
@@ -135,8 +150,9 @@ fun sportsEvents(guide:Guide,channels:List<Channel>,now:Long=System.currentTimeM
                 .split(Regex("\\s+[-–—]\\s+|\\s+[║|]\\s+")).first().trim().take(70) else ""
             val title=if(home.isNotBlank() && away.isNotBlank()) "$home × $away"
                 else p.title.trim().take(96)
-            val fixture=listOf(sport.name,league.first,normalized(title),
-                if(p.broadcast==BroadcastHint.REPLAY)"replay" else "event").joinToString(":")
+            val fixture=if(sport==SportKind.MOTORSPORT) motorsportFixtureKey(p,league.first)
+                else listOf(sport.name,league.first,normalized(title),
+                    if(p.broadcast==BroadcastHint.REPLAY)"replay" else "event").joinToString(":")
             val previous=lastByFixture[fixture]?.let(merged::get)?.takeIf {
                 abs(it.programme.start-p.start)<=90*60000L
             }
@@ -161,12 +177,25 @@ fun sportsCategories(events:List<SportsEvent>,sport:SportKind):List<SportsCatego
 fun sportsFilter(events:List<SportsEvent>, sport:SportKind, category:String,search:String,
     now:Long):List<SportsEvent> {
     val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
-    return events.filter { event ->
+    val filtered=events.filter { event ->
         event.sport==sport && event.programme.end>now-FOOTBALL_RETENTION_MS &&
             (category==SPORTS_GAMES || (category==SPORTS_LIVE &&
                 event.programme.broadcast==BroadcastHint.LIVE &&
                 now in event.programme.start..event.programme.end) ||
                 category==event.competitionId) &&
-            words.all { normalized(event.name+" "+event.competition).contains(it) }
+            words.all { normalized(event.name+" "+event.competition+
+                if(sport==SportKind.MOTORSPORT) " "+motorsportCardDetails(event.programme,event.competition).session else "").contains(it) }
     }
+    if(sport!=SportKind.MOTORSPORT) return filtered
+    return filtered.sortedWith(compareBy<SportsEvent> { event ->
+        when {
+            event.programme.broadcast==BroadcastHint.LIVE && now>=event.programme.start && now<event.programme.end -> 0
+            now>=event.programme.start && now<event.programme.end &&
+                event.programme.broadcast!=BroadcastHint.REPLAY -> 1
+            now<event.programme.start && event.programme.broadcast!=BroadcastHint.REPLAY -> 2
+            now>=event.programme.start && now<event.programme.end -> 3
+            now<event.programme.start -> 4
+            else -> 5
+        }
+    }.thenBy {it.programme.start}.thenBy {it.name})
 }
