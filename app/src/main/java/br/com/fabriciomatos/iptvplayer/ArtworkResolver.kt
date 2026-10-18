@@ -37,7 +37,7 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         nationalMatch(details)?.let { (home,away) ->
             return@withLock FootballArtwork(FIFA_BADGE,federationBadge(home),federationBadge(away))
         }
-        val slug=footballLeagueSlug(details.competition) ?: return@withLock FootballArtwork()
+        val slug=footballScoreLeagues(details).singleOrNull() ?: return@withLock FootballArtwork()
         val cacheKey="football:$slug"
         val cached=withContext(Dispatchers.IO) { repository.cachedArtwork(cacheKey) }
         val bundle=if(cached!=null) JSONObject(cached) else try {

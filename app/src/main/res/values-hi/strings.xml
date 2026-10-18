@@ -187,4 +187,5 @@
     <string name="football_hide_details">विवरण छिपाएँ</string>
     <string name="football_incidents_unavailable">मैच की घटनाएँ अभी उपलब्ध नहीं हैं।</string>
     <string name="football_incidents_empty">इस मैच में गोल या कार्ड की जानकारी नहीं है।</string>
+    <string name="womens_games">महिला फ़ुटबॉल</string>
 </resources>

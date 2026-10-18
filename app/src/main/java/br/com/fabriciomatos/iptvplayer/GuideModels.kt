@@ -15,7 +15,11 @@ fun programmeBroadcastHint(title: String, category: String): BroadcastHint {
     }
 }
 
-data class Programme(val title: String, val start: Long, val end: Long, val image: String = "", val category: String = "", val broadcast: BroadcastHint = BroadcastHint.UNKNOWN)
+/** Raw provider evidence is persisted separately from the display title and derived classification. */
+data class FootballMetadata(val originalTitle: String = "", val subtitle: String = "", val description: String = "",
+    val competition: String = "", val gender: String = "", val country: String = "", val division: String = "", val sport: String = "", val retainedEvidence: String = "")
+data class Programme(val title: String, val start: Long, val end: Long, val image: String = "", val category: String = "", val broadcast: BroadcastHint = BroadcastHint.UNKNOWN,
+    val metadata: FootballMetadata = FootballMetadata())
 data class GuideMatch(val channelId: String, val programme: Programme)
 data class FootballMatch(val id: String, val programme: Programme, val channels: List<Channel>, val details: FootballDetails)
 fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.currentTimeMillis()): List<FootballMatch> {
@@ -29,12 +33,12 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
     // Sort once and retain prior broadcasts only to identify genuine reruns.
     val history = mutableMapOf<String, Programme>()
     guide.matches.asSequence().sortedBy { it.programme.start }.forEach { entry ->
-        val details = footballDetails(entry.programme.title, entry.programme.category) ?: return@forEach
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
+        val details = footballDetails(entry.programme.title, entry.programme.category, entry.programme.metadata,
+            available.map { it.name }, available.map { it.group }) ?: return@forEach
         val teams = listOf(footballScoreTeamKey(details.home), footballScoreTeamKey(details.away)).sorted()
-        val competition = if (footballTabKey(details) == FOOTBALL_LIBERTADORES_WOMEN)
-            FOOTBALL_LIBERTADORES_WOMEN else footballLeagueSlug(details.competition) ?: normalized(details.competition)
+        val competition = footballCompetitionIdentity(details)
         val fixtureKey = listOf(competition, teams[0], teams[1]).joinToString(":")
         val previousAiring = history[fixtureKey]
         val priorFinished = previousAiring != null && previousAiring.end < now &&

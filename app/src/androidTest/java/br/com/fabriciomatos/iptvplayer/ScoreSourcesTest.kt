@@ -44,6 +44,8 @@ class ScoreSourcesTest {
         assertTrue(parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).all {it.league!="fifa.friendly"})
         league.put("primaryId",47).put("name","Premier League Women").put("ccode","ENG")
         assertTrue(parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).all {it.league!="eng.1"})
+        league.put("primaryId",268).put("name","Brasileirão Femenino").put("ccode","BRA")
+        assertTrue(parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).all {it.league!="bra.1"})
     }
     @Test fun anUnavailableArchiveDoesNotShowAGlobalFailureWhenCurrentScoresRefresh() = runBlocking {
         val context=InstrumentationRegistry.getInstrumentation().targetContext

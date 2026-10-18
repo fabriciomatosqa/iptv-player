@@ -4,6 +4,7 @@ import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.Lifecycle
 import androidx.media3.common.Player
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -74,7 +75,7 @@ class AuroraUiTest {
                         val path = first.split(' ').getOrNull(1).orEmpty()
                         if (path.contains("list.m3u") && requests.incrementAndGet() == 2) {
                             dailyStarted.countDown()
-                            releaseDaily.await(15, java.util.concurrent.TimeUnit.SECONDS)
+                            check(releaseDaily.await(25, java.util.concurrent.TimeUnit.SECONDS)) { "Daily response was not released by the test" }
                         }
                         val body = when { path.contains("guide.xml") -> guide.toByteArray(); path.contains("list.m3u") -> playlist.get().toByteArray(); else -> video }
                         val range = headers["range"]?.removePrefix("bytes=")?.substringBefore('-')?.toIntOrNull()?.coerceIn(0, body.lastIndex) ?: 0
@@ -194,9 +195,6 @@ class AuroraUiTest {
                 assertEquals(1, requests.get())
                 assertTrue(next.favorites.contains("$base/live/clip.mp4"))
             }
-            val repository = PlaylistRepository(context)
-            repository.recordAttempt("$base/list.m3u", Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.timeInMillis)
-            repository.close()
             // The next response omits all old items and adds only two. None may disappear.
             playlist.set("""
                 #EXTM3U
@@ -211,8 +209,17 @@ class AuroraUiTest {
                     next = ViewModelProvider(it)[AuroraViewModel::class.java]
                     it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 }
-                compose.waitUntil(15000) { next.initialized && dailyStarted.count == 0L }
+                // Settle launch and rotation before starting the controlled daily request.
+                // Otherwise ActivityScenario can consume the server's entire hold window.
+                compose.waitUntil(15000) { next.initialized && next.catalog.total == 6 }
                 compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
+                daily.moveToState(Lifecycle.State.CREATED)
+                PlaylistRepository(context).also { repository ->
+                    repository.recordAttempt("$base/list.m3u", Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.timeInMillis)
+                    repository.close()
+                }
+                daily.moveToState(Lifecycle.State.RESUMED)
+                compose.waitUntil(5000) { dailyStarted.count == 0L && next.updating }
                 assertEquals(6, next.catalog.total)
                 assertFalse("Background update must not show loading", next.loading)
                 assertTrue("Daily progress must be visible without hiding the saved list", next.updating)

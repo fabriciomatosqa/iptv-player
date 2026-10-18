@@ -16,29 +16,11 @@ fun animeTitleScore(request: String, candidate: String): Int {
 fun teamKey(name: String) = normalized(name).replace(Regex("[^\\p{L}\\p{N}]+")," ")
     .replace(Regex("^(?:afc|fc|sc)\\s+|\\s+(?:afc|fc|sc)$"),"").trim()
 fun footballLeagueSlug(competition: String): String? {
-    val key=normalized(competition).replace(Regex("[^\\p{L}\\p{N}]+")," ").trim()
-    return when {
-        key.contains("brasileiro") || key.contains("brasileirao") -> if(Regex("serie\\s*b\\b").containsMatchIn(key))"bra.2" else "bra.1"
-        key.contains("libertadores") -> "conmebol.libertadores"
-        key.contains("sulamericana") || key.contains("sul americana") || key.contains("sudamericana") -> "conmebol.sudamericana"
-        key.contains("copa do brasil") -> "bra.copa_do_brazil"
-        key.contains("copa do nordeste") -> "bra.copa_do_nordeste"
-        key.contains("afc") && key.contains("champions") -> "afc.champions"
-        key.contains("champions league") || key.contains("liga dos campeoes") -> "uefa.champions"
-        key.contains("europa league") || key.contains("liga europa") -> "uefa.europa"
-        key.contains("conference league") -> "uefa.europa.conf"
-        key.contains("premier league") || key.contains("campeonato ingles") -> if(key.contains("segunda divisao"))"eng.2"else "eng.1"
-        key.contains("la liga") || key.contains("laliga") || key.contains("campeonato espanhol") -> "esp.1"
-        key.contains("bundesliga") || key.contains("campeonato alemao") -> "ger.1"
-        key.contains("ligue 1") || key.contains("campeonato frances") -> "fra.1"
-        key.contains("italian") -> "ita.1"
-        key.contains("portugues") || key.contains("primeira liga") -> "por.1"
-        key.contains("turco") || key.contains("super lig") -> "tur.1"
-        key.contains("campeonato paulista") -> "bra.camp.paulista"
-        key.contains("campeonato carioca") -> "bra.camp.carioca"
-        key.contains("eliminatorias") -> null
-        key.contains("copa do mundo") && key.contains("feminin") -> "fifa.wwc"
-        key.contains("copa do mundo") -> "fifa.world"
-        else -> null
+    if(footballAgeGroup(competition).isNotBlank()) return null
+    val rule = footballCompetitionRule(competition) ?: return null
+    return when(footballGender(competition)) {
+        FootballGender.WOMEN -> if(rule.id == "fifa.wwc") "fifa.wwc" else null
+        FootballGender.CONFLICT -> null
+        else -> rule.scoreLeague
     }
 }

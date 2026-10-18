@@ -86,7 +86,7 @@ import java.util.Locale
             if (!wide) FootballSearch(model, Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             LazyRow(Modifier.fillMaxWidth().padding(top = 8.dp), contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(tabs, key = { it.key }) { tab ->
-                    val selected = model.footballTab == tab.key
+                    val selected = canonicalFootballTab(model.footballTab) == tab.key
                     FilterChip(selected, { model.footballTab = tab.key }, label = { Text(footballTabTitle(tab), maxLines = 1, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium) },
                         modifier = Modifier.testTag("football_tab_${tab.key}"), shape = RoundedCornerShape(14.dp),
                         colors = FilterChipDefaults.filterChipColors(containerColor = colors.panel.copy(alpha = .65f), labelColor = colors.muted,
@@ -132,10 +132,10 @@ import java.util.Locale
 @Composable private fun footballTabTitle(tab: FootballTab): String = when (tab.key) {
     FOOTBALL_LIVE -> tr(R.string.live_score)
     FOOTBALL_GAMES -> tr(R.string.games)
-    FOOTBALL_FIFA -> "FIFA"
+    FOOTBALL_FIFA -> "FIFA / Seleções"
     FOOTBALL_BRAZIL -> tr(R.string.brasileirao)
     FOOTBALL_LIBERTADORES -> tr(R.string.libertadores)
-    FOOTBALL_LIBERTADORES_WOMEN -> "Libertadores Feminina"
+    FOOTBALL_WOMEN -> tr(R.string.womens_games)
     FOOTBALL_SUDAMERICANA -> tr(R.string.sudamericana)
     else -> tab.title
 }
@@ -146,7 +146,7 @@ import java.util.Locale
     LaunchedEffect(match.id) { artwork = model.footballArtwork(match.details) }
     val matched = remember(match, model.footballFeed) { matchFootballScore(match, model.footballFeed) }
     val event = matched?.event
-    val country = footballTabKey(match.details) == FOOTBALL_FIFA
+    val country = nationalMatch(match.details) != null
     val homeBadge = if (country) artwork.home else matched?.home?.badge?.takeIf { it.isNotBlank() && !it.contains("/countries/") } ?: artwork.home
     val awayBadge = if (country) artwork.away else matched?.away?.badge?.takeIf { it.isNotBlank() && !it.contains("/countries/") } ?: artwork.away
     val competitionBadge = if (country) FIFA_BADGE else event?.badge?.takeIf(String::isNotBlank) ?: artwork.competition

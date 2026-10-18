@@ -7,7 +7,8 @@ private fun fotmobLeague(row: JSONObject): String {
     val name=normalized(row.optString("name"));val country=row.optString("ccode")
     val other="fotmob:${row.optInt("primaryId",row.optInt("id"))}"
     if(Regex("\\b(?:u|under|sub)\\s*\\d{2}\\b").containsMatchIn(name))return other
-    if(name.contains("women") || name.contains("feminin"))return when {
+    if(footballGender(name) == FootballGender.CONFLICT)return other
+    if(footballGender(name) == FootballGender.WOMEN)return when {
         country=="INT" && name.contains("friendl")->"fifa.friendly.w"
         country=="INT" && name=="women s world cup"->"fifa.wwc"
         else->other

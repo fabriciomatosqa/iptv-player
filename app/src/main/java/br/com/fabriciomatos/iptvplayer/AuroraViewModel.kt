@@ -502,8 +502,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
                     val fresh=withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
                     if(fresh.names.isNotEmpty() || fresh.programmes.isNotEmpty()) {
-                        withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh) }
-                        if(playlistUrl==playlist) { guide=fresh;football=footballMatches(fresh,channels);guideError=false }
+                        val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh);repository.savedGuide(playlist) }
+                        if(playlistUrl==playlist) { guide=merged;football=footballMatches(merged,channels);guideError=false }
                     } else guideError=true
                 }
             } catch(e: CancellationException) { throw e }

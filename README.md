@@ -2,6 +2,13 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.9
+
+- **Futebol feminino:** identificação estruturada pelo título original, competição, categoria e dados disponíveis, preservando o nome correto dos clubes. A aba **Jogos Femininos** agrupa torneios femininos sem confundir status "Ao Vivo" com nome de campeonato.
+- **Campeonatos:** normalização de variações de nomes, ordem de prioridade estável para torneios principais e descoberta dinâmica de novas competições.
+- **Compatibilidade:** correção dos jogos já salvos quando o EPG for reprocessado, sem duplicar transmissões. Mantém filtros Ao Vivo/Jogos, reprodução, busca, favoritos e atualização de placares a cada dois minutos.
+- **Atualização:** versionCode 30; assinatura anterior e mecanismo online preservados.
+
 ## Versão 1.12.8
 
 - Ajuste de compatibilidade do parser de Futebol: preserva a remoção de descrições de partida antes de dois-pontos, como "Semifinal, Jogo de Ida:", sem reintroduzir nomes de campeonatos nos times.

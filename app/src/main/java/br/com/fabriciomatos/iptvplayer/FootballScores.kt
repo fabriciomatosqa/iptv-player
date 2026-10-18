@@ -7,7 +7,10 @@ const val FOOTBALL_GAMES = "__games__"
 const val FOOTBALL_FIFA = "__fifa__"
 const val FOOTBALL_BRAZIL = "__brazil__"
 const val FOOTBALL_LIBERTADORES = "__libertadores__"
-const val FOOTBALL_LIBERTADORES_WOMEN = "__libertadores_women__"
+const val FOOTBALL_WOMEN = "__women__"
+// Retain the source constant for callers upgrading from the former competition-specific tab.
+const val FOOTBALL_LIBERTADORES_WOMEN = FOOTBALL_WOMEN
+fun canonicalFootballTab(key: String) = if(key == "__libertadores_women__") FOOTBALL_WOMEN else key
 const val FOOTBALL_SUDAMERICANA = "__sudamericana__"
 const val FOOTBALL_REFRESH_MS = 120000L
 const val FOOTBALL_RETENTION_MS = 3600000L
@@ -17,7 +20,10 @@ enum class BroadcastMode { LIVE, REPLAY, UNCONFIRMED }
 data class ScoreTeam(val id: String, val names: List<String>, val badge: String = "")
 data class FootballScore(val id: String, val league: String, val competition: String, val kickoff: Long,
     val home: ScoreTeam, val away: ScoreTeam, val homeGoals: Int?, val awayGoals: Int?, val state: MatchState,
-    val clock: String = "", val checked: Long = 0L, val badge: String = "")
+    val clock: String = "", val checked: Long = 0L, val badge: String = "") {
+    // Derived once when decoding the source, rather than for every card/score candidate.
+    val gender: FootballGender = footballGender(competition)
+}
 data class FootballFeed(val events: List<FootballScore> = emptyList(), val checked: Long = 0L, val failed: Boolean = false)
 data class MatchedScore(val event: FootballScore, val home: ScoreTeam, val away: ScoreTeam, val homeGoals: Int?, val awayGoals: Int?)
 data class FootballTab(val key: String, val title: String = "")
@@ -38,48 +44,58 @@ private fun qualifierLeague(details: FootballDetails): String? {
 
 fun footballScoreLeagues(details: FootballDetails): List<String> {
     val name=normalized(details.competition)
-    val teams=normalized("${details.competition} ${details.home} ${details.away}")
-    if(nationalMatch(details)!=null || Regex("\\b(amistoso internacional|eliminatorias|copa do mundo|eurocopa|copa america)\\b").containsMatchIn(name)) {
+    if(details.gender == FootballGender.CONFLICT || details.ageGroup.isNotBlank()) return emptyList()
+    if(nationalMatch(details)!=null || Regex("\\b(amistoso internacional|eliminatorias|copa do mundo|world cup|eurocopa|copa america)\\b").containsMatchIn(name)) {
         // Youth events must never be matched to the senior men's scoreboard.
         if(Regex("\\b(?:sub[- ]?|u|under[- ]?)\\d{2}\\b").containsMatchIn(normalized("${details.competition} ${details.home} ${details.away}")))return emptyList()
-        val women=teams.contains("feminin") || teams.contains("women")
+        val women=details.gender == FootballGender.WOMEN
         return when {
             name.contains("eliminatorias") -> if(women)emptyList() else qualifierLeague(details)?.let(::listOf) ?: emptyList()
-            name.contains("copa do mundo") -> listOf(if(women)"fifa.wwc"else"fifa.world")
+            name.contains("copa do mundo") || name.contains("world cup") -> listOf(if(women)"fifa.wwc"else"fifa.world")
             name.contains("amistoso") || name.contains("friendly") -> listOf(if(women)"fifa.friendly.w"else"fifa.friendly")
             name.contains("eurocopa") || name.contains("euro 20") -> listOf(if(women)"uefa.weuro"else"uefa.euro")
             name.contains("copa america") -> listOf(if(women)"conmebol.america.femenina"else"conmebol.america")
             else -> emptyList()
         }
     }
-    if(name.contains("feminin") || name.contains("women"))return emptyList()
-    return footballLeagueSlug(details.competition)?.let(::listOf) ?: emptyList()
+    if(details.gender == FootballGender.WOMEN)return emptyList()
+    return footballCompetitionRule(details)?.scoreLeague?.let(::listOf) ?: emptyList()
 }
 fun footballTabKey(details: FootballDetails): String {
-    val competition=normalized(details.competition)
-    if ((competition.contains("libertadores") || competition.contains("libertador")) &&
-        (competition.contains("feminin") || competition.contains("women") ||
-            competition.contains("femenina"))) return FOOTBALL_LIBERTADORES_WOMEN
-    val league=footballLeagueSlug(details.competition)
-    if(nationalMatch(details)!=null || Regex("\\b(fifa|amistoso internacional|eliminatorias|copa do mundo|eurocopa|copa america)\\b").containsMatchIn(normalized(details.competition)))return FOOTBALL_FIFA
-    return when(league) {
-        "bra.1","bra.2" -> FOOTBALL_BRAZIL
+    if(details.gender == FootballGender.WOMEN) return FOOTBALL_WOMEN
+    if(nationalMatch(details)!=null || Regex("\\b(fifa|amistoso internacional|eliminatorias|copa do mundo|world cup|eurocopa|copa america)\\b").containsMatchIn(normalized(details.competition))) return FOOTBALL_FIFA
+    if(details.ageGroup.isNotBlank()) return footballCompetitionIdentity(details)
+    return when(footballCompetitionRule(details)?.id) {
+        "bra.1" -> FOOTBALL_BRAZIL
         "conmebol.libertadores" -> FOOTBALL_LIBERTADORES
         "conmebol.sudamericana" -> FOOTBALL_SUDAMERICANA
-        else -> league ?: normalized(details.competition).ifBlank {"other"}
+        else -> footballCompetitionIdentity(details)
     }
 }
-fun footballTabs(matches: List<FootballMatch>): List<FootballTab> {
-    val leading=listOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_BRAZIL,
-        FOOTBALL_LIBERTADORES,FOOTBALL_LIBERTADORES_WOMEN,FOOTBALL_SUDAMERICANA)
-    return leading.map(::FootballTab)+matches.map {FootballTab(footballTabKey(it.details),it.details.competition)}
-        .filterNot {it.key in leading}.distinctBy {it.key}.sortedBy {normalized(it.title)}
+fun footballTabs(matches: List<FootballMatch>, priorities: Map<String, FootballCategoryPriority> = emptyMap()): List<FootballTab> {
+    val categories = matches.filter { isCompetitionValue(it.details.competition) || it.details.gender == FootballGender.WOMEN || nationalMatch(it.details)!=null }
+        .groupBy { footballTabKey(it.details) }.map { (key,games) ->
+            val details = games.map { it.details }.minBy { normalized(footballCompetitionTitle(it)) }
+            val title = when(key) {
+                FOOTBALL_WOMEN -> "Jogos Femininos"
+                FOOTBALL_FIFA -> "FIFA / Seleções"
+                else -> footballCompetitionTitle(details)
+            }
+            val priority = priorities[key] ?: when(key) {
+                FOOTBALL_WOMEN -> FootballCategoryPriority(2,10)
+                FOOTBALL_FIFA -> FootballCategoryPriority(2,20)
+                else -> footballCategoryPriority(details)
+            }
+            Triple(FootballTab(key,title),priority,normalized(title))
+        }.sortedWith(compareBy<Triple<FootballTab,FootballCategoryPriority,String>> { it.second.group }
+            .thenBy { it.second.priority }.thenBy { it.third }.thenBy { it.first.key }).map { it.first }
+    return listOf(FootballTab(FOOTBALL_LIVE),FootballTab(FOOTBALL_GAMES)) + categories
 }
 fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, now: Long, feed: FootballFeed = FootballFeed()): List<FootballMatch> {
     val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
     return matches.filter { match ->
         // Cheap filters first: most games do not need a scoreboard lookup during scrolling.
-        if (tab != FOOTBALL_GAMES && tab != FOOTBALL_LIVE && footballTabKey(match.details) != tab) return@filter false
+        if (tab != FOOTBALL_GAMES && tab != FOOTBALL_LIVE && footballTabKey(match.details) != canonicalFootballTab(tab)) return@filter false
         if (words.isNotEmpty()) {
             val teams = normalized("${match.details.home} ${match.details.away}")
             if (!words.all(teams::contains)) return@filter false
@@ -106,6 +122,11 @@ private fun matchesScoreTeam(name: String, team: ScoreTeam): Boolean = team.name
 fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? {
     val leagues=footballScoreLeagues(match.details)
     val compatible=feed.events.filter {event ->
+        // Providers (and older caches) may assign a men's league ID to a women's title.
+        // Original sports metadata remains authoritative even when that ID looks compatible.
+        val gender=event.gender
+        if(gender == FootballGender.CONFLICT || gender == FootballGender.WOMEN && match.details.gender != FootballGender.WOMEN ||
+            gender == FootballGender.MEN && match.details.gender == FootballGender.WOMEN) return@filter false
         event.league in leagues && event.kickoff in (match.programme.start-7*86400000L)..(match.programme.start+90*60000L) &&
             ((matchesScoreTeam(match.details.home,event.home) && matchesScoreTeam(match.details.away,event.away)) ||
                 (matchesScoreTeam(match.details.home,event.away) && matchesScoreTeam(match.details.away,event.home))) &&

@@ -187,4 +187,5 @@
     <string name="football_hide_details">Nascondi dettagli</string>
     <string name="football_incidents_unavailable">Gli eventi della partita non sono disponibili.</string>
     <string name="football_incidents_empty">Nessun gol o cartellino registrato per questa partita.</string>
+    <string name="womens_games">Calcio femminile</string>
 </resources>
