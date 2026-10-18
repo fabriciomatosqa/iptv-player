@@ -66,6 +66,8 @@ class SynopsisTest {
         val episode=Channel("Série de teste S01E01","https://example.test/series/test/test/124.mkv","Drama",seriesId="5")
         val repository=PlaylistRepository(context)
         repository.saveSource(source,"Catálogo de teste");repository.appendCache(source,Download(Playlist(listOf(movie,episode)),"",""))
+        // This case verifies cached details, independently of the daily network refresh.
+        repository.recordAttempt(source)
         repository.saveMetadata(source,ProviderMetadata(posters=mapOf(normalized("Série de teste") to SeriesPoster("Série de teste","","5"))))
         repository.saveArtwork(synopsisCacheKey(source,true,"123"),encodeContentDetails(ContentDetails("História do filme de teste.")).toString())
         repository.saveArtwork(synopsisCacheKey(source,false,"5"),encodeContentDetails(ContentDetails("História da série de teste.",

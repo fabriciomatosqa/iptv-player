@@ -2,6 +2,7 @@ package br.com.fabriciomatos.iptvplayer
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -32,6 +33,7 @@ class MotorsportChampionshipUiTest {
             repo.saveSource(source,"Test")
             repo.appendCache(source,Download(Playlist(listOf(channel),"https://example.test/guide.xml"),"",""))
             repo.saveGuide(source,guide)
+            repo.recordAttempt(source,now)
             val paths=listOf("$year/","$year/driverStandings/","$year/constructorStandings/")+
                 (1..3).map { "$year/results/$it/" }
             paths.forEach { path ->
@@ -59,12 +61,15 @@ class MotorsportChampionshipUiTest {
                 "Classificação dos construtores","Próxima corrida",
                 "Calendário da temporada · horários do aparelho","Estatísticas e disputa pelo título")
             headings.forEachIndexed { index,heading ->
-                compose.onNodeWithTag("championship_section_$index").performScrollTo().performClick()
+                compose.onNodeWithTag("championship_section_$index").performScrollTo()
+                    .performSemanticsAction(SemanticsActions.OnClick) { it() }
+                compose.onNodeWithTag("championship_section_$index").assertIsSelected()
                 compose.onNodeWithTag("championship_content").performScrollToNode(hasText(heading))
                 compose.waitForIdle()
                 device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/f1-championship-$index.png")
             }
-            compose.onNodeWithTag("championship_section_1").performScrollTo().performClick()
+            compose.onNodeWithTag("championship_section_1").performScrollTo()
+                .performSemanticsAction(SemanticsActions.OnClick) { it() }
             compose.onNodeWithTag("championship_content").performScrollToNode(hasText("Classificação: indisponível"))
             compose.onNodeWithText("Classificação: indisponível").assertExists()
             device.pressBack()
