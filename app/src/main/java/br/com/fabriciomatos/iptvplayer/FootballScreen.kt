@@ -95,7 +95,7 @@ import java.util.Locale
                 IconButton(onClick = { model.openSettings() }) { Icon(Icons.Default.Settings, tr(R.string.settings), tint = colors.muted) }
             }
             if (!wide) FootballSearch(model, Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-            LazyRow(Modifier.fillMaxWidth().padding(top=8.dp),
+            LazyRow(Modifier.fillMaxWidth().padding(top=8.dp).testTag("sports_mode_tabs"),
                 contentPadding=PaddingValues(horizontal=16.dp),
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(sports,key={it.key}) { mode ->
@@ -105,7 +105,7 @@ import java.util.Locale
                     }
                 }
             }
-            LazyRow(Modifier.fillMaxWidth().padding(top=3.dp),
+            LazyRow(Modifier.fillMaxWidth().padding(top=3.dp).testTag("sports_league_tabs"),
                 contentPadding=PaddingValues(horizontal=16.dp),
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 if(footballMode) {
