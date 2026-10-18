@@ -197,6 +197,11 @@ import java.util.Locale
 
 @Composable private fun SportsEventCard(model:AuroraViewModel,event:SportsEvent,now:Long) {
     val colors=LocalAuroraColors.current
+    var teamArtwork by remember(event.id) { mutableStateOf(FootballArtwork()) }
+    // Lazy cards request public badges only when visible; the resolver caches each league.
+    LaunchedEffect(event.id,event.home,event.away) {
+        teamArtwork=model.sportsArtwork(event)
+    }
     val live=event.programme.broadcast==BroadcastHint.LIVE &&
         now in event.programme.start..event.programme.end
     val icon=when(event.sport) {
@@ -228,12 +233,24 @@ import java.util.Locale
             }
             if(event.home.isNotBlank() && event.away.isNotBlank()) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
-                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text(event.home,Modifier.weight(1f),fontSize=15.sp,fontWeight=FontWeight.Bold,
-                        maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
+                    horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                        FootballBadge(teamArtwork.home,event.home,
+                            Modifier.size(72.dp).testTag("sports_home_badge"),colors.mint)
+                        Text(event.home,fontSize=14.sp,fontWeight=FontWeight.Bold,
+                            maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center,
+                            lineHeight=18.sp,modifier=Modifier.fillMaxWidth())
+                    }
                     Text("×",fontSize=24.sp,fontWeight=FontWeight.Black,color=colors.mint)
-                    Text(event.away,Modifier.weight(1f),fontSize=15.sp,fontWeight=FontWeight.Bold,
-                        maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
+                    Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                        FootballBadge(teamArtwork.away,event.away,
+                            Modifier.size(72.dp).testTag("sports_away_badge"),colors.mint)
+                        Text(event.away,fontSize=14.sp,fontWeight=FontWeight.Bold,
+                            maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center,
+                            lineHeight=18.sp,modifier=Modifier.fillMaxWidth())
+                    }
                 }
             } else {
                 // Motorsports and timed events are not fake head-to-head matches.

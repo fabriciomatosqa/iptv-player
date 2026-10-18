@@ -1,3 +1,11 @@
+## Versão 1.12.11
+
+- **Escudos nos esportes em equipe:** Basquete, Futebol Americano, Beisebol, Hóquei, Vôlei e Handebol usam a mesma apresentação de escudos do Futebol. Futebol Americano universitário (por exemplo BYU e Notre Dame) também busca seus distintivos.
+- **Busca com modalidade:** consulta o catálogo público de times da liga correta e, quando necessário, uma fonte alternativa validando esporte e nome completo. Não adivinha imagens para equipes ambíguas.
+- **Performance:** consulta imagens apenas para cards visíveis e mantém os catálogos de ligas e os resultados individuais em cache persistente, inclusive falhas temporárias.
+- **Fallback:** em indisponibilidade de imagem, mantém as iniciais e os nomes. Eventos individuais e automobilismo continuam com o layout adequado, sem escudos fictícios.
+- **Compatibilidade:** assinaturas, playlists, favoritos, canais consolidados e atualização online preservados.
+
 # AURORA IPTV
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.

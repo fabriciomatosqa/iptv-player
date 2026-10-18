@@ -1,11 +1,9 @@
-AURORA IPTV Android 1.12.10 — nova central de Esportes.
+AURORA IPTV Android 1.12.11 — escudos nas partidas dos esportes em equipe.
 
-- A antiga tela Futebol vira Esportes, com navegação por modalidade e campeonato.
-- Futebol mantém placares, times, Jogos Femininos, reprises, busca e canais consolidados.
-- Basquete (NBA e NBB), Futebol Americano (NFL), Beisebol (MLB), Hóquei (NHL) e Automobilismo (Fórmula 1, 2, 3, WRC e Stock Car) recebem categorias próprias quando encontrados no EPG.
-- Tênis, Vôlei e Handebol também podem ser identificados quando a modalidade consta claramente dos dados.
-- Títulos longos de artigos e descrições não são apresentados como novas ligas. Aliases conhecidos exibem nomes curtos e consistentes.
-- Corridas têm cards próprios, sem adversários fictícios; confrontos preservam as equipes e canais disponíveis.
-- Mantém a mesma assinatura, playlists, favoritos e atualização online.
+- Exibe os escudos das equipes ao lado do nome nos cards de Basquete, Futebol Americano, Beisebol, Hóquei, Vôlei e Handebol, quando disponíveis em fontes confiáveis.
+- Consulta logos por modalidade e liga, incluindo times universitários de futebol americano (BYU e Notre Dame).
+- Preserva cache de imagens, conferência rigorosa dos nomes e fallback para iniciais em caso de indisponibilidade.
+- O layout dos eventos de automobilismo e esportes individuais permanece adequado a cada modalidade.
+- Preserva a atualização online, assinatura e dados do aplicativo.
 
-Atualize diretamente no AURORA: Configurações → Atualizar online → Verificar atualizações.
+Atualize no app: Configurações → Atualizar online → Verificar atualizações.

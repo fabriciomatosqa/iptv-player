@@ -52,6 +52,57 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         FootballArtwork(bundle.optString("badge"),selectTeamBadge(details.home,bundle.optJSONArray("teams") ?: JSONArray()),
             selectTeamBadge(details.away,bundle.optJSONArray("teams") ?: JSONArray()))
     }
+
+    /** One cached league/team catalog per sport, resolved only for cards currently on screen. */
+    suspend fun teamSport(event: SportsEvent): FootballArtwork = sportsLock.withLock {
+        if(event.home.isBlank() || event.away.isBlank() || sportsDatabaseCategory(event.sport)==null)
+            return@withLock FootballArtwork()
+        var home = ""
+        var away = ""
+        for(endpoint in sportsBadgeEndpoints(event.sport,event.competitionId)) {
+            val key="sports:teams:espn:$endpoint"
+            val cached=withContext(Dispatchers.IO) { repository.cachedArtwork(key) }
+            val bundle=if(cached!=null) runCatching { JSONObject(cached) }.getOrDefault(JSONObject()) else try {
+                withContext(Dispatchers.IO) {
+                    val teams=readJson("https://site.api.espn.com/apis/site/v2/sports/$endpoint/teams?limit=500")
+                    sportsBundle(teams,JSONObject()).also { repository.saveArtwork(key,it.toString(),
+                        if((it.optJSONArray("teams")?.length() ?: 0) > 0) 30*86400000L else 3600000L) }
+                }
+            } catch(e: CancellationException) { throw e } catch(_: Exception) {
+                JSONObject().also {withContext(Dispatchers.IO) {repository.saveArtwork(key,"{}",3600000L)}}
+            }
+            val teams=bundle.optJSONArray("teams") ?: JSONArray()
+            if(home.isBlank()) home=selectSportsTeamBadge(event.home,teams)
+            if(away.isBlank()) away=selectSportsTeamBadge(event.away,teams)
+            if(home.isNotBlank() && away.isNotBlank())break
+        }
+        // Unknown regional leagues and college teams may not be in the ESPN league feed.
+        // Search by public team name, but accept a logo only when the SPORT also matches.
+        if(home.isBlank())home=sportsDatabaseBadge(event.sport,event.home)
+        if(away.isBlank())away=sportsDatabaseBadge(event.sport,event.away)
+        FootballArtwork(home=home,away=away)
+    }
+
+    private suspend fun sportsDatabaseBadge(sport: SportKind, name: String): String {
+        val category=sportsDatabaseCategory(sport) ?: return ""
+        val key="sports:team:tsdb:${sport.name}:${teamKey(name)}"
+        withContext(Dispatchers.IO) { repository.cachedArtwork(key) }?.let {
+            return runCatching { JSONObject(it).optString("badge") }.getOrDefault("")
+        }
+        val image=try {
+            val query=URLEncoder.encode(name,"UTF-8")
+            val json=withContext(Dispatchers.IO) {
+                readJson("https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=$query")
+            }
+            selectSportsDatabaseBadge(name,category,json)
+        } catch(e: CancellationException) {throw e} catch(_:Exception) {""}
+        withContext(Dispatchers.IO) {
+            repository.saveArtwork(key,JSONObject().put("badge",image).toString(),
+                if(image.isNotBlank()) 30*86400000L else 6*3600000L)
+        }
+        return image
+    }
+
     private suspend fun federationBadge(team: NationalTeam): String {
         if(team.badge.isNotBlank())return team.badge
         val key="federation:${normalized(team.country)}"
@@ -67,6 +118,36 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         withContext(Dispatchers.IO) {repository.saveArtwork(key,JSONObject().put("badge",badge).toString(),if(badge.isBlank())3600000L else 30*86400000L)}
         return badge
     }
+}
+
+
+/** Match only within the sport-specific provider catalog; ambiguous names keep the placeholder. */
+fun selectSportsTeamBadge(name: String, teams: JSONArray): String {
+    val requested=teamKey(name)
+    if(requested.isBlank())return ""
+    val exact=mutableListOf<String>()
+    val expanded=mutableListOf<String>()
+    for(i in 0 until teams.length()) {
+        val team=teams.optJSONObject(i) ?: continue
+        val badge=team.optString("badge").takeIf {it.startsWith("https://")} ?: continue
+        val aliases=team.optJSONArray("names") ?: continue
+        val names=(0 until aliases.length()).map {aliases.optString(it)}
+        if(names.any {teamKey(it)==requested}) exact.add(badge)
+        else if(names.any {sportsTeamAliasMatch(name,it)}) expanded.add(badge)
+    }
+    return exact.distinct().singleOrNull() ?: if(exact.isEmpty())expanded.distinct().singleOrNull().orEmpty() else ""
+}
+
+fun selectSportsDatabaseBadge(name: String, sportName: String, json: JSONObject): String {
+    val teams=json.optJSONArray("teams") ?: return ""
+    val exact=mutableListOf<String>()
+    for(i in 0 until teams.length()) {
+        val team=teams.optJSONObject(i) ?: continue
+        if(!team.optString("strSport").equals(sportName,ignoreCase=true))continue
+        if(teamKey(name)!=teamKey(team.optString("strTeam")))continue
+        team.optString("strBadge").takeIf { it.startsWith("https://") }?.let(exact::add)
+    }
+    return exact.distinct().singleOrNull().orEmpty()
 }
 
 fun selectFederationBadge(request: NationalTeam, json: JSONObject): String {
@@ -106,7 +187,7 @@ fun sportsBundle(teamsJson: JSONObject, leagueJson: JSONObject): JSONObject {
     val teams=JSONArray()
     league?.optJSONArray("teams")?.let { list -> for(i in 0 until list.length()) {
         val team=list.optJSONObject(i)?.optJSONObject("team") ?: continue
-        val names=JSONArray(listOf("displayName","shortDisplayName","name","nickname").map {team.optString(it)}.filter(String::isNotBlank).distinct())
+        val names=JSONArray(listOf("displayName","shortDisplayName","name","nickname","location","abbreviation").map {team.optString(it)}.filter(String::isNotBlank).distinct())
         teams.put(JSONObject().put("names",names).put("badge",team.optJSONArray("logos")?.optJSONObject(0)?.optString("href").orEmpty()))
     } }
     return JSONObject().put("teams",teams).put("badge",leagueJson.optJSONArray("leagues")?.optJSONObject(0)?.optJSONArray("logos")?.optJSONObject(0)?.optString("href").orEmpty())
