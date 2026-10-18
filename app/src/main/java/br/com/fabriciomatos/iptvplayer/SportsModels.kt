@@ -76,8 +76,8 @@ fun sportsProgrammeCandidate(programme: Programme): Boolean {
     val kind=detectOtherSport(programme) ?: return false
     if(headToHead.containsMatchIn(programme.title)) return true
     return kind==SportKind.MOTORSPORT && Regex(
-        "(?i)\\b(grand prix|gp\\b|formula ?[123]|f[123]\\b|rally|wrc\\b|stock ?car|motogp|indycar|corrida|qualifica|treino livre)"
-    ).containsMatchIn(programme.title)
+        "\\b(grand prix|grande premio|gp\\b|formula ?[123]|f[123]\\b|rally|wrc\\b|stock ?car|motogp|indycar|corrida|qualifica|treino livre)"
+    ).containsMatchIn(normalized(programme.title))
 }
 
 data class SportsEvent(
