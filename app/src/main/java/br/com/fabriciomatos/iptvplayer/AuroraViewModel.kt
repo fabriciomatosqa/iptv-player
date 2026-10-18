@@ -393,6 +393,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         return request.await()
     }
     suspend fun footballArtwork(details: FootballDetails): FootballArtwork = viewModelScope.async {artwork.football(details)}.await()
+    suspend fun sportsArtwork(event: SportsEvent): FootballArtwork =
+        viewModelScope.async { artwork.teamSport(event) }.await()
     suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false): Synopsis {
         if(channel?.adult==true && !adultUnlocked || series?.adult==true && !adultUnlocked)return Synopsis()
         return synopses.load(playlistUrl,channel,series,force)
