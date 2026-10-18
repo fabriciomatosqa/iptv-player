@@ -50,7 +50,8 @@ internal fun channelBrand(label: String): ChannelBrand? {
             ChannelBrand.DISNEY_PLUS
         exactPrefix("dazn") -> ChannelBrand.DAZN
         exactPrefix("cazetv") || exactPrefix("caze tv") -> ChannelBrand.CAZETV
-        exactPrefix("canal goat") || exactPrefix("goat") -> ChannelBrand.GOAT
+        (key=="goat" || Regex("""^goat (?:hd|fhd|4k|uhd|sd|live|ao vivo|jogos|esportes|futebol|ppv)\b""").containsMatchIn(key) ||
+            exactPrefix("canal goat")) -> ChannelBrand.GOAT
         else -> null
     }
 }
