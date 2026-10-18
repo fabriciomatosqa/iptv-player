@@ -1,6 +1,10 @@
-AURORA IPTV Android 1.12.8 — correção de compatibilidade na leitura do Futebol.
+AURORA IPTV Android 1.12.9 — organização inteligente do Futebol.
 
-- Corrige nomes de times em títulos com descrições como "Semifinal, Jogo de Ida: Fluminense x Palmeiras".
-- Mantém também a correção para "Brasileirão - Fluminense x Santos" e "Libertadores Feminina - Belgrano x Palmeiras".
-- Preserva os detalhes dos jogos em andamento, a identificação de reprises, a aba Libertadores Feminina e o menu temático dos canais.
-- Mantém assinatura, playlists e favoritos. Atualize pelo próprio aplicativo.
+- Reconhece partidas femininas pelos metadados e títulos originais, evitando classificar “Libertadores Feminino” como parte do nome de uma equipe.
+- Reúne as competições femininas disponíveis em Jogos Femininos, preservando seus campeonatos de origem.
+- Normaliza nomes equivalentes de campeonatos e organiza as categorias em uma ordem de prioridade estável.
+- Novas ligas são acrescentadas automaticamente quando o EPG oferece dados suficientes.
+- Mantém Ao Vivo e Jogos como filtros gerais, sem confundir status de transmissão e competição.
+- Preserva playlists, favoritos, canais, retomada, assinatura e atualizações online.
+
+Instale pelo AURORA: Configurações → Atualizar online → Verificar atualizações.
