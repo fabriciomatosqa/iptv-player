@@ -91,6 +91,7 @@ class SynopsisTest {
             compose.onNodeWithText("Série de teste").performClick()
             compose.waitUntil(10000) {!model.filtering && compose.onAllNodesWithText(episode.name).fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
+            compose.waitForIdle()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História do episódio piloto.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("História da série de teste.").assertExists()
             assertNull(model.current);screenshot("series-episode-synopsis")
@@ -98,6 +99,7 @@ class SynopsisTest {
             // Exercise the accessible button action after native dialog removal; input dispatch can lag window focus.
             compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).assertIsDisplayed()
                 .performSemanticsAction(SemanticsActions.OnClick) {it()}
+            compose.waitForIdle()
             compose.waitUntil(10000) {compose.onAllNodesWithText("História da série de teste.").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
         }
