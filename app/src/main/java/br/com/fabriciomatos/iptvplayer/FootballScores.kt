@@ -119,6 +119,11 @@ private fun matchesScoreTeam(name: String, team: ScoreTeam): Boolean = team.name
 fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? {
     val leagues=footballScoreLeagues(match.details)
     val compatible=feed.events.filter {event ->
+        // Providers (and older caches) may assign a men's league ID to a women's title.
+        // Original sports metadata remains authoritative even when that ID looks compatible.
+        val gender=footballGender(event.competition)
+        if(gender == FootballGender.CONFLICT || gender == FootballGender.WOMEN && match.details.gender != FootballGender.WOMEN ||
+            gender == FootballGender.MEN && match.details.gender == FootballGender.WOMEN) return@filter false
         event.league in leagues && event.kickoff in (match.programme.start-7*86400000L)..(match.programme.start+90*60000L) &&
             ((matchesScoreTeam(match.details.home,event.home) && matchesScoreTeam(match.details.away,event.away)) ||
                 (matchesScoreTeam(match.details.home,event.away) && matchesScoreTeam(match.details.away,event.home))) &&

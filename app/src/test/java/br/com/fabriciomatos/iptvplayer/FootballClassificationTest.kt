@@ -114,6 +114,13 @@ class FootballClassificationTest {
         assertEquals(1,games.size);assertEquals(2,games.single().channels.size)
         assertEquals(FOOTBALL_WOMEN,footballTabKey(games.single().details))
     }
+    @Test fun originalSportsCompetitionGenderOverridesAnIncorrectLeagueIdInOldCaches() {
+        val men=game("Libertadores","Corinthians","Caracas")
+        val source=FootballScore("cached","conmebol.libertadores","Copa Libertadores Femenina",now,
+            ScoreTeam("1",listOf("Corinthians")),ScoreTeam("2",listOf("Caracas")),1,0,MatchState.LIVE,checked=now)
+        assertNull(matchFootballScore(men,FootballFeed(listOf(source),now)))
+        assertNotNull(matchFootballScore(men,FootballFeed(listOf(source.copy(competition="Copa Libertadores")),now)))
+    }
     @Test fun refreshRetainsEvidenceOnlyForAnUnchangedFixtureAndRespectsCorrections() {
         val old=Programme("Libertadores Feminina - Belgrano x Palmeiras",now,now+7200000)
         val clean=Programme("Belgrano x Palmeiras",now,now+7200000,category="Futebol")
