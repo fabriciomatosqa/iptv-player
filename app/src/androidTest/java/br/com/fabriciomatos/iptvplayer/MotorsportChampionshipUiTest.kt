@@ -61,14 +61,16 @@ class MotorsportChampionshipUiTest {
                 "Classificação dos construtores","Próxima corrida",
                 "Calendário da temporada · horários do aparelho","Estatísticas e disputa pelo título")
             headings.forEachIndexed { index,heading ->
-                compose.onNodeWithTag("championship_section_$index").performScrollTo()
+                compose.onNodeWithTag("championship_sections").performScrollToIndex(index)
+                compose.onNodeWithTag("championship_section_$index")
                     .performSemanticsAction(SemanticsActions.OnClick) { it() }
                 compose.onNodeWithTag("championship_section_$index").assertIsSelected()
                 compose.onNodeWithTag("championship_content").performScrollToNode(hasText(heading))
                 compose.waitForIdle()
                 device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/f1-championship-$index.png")
             }
-            compose.onNodeWithTag("championship_section_1").performScrollTo()
+            compose.onNodeWithTag("championship_sections").performScrollToIndex(1)
+            compose.onNodeWithTag("championship_section_1")
                 .performSemanticsAction(SemanticsActions.OnClick) { it() }
             compose.onNodeWithTag("championship_content").performScrollToNode(hasText("Classificação: indisponível"))
             compose.onNodeWithText("Classificação: indisponível").assertExists()

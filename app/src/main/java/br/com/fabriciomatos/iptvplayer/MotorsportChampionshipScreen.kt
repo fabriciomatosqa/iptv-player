@@ -69,7 +69,8 @@ import java.util.Locale
         TextButton(onClick=onBack,modifier=Modifier.padding(horizontal=12.dp).testTag("championship_broadcasts")) {
             Text("Ver transmissões da Fórmula 1")
         }
-        LazyRow(contentPadding=PaddingValues(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        LazyRow(modifier=Modifier.testTag("championship_sections"),
+            contentPadding=PaddingValues(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             items(sections.indices.toList()) { index ->
                 FilterChip(section==index,{select(index)},label={Text(sections[index])},
                     modifier=Modifier.testTag("championship_section_$index"))

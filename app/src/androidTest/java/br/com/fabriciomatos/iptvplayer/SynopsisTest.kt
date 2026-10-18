@@ -78,8 +78,10 @@ class SynopsisTest {
             compose.waitUntil(15000) {model.initialized}
             scenario.onActivity {model.browse(MediaKind.MOVIES)}
             compose.waitUntil(10000) {!model.filtering && model.visibleCount==1 && compose.onAllNodesWithText(movie.name).fetchSemanticsNodes().isNotEmpty() && compose.onAllNodesWithTag("synopsis_content_action",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
+            assertEquals("História do filme de teste.",runBlocking { model.synopsis(movie,null).plot })
             compose.onNodeWithText(movie.name).assertIsDisplayed()
             compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
+            compose.waitForIdle()
             try {compose.waitUntil(30000) {compose.onAllNodesWithText("História do filme de teste.").fetchSemanticsNodes().isNotEmpty()}}
             catch(e: androidx.compose.ui.test.ComposeTimeoutException) {screenshot("movie-synopsis-failure");throw e}
             assertNull(model.current);screenshot("movie-synopsis")

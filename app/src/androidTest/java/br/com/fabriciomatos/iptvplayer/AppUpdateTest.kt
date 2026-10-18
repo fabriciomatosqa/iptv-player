@@ -144,7 +144,18 @@ class AppUpdateTest {
     }
 
     @Test fun publicGitHubMetadataIsReachableFromAndroidWithoutAuthentication() {
-        GitHubUpdateTransport().open(UPDATE_RELEASES_URL).use { assertNotNull(JSONArray(it.stream.bufferedReader().readText())) }
+        repeat(3) { attempt ->
+            try {
+                GitHubUpdateTransport().open(UPDATE_RELEASES_URL).use {
+                    assertNotNull(JSONArray(it.stream.bufferedReader().readText()))
+                }
+                return
+            } catch(error: UpdateFailure) {
+                // Shared CI egress can hit GitHub's temporary rate limit. Still require a real response.
+                if(error.text!=R.string.app_update_rate_limit || attempt==2)throw error
+                android.os.SystemClock.sleep(60000L)
+            }
+        }
     }
 
     private suspend fun failure(expected: Int, block: suspend () -> Unit) {
