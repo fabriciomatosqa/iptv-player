@@ -193,4 +193,7 @@
     <string name="sports_filter_help">競技と大会を選択</string>
     <string name="sports_competition">大会</string>
     <string name="sports_scheduled">放送予定</string>
+    <string name="broadcast_ended">放送終了</string>
+    <string name="broadcast_scheduled">放送予定</string>
+    <string name="broadcast_unconfirmed">生中継未確認</string>
 </resources>

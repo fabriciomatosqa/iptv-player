@@ -193,4 +193,7 @@
     <string name="sports_filter_help">اختر الرياضة والبطولة</string>
     <string name="sports_competition">البطولة</string>
     <string name="sports_scheduled">بث مجدول</string>
+    <string name="broadcast_ended">انتهى البث</string>
+    <string name="broadcast_scheduled">بث مجدول</string>
+    <string name="broadcast_unconfirmed">البث المباشر غير مؤكد</string>
 </resources>

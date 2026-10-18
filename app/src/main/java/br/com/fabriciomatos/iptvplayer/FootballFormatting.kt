@@ -15,21 +15,15 @@ fun footballDay(value: Long, locale: Locale, zone: TimeZone = TimeZone.getDefaul
 fun footballTime(value: Long, locale: Locale, zone: TimeZone = TimeZone.getDefault()) =
     SimpleDateFormat("HH:mm",locale).apply {timeZone=zone}.format(Date(value))
 
-fun footballTimeCanBeConfirmed(programme: Programme, score: FootballScore?, now: Long): Boolean {
-    if(programme.broadcast==BroadcastHint.REPLAY || score==null || score.checked<=0 ||
-        now-score.checked !in 0..2*FOOTBALL_REFRESH_MS || kotlin.math.abs(score.kickoff-programme.start)>86400000L)return false
-    return when(score.state) {
-        MatchState.LIVE,MatchState.HALFTIME->true
-        MatchState.SCHEDULED->programme.broadcast==BroadcastHint.LIVE || kotlin.math.abs(score.kickoff-programme.start)<=3*3600000L
-        // An old guide can still put tonight's completed game on tomorrow's schedule after upgrading.
-        // Nearby TV slots can be replays; explicitly identified replays always keep their own schedule.
-        MatchState.FINISHED->programme.start>now+6*3600000L && score.kickoff in (now-6*3600000L)..now
-        else->false
-    }
-}
-
+/** A match clock is evidence only inside this channel's original, compatible EPG interval. */
 fun transmissionIsLive(programme: Programme, score: FootballScore?, now: Long): Boolean {
-    if(programme.start>now || broadcastMode(programme,score)==BroadcastMode.REPLAY)return false
-    return if(score!=null)score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) && scoreIsFresh(score,now)
-        else programme.broadcast==BroadcastHint.LIVE && programme.end>now
+    if(now < programme.start || now >= programme.end || programme.broadcast==BroadcastHint.REPLAY)return false
+    if(score==null)return programme.broadcast==BroadcastHint.LIVE
+    if(score.state !in listOf(MatchState.LIVE,MatchState.HALFTIME) || !scoreIsFresh(score,now))return false
+    return score.kickoff in (programme.start-15*60000L)..minOf(programme.end-1,programme.start+90*60000L)
 }
+fun footballLiveChannels(match: FootballMatch, score: FootballScore?, now: Long): List<Channel> =
+    match.channels.filter { transmissionIsLive(match.programmeFor(it),score,now) }
+fun footballHasLiveTransmission(match: FootballMatch, score: FootballScore?, now: Long): Boolean =
+    if(match.channels.isEmpty())transmissionIsLive(match.programme,score,now)
+    else footballLiveChannels(match,score,now).isNotEmpty()

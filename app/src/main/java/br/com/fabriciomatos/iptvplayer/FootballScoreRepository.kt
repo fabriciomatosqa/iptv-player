@@ -25,7 +25,7 @@ import kotlin.coroutines.coroutineContext
 class FootballScoreRepository(private val repository: PlaylistRepository, private val readJson: (String)->JSONObject = ::readFootballJson) {
     private val requests=Semaphore(3)
     suspend fun load(matches: List<FootballMatch>, force: Boolean = false, now: Long = System.currentTimeMillis()): FootballFeed = withContext(Dispatchers.IO) {
-        val available=matches.filter {it.programme.end>now-FOOTBALL_RETENTION_MS ||
+        val available=matches.filter {it.broadcastEnd>now-FOOTBALL_RETENTION_MS ||
             it.programme.broadcast==BroadcastHint.LIVE && it.programme.start in (now-6*3600000L)..now}
         val leagues=available.flatMap {footballScoreLeagues(it.details)}.distinct()
         if(available.isEmpty())return@withContext FootballFeed()
@@ -72,26 +72,6 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
         repository.saveArtwork(key,encodeFootballIncidents(result).toString(),
             if (score.state in listOf(MatchState.LIVE, MatchState.HALFTIME)) FOOTBALL_REFRESH_MS else 60*60000L)
         result
-    }
-    /** Correct conflicting guide dates only from an exact, fresh match. Keep the correction after reopening. */
-    fun confirmedBroadcasts(source: String, matches: List<FootballMatch>, feed: FootballFeed, now: Long = System.currentTimeMillis()): List<FootballMatch> = matches.map {match->
-        if(match.programme.broadcast==BroadcastHint.REPLAY)return@map match
-        val key="football-timing:${PlaylistRepository.digest(source)}:${match.id}"
-        val cached=repository.cachedArtwork(key,now)?.let {runCatching {JSONObject(it)}.getOrNull()}
-        val event=matchFootballScore(match,feed)?.event
-        val fresh=event!=null && event.checked>0 && now-event.checked in 0..2*FOOTBALL_REFRESH_MS
-        val inProgress=event?.state in listOf(MatchState.LIVE,MatchState.HALFTIME)
-        val canConfirm=footballTimeCanBeConfirmed(match.programme,event,now)
-        val same=cached!=null && (event==null || cached.optLong("start")==event.kickoff)
-        val timing=if(same)JSONObject(cached!!.toString()) else if(canConfirm && event!=null)JSONObject().put("start",event.kickoff)
-            .put("duration",(match.programme.end-match.programme.start).coerceAtLeast(60000L)).put("finished",0L).put("observed_live",inProgress) else null
-        if(timing==null)return@map match
-        if(fresh && inProgress)timing.put("observed_live",true)
-        if(fresh && event?.state==MatchState.FINISHED && timing.optBoolean("observed_live") && timing.optLong("finished")==0L)timing.put("finished",now)
-        if(timing.toString()!=cached?.toString())repository.saveArtwork(key,timing.toString(),8*86400000L)
-        val start=timing.optLong("start")
-        val end=timing.optLong("finished").takeIf {it>start} ?: (start+timing.optLong("duration"))
-        match.copy(programme=match.programme.copy(start=start,end=end,broadcast=BroadcastHint.LIVE))
     }
     private suspend fun dayScores(league: String, dates: String, age: Long, force: Boolean, now: Long): FootballFeed {
         coroutineContext.ensureActive()

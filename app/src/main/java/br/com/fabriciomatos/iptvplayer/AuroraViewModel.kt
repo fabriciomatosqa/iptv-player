@@ -463,8 +463,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         try {
             val matches=football
             val feed=scores.load(matches,force)
-            val confirmed=withContext(Dispatchers.IO) {scores.confirmedBroadcasts(source,matches,feed)}
-            if(source==playlistUrl) {footballFeed=feed;if(football==matches)football=confirmed}
+            // Scores describe the match, never the channel schedule (including legacy timing caches).
+            if(source==playlistUrl) footballFeed=feed
         } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
         finally {footballScoresLoading=false}
     }

@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Sportart und Wettbewerb auswählen</string>
     <string name="sports_competition">Wettbewerb</string>
     <string name="sports_scheduled">Geplante Übertragung</string>
+    <string name="broadcast_ended">Übertragung beendet</string>
+    <string name="broadcast_scheduled">Geplante Übertragung</string>
+    <string name="broadcast_unconfirmed">Live-Übertragung unbestätigt</string>
 </resources>

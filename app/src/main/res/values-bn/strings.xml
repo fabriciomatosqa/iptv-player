@@ -193,4 +193,7 @@
     <string name="sports_filter_help">খেলা ও প্রতিযোগিতা বেছে নিন</string>
     <string name="sports_competition">প্রতিযোগিতা</string>
     <string name="sports_scheduled">নির্ধারিত সম্প্রচার</string>
+    <string name="broadcast_ended">সম্প্রচার শেষ</string>
+    <string name="broadcast_scheduled">নির্ধারিত সম্প্রচার</string>
+    <string name="broadcast_unconfirmed">সরাসরি সম্প্রচার নিশ্চিত নয়</string>
 </resources>

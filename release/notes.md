@@ -1,10 +1,11 @@
-AURORA IPTV Android 1.12.17 — Página do Campeonato da Fórmula 1.
+AURORA IPTV Android 1.12.18 — Confiabilidade dos horários e canais do futebol.
 
-- Nova navegação em Esportes → Automobilismo → Fórmula 1 → Página do Campeonato, preservando o acesso às transmissões.
-- Seis abas: visão geral, pilotos, construtores, próxima corrida, calendário e estatísticas.
-- Calendário e classificações da API Jolpica-F1 / Ergast, com cache persistente e carregamento sob demanda.
-- Programação no fuso do aparelho e resultados consultados ao expandir as etapas concluídas.
-- Informações ausentes permanecem indisponíveis; histórico de pontos e cálculos matemáticos do título não são estimados.
+- O horário da partida não altera mais o início ou o término das transmissões no EPG, inclusive após reabrir o aplicativo.
+- O filtro Ao Vivo respeita o intervalo original de cada canal, o fuso horário e programas que atravessam a meia-noite.
+- Placar e andamento da partida permanecem independentes da programação da televisão.
+- Identificadores conflitantes não são substituídos por nomes; canais sem identificador exigem correspondência inequívoca no guia.
+- Resultados finais e transmissões anteriores não classificam automaticamente uma programação futura como reprise.
+- Canais sem EPG continuam disponíveis no catálogo Ao Vivo, sem programação inventada.
 - Preserva assinatura Android, playlists, favoritos, configurações, reprodução e atualização online.
 
 Atualize em Configurações → Atualizar online → Verificar atualizações.

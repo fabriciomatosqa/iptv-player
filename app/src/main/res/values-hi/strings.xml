@@ -193,4 +193,7 @@
     <string name="sports_filter_help">खेल और प्रतियोगिता चुनें</string>
     <string name="sports_competition">प्रतियोगिता</string>
     <string name="sports_scheduled">निर्धारित प्रसारण</string>
+    <string name="broadcast_ended">प्रसारण समाप्त</string>
+    <string name="broadcast_scheduled">निर्धारित प्रसारण</string>
+    <string name="broadcast_unconfirmed">लाइव प्रसारण की पुष्टि नहीं हुई</string>
 </resources>

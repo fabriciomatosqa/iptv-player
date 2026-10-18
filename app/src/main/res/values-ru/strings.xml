@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Выберите вид спорта и турнир</string>
     <string name="sports_competition">Турнир</string>
     <string name="sports_scheduled">Запланированная трансляция</string>
+    <string name="broadcast_ended">Трансляция завершена</string>
+    <string name="broadcast_scheduled">Запланированная трансляция</string>
+    <string name="broadcast_unconfirmed">Прямой эфир не подтверждён</string>
 </resources>

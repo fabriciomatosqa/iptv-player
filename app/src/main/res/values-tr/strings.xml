@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Spor ve turnuva seçin</string>
     <string name="sports_competition">Turnuva</string>
     <string name="sports_scheduled">Planlanan yayın</string>
+    <string name="broadcast_ended">Yayın sona erdi</string>
+    <string name="broadcast_scheduled">Planlanan yayın</string>
+    <string name="broadcast_unconfirmed">Canlı yayın doğrulanmadı</string>
 </resources>

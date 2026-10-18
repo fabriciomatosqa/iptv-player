@@ -193,4 +193,7 @@
     <string name="sports_filter_help">選擇運動項目和賽事</string>
     <string name="sports_competition">賽事</string>
     <string name="sports_scheduled">預定轉播</string>
+    <string name="broadcast_ended">轉播已結束</string>
+    <string name="broadcast_scheduled">預定轉播</string>
+    <string name="broadcast_unconfirmed">直播尚未確認</string>
 </resources>

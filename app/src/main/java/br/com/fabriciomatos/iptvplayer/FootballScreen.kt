@@ -351,14 +351,16 @@ import java.util.Locale
     val competitionBadge = if (country) FIFA_BADGE else event?.badge?.takeIf(String::isNotBlank) ?: artwork.competition
     val championship = match.details.competition.ifBlank { event?.competition.orEmpty().ifBlank { tr(R.string.football) } }
     val mode = broadcastMode(match.programme, event)
-    val liveTransmission = transmissionIsLive(match.programme, event, now)
+    val liveChannels = footballLiveChannels(match,event,now)
+    val liveTransmission = liveChannels.isNotEmpty()
+    val watchChannels = liveChannels.ifEmpty { match.channels }
     var liveDetailsExpanded by remember(match.id) { mutableStateOf(false) }
     if(compactFootballMatch(match,event,now)) {
         CompactFootballCard(model,match,matched,homeBadge,awayBadge,championship,now)
         return
     }
     val accent = if (mode == BroadcastMode.REPLAY) colors.violet else colors.mint
-    Card(onClick = { model.playFootball(match.channels.first()) }, modifier = Modifier.fillMaxWidth().testTag("football_match"), shape = RoundedCornerShape(26.dp),
+    Card(onClick = { model.playFootball(watchChannels.first()) }, modifier = Modifier.fillMaxWidth().testTag("football_match"), shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = colors.panel), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, Brush.linearGradient(listOf(accent.copy(alpha = .38f), colors.cyan.copy(alpha = .12f), colors.violet.copy(alpha = .2f))))) {
         Box {
@@ -398,7 +400,7 @@ import java.util.Locale
                         if (liveDetailsExpanded) FootballIncidentsPanel(model,matched,match.details.home,match.details.away)
                     }
                     HorizontalDivider(color = colors.muted.copy(alpha = .12f))
-                    FootballChannelActions(model,match.channels)
+                    FootballChannelActions(model,watchChannels)
                 }
             }
         }
@@ -432,7 +434,7 @@ import java.util.Locale
                 FootballBadge(awayBadge,match.details.away,Modifier.size(34.dp),colors.mint)
             }
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                FootballStatus(tr(if(replay)R.string.replay else R.string.full_time),
+                FootballStatus(tr(if(replay)R.string.replay else if(event?.state==MatchState.FINISHED) R.string.full_time else R.string.broadcast_ended),
                     if(replay) Icons.Default.Replay else Icons.Default.CheckCircle,accent)
                 Spacer(Modifier.weight(1f))
                 Text(tr(if(detailsExpanded)R.string.football_hide_details else R.string.football_match_details),
@@ -695,8 +697,24 @@ import java.util.Locale
                 }
             } else {
                 Text(footballDay(match.programme.start, locale), color = colors.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(tr(R.string.broadcast_time, footballTime(match.programme.start, locale)), color = colors.mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                if (match.programme.start <= now && match.programme.end > now) Text(tr(R.string.now_on_channel), fontSize = 10.sp, color = colors.muted)
+                Text(tr(R.string.broadcast_time, footballTime(match.programme.start, locale)+" – "+footballTime(match.programme.end, locale)), color = colors.mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(tr(if(match.broadcastEnd<=now) R.string.broadcast_ended else if(match.programme.start>now)
+                    R.string.broadcast_scheduled else R.string.broadcast_unconfirmed),fontSize=10.sp,color=colors.muted)
+            }
+            if(match.channelProgrammes.values.distinctBy { Triple(it.start,it.end,it.broadcast) }.size>1) {
+                val score=matchFootballScore(match,model.footballFeed)?.event
+                match.channels.distinctBy { guideChannelName(it.name) to match.programmeFor(it) }.forEach { channel ->
+                    val p=match.programmeFor(channel)
+                    val status=tr(when {
+                        transmissionIsLive(p,score,now)->R.string.live_score
+                        p.broadcast==BroadcastHint.REPLAY->R.string.replay
+                        p.end<=now->R.string.broadcast_ended
+                        p.start>now->R.string.broadcast_scheduled
+                        else->R.string.broadcast_unconfirmed
+                    })
+                    Text(channel.name+" · "+footballDay(p.start,locale)+" · "+footballTime(p.start,locale)+" – "+
+                        footballTime(p.end,locale)+" · "+status,fontSize=10.sp,color=colors.muted)
+                }
             }
         }
     }

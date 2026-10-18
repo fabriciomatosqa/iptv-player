@@ -47,7 +47,9 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                         "channel" -> { entry = "channel"; id = parser.getAttributeValue(null, "id").orEmpty() }
                         "display-name" -> if (entry == "channel") {
                             val name=parser.nextText()
-                            names[normalized(name)]=id;names[guideChannelName(name)]=id
+                            listOf(normalized(name),guideChannelName(name)).distinct().forEach { alias ->
+                                names[alias]=if(names.containsKey(alias) && names[alias]!=id) "" else id
+                            }
                             if(normalized(name) in channelIds || guideChannelName(name) in channelIds)acceptedIds.add(id)
                         }
                         "programme" -> {
@@ -56,7 +58,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                             start = xmltvTime(parser.getAttributeValue(null, "start").orEmpty())
                             end = xmltvTime(parser.getAttributeValue(null, "stop").orEmpty())
                             title = ""; image = ""; category = "";broadcast=BroadcastHint.UNKNOWN;metadata=FootballMetadata()
-                            // Retain recent football broadcasts to identify a later airing as a replay.
+                            // Retain source metadata without deriving replay status from previous slots.
                             // Keep ordinary channel guide cards filtered below as before.
                             accepted = end > now-36*3600000L
                         }

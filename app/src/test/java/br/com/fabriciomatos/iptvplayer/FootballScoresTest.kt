@@ -12,11 +12,11 @@ class FootballScoresTest {
         state: MatchState = MatchState.FINISHED, league: String = "afc.champions") =
         FootballScore("1",league,"AFC Champions League Elite",kickoff,ScoreTeam("1",listOf(home)),ScoreTeam("2",listOf(away)),3,1,state,"83:21",now)
 
-    @Test fun finishedGameBeforeTheTvSlotIsAReplayWithItsFinalResult() {
+    @Test fun finishedGamePreservesTheFutureTvSlotWithoutProvingAReplay() {
         val game=game("AFC Champions League Elite","Al Nassr","Neftchi Fergana",now+2*3600000L)
         val result=matchFootballScore(game,FootballFeed(listOf(score())))!!
         assertEquals(3,result.homeGoals);assertEquals(1,result.awayGoals)
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(game.programme,result.event))
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(game.programme,result.event))
         assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(game.programme,null))
     }
     @Test fun liveClockComesFromTheScoreSourceAndStaleScoresLoseLiveStatus() {

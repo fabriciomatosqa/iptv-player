@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Pilih olahraga dan kompetisi</string>
     <string name="sports_competition">Kompetisi</string>
     <string name="sports_scheduled">Siaran terjadwal</string>
+    <string name="broadcast_ended">Siaran berakhir</string>
+    <string name="broadcast_scheduled">Siaran terjadwal</string>
+    <string name="broadcast_unconfirmed">Siaran langsung belum dikonfirmasi</string>
 </resources>

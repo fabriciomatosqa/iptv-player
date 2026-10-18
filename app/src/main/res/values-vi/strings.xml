@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Chọn môn thể thao và giải đấu</string>
     <string name="sports_competition">Giải đấu</string>
     <string name="sports_scheduled">Phát sóng theo lịch</string>
+    <string name="broadcast_ended">Đã kết thúc phát sóng</string>
+    <string name="broadcast_scheduled">Lịch phát sóng</string>
+    <string name="broadcast_unconfirmed">Chưa xác nhận phát trực tiếp</string>
 </resources>

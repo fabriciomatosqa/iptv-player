@@ -100,10 +100,17 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
             val teams = normalized("${match.details.home} ${match.details.away}")
             if (!words.all(teams::contains)) return@filter false
         }
-        if (tab != FOOTBALL_LIVE && match.programme.end > now - FOOTBALL_RETENTION_MS) return@filter true
-        val live = transmissionIsLive(match.programme, matchFootballScore(match,feed)?.event, now)
-        (match.programme.end > now - FOOTBALL_RETENTION_MS || live) &&
+        if (tab != FOOTBALL_LIVE && match.broadcastEnd > now - FOOTBALL_RETENTION_MS) return@filter true
+        val live = footballHasLiveTransmission(match, matchFootballScore(match,feed)?.event, now)
+        (match.broadcastEnd > now - FOOTBALL_RETENTION_MS || live) &&
             (tab != FOOTBALL_LIVE || live)
+    }.map { match ->
+        if(tab!=FOOTBALL_LIVE || match.channels.isEmpty())match else {
+            val channels=footballLiveChannels(match,matchFootballScore(match,feed)?.event,now)
+            if(channels.size==match.channels.size)match else match.copy(
+                programme=match.programmeFor(channels.first()),channels=channels,
+                channelProgrammes=match.channelProgrammes.filterKeys { url -> channels.any { it.url==url } })
+        }
     }
 }
 fun footballScoreTeamKey(name: String): String {
@@ -145,15 +152,13 @@ fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? 
 /** Finished fixtures and repeats stay in the catalog but use a reduced card until expanded. */
 fun compactFootballMatch(match: FootballMatch, score: FootballScore?, now: Long): Boolean {
     if(broadcastMode(match.programme,score)==BroadcastMode.REPLAY)return true
-    if(score?.state==MatchState.FINISHED)return true
-    return match.programme.end<=now && score?.state !in listOf(MatchState.LIVE,MatchState.HALFTIME)
+    return match.broadcastEnd<=now || score?.state==MatchState.FINISHED && match.programme.start<=now
 }
 fun broadcastMode(programme: Programme, score: FootballScore?): BroadcastMode {
     if(programme.broadcast==BroadcastHint.REPLAY)return BroadcastMode.REPLAY
-    if(score?.state==MatchState.FINISHED && programme.start-score.kickoff>45*60000L)return BroadcastMode.REPLAY
     if(programme.broadcast==BroadcastHint.LIVE)return BroadcastMode.LIVE
-    if(score!=null && score.state !in listOf(MatchState.CANCELLED,MatchState.POSTPONED,MatchState.UNKNOWN) &&
-        score.kickoff in (programme.start-15*60000L)..(programme.start+90*60000L))return BroadcastMode.LIVE
+    if(score!=null && score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) &&
+        score.kickoff in (programme.start-15*60000L)..minOf(programme.end-1,programme.start+90*60000L))return BroadcastMode.LIVE
     return BroadcastMode.UNCONFIRMED
 }
 fun scoreIsFresh(score: FootballScore, now: Long) = score.state !in listOf(MatchState.LIVE,MatchState.HALFTIME) ||

@@ -38,7 +38,7 @@ class FootballScoreAndroidTest {
         loader.load(listOf(match),now=now+59999);val retryCalls=calls.get();assertEquals(firstCalls+footballRequestDays(listOf(match),now).size,retryCalls)
         loader.load(listOf(match),now=now+120000);assertEquals(retryCalls+footballRequestDays(listOf(match),now).size+2,calls.get())
         val result=matchFootballScore(match,first)!!
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme,result.event))
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(match.programme,result.event))
         repository.close()
         val reopened=PlaylistRepository(context)
         val offline=FootballScoreRepository(reopened) {error("Offline")}.load(listOf(match),force=true,now=now+120000)

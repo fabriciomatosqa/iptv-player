@@ -24,7 +24,7 @@ class FootballGroupingTest {
             entry("f",now+4*60000L,BroadcastHint.REPLAY))),channels,now)
         assertEquals(3,matches.size)
     }
-    @Test fun aRepeatBroadcastAfterYesterdayIsMarkedReplayAndRemainsExpandable() {
+    @Test fun aPreviousEpgSlotAloneDoesNotProveAReplay() {
         val now=1800000000000L
         val yesterday=now-24*3600000L
         val second=now+4*3600000L
@@ -37,9 +37,9 @@ class FootballGroupingTest {
             second,second+2*3600000L))
         val actual=footballMatches(Guide(matches=listOf(previous,later)),channels,now)
         assertEquals(1,actual.size)
-        assertEquals(BroadcastHint.REPLAY,actual.single().programme.broadcast)
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(actual.single().programme,null))
-        assertTrue(compactFootballMatch(actual.single(),null,now))
+        assertEquals(BroadcastHint.UNKNOWN,actual.single().programme.broadcast)
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(actual.single().programme,null))
+        assertFalse(compactFootballMatch(actual.single(),null,now))
         assertEquals("Sport",actual.single().details.home)
     }
     @Test fun scheduledFixturesWithoutPriorEvidenceMustNotBeLabelledReplay() {

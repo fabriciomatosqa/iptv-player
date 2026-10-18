@@ -32,7 +32,7 @@ class FootballUiTest {
         }
         fun p(title: String, start: Long, hint: BroadcastHint = BroadcastHint.UNKNOWN)=Programme(title,start,start+3*3600000L,broadcast=hint)
         val programmes=listOf(p("Fluminense x Botafogo - Campeonato Brasileiro",now-83*60000L,BroadcastHint.LIVE),
-            p("Al Nassr x Neftchi Fergana - AFC Champions League Elite",now+2*3600000L),
+            p("Al Nassr x Neftchi Fergana - AFC Champions League Elite",now+2*3600000L,BroadcastHint.REPLAY),
             p("Chelsea x Wolverhampton Wanderers - Premier League",now+5*3600000L),p("Brasil x Argentina - Amistoso de Futebol",now+6*3600000L))
         val guide=Guide(matches=programmes.mapIndexed {i,p->GuideMatch("sport$i",p)})
         val repository=PlaylistRepository(context)

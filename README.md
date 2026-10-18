@@ -1,3 +1,10 @@
+## Versão 1.12.18
+
+- **Futebol e EPG:** horários originais preservados; placar ao vivo não antecipa transmissões futuras.
+- **Canais:** confirmação por intervalo individual e identificadores compatíveis; nomes ambíguos não forçam vínculos.
+- **Reprises:** dependem de evidência explícita do guia; resultado final não altera a programação.
+- **Compatibilidade:** assinatura, dados dos usuários, reprodução e fluxo de atualização preservados.
+
 ## Versão 1.12.17
 
 - **Fórmula 1:** Página do Campeonato em Esportes → Automobilismo → Fórmula 1, com resumo, pilotos, construtores, próxima corrida, calendário e estatísticas.

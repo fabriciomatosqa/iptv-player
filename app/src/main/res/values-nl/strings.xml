@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Kies een sport en competitie</string>
     <string name="sports_competition">Competitie</string>
     <string name="sports_scheduled">Geplande uitzending</string>
+    <string name="broadcast_ended">Uitzending afgelopen</string>
+    <string name="broadcast_scheduled">Geplande uitzending</string>
+    <string name="broadcast_unconfirmed">Live-uitzending niet bevestigd</string>
 </resources>

@@ -193,4 +193,7 @@
     <string name="sports_filter_help">Choisissez un sport et une compétition</string>
     <string name="sports_competition">Compétition</string>
     <string name="sports_scheduled">Diffusion programmée</string>
+    <string name="broadcast_ended">Diffusion terminée</string>
+    <string name="broadcast_scheduled">Diffusion programmée</string>
+    <string name="broadcast_unconfirmed">Direct non confirmé</string>
 </resources>

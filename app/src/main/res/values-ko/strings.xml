@@ -193,4 +193,7 @@
     <string name="sports_filter_help">종목 및 대회 선택</string>
     <string name="sports_competition">대회</string>
     <string name="sports_scheduled">방송 예정</string>
+    <string name="broadcast_ended">중계 종료</string>
+    <string name="broadcast_scheduled">중계 예정</string>
+    <string name="broadcast_unconfirmed">생중계 미확인</string>
 </resources>
