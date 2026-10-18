@@ -84,7 +84,7 @@ internal fun groupLogoMatchScore(group: String, channelName: String): Int {
     val core=groupCore(group)
     if(core.isBlank() || core in genericGroupsWithoutLogo) return 0
     val expected=channelBrand(group)
-    if(expected!=null && expected==channelBrand(channelName)) return 120
+    if(expected!=null && expected==channelBrand(channelName)) return 100
     // Prefix-only fallback must not mistake Disney Channel for Disney+,
     // GloboNews for Globo, or SBT News for SBT.
     if(expected!=null && Regex("""^(?:(?:tv|rede)\s+)?(?:disney\s+(?:channel|junior|xd)|globo\s+(?:news|noticias|play|filmes|premium|gold)|sbt\s+(?:news|noticias))\b""")
