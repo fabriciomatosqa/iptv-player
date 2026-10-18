@@ -85,7 +85,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                     if (parser.name == "programme" && accepted && title.isNotBlank() && end > start) {
                         val hint=programmeBroadcastHint(title,category)
                         val programme = Programme(title, start, end, image, category.trim(),if(hint==BroadcastHint.REPLAY || broadcast==BroadcastHint.UNKNOWN)hint else broadcast,metadata)
-                        if (hasFootballMatchup(title)) matches.add(GuideMatch(id, programme))
+                        if (isSportsProgramme(programme)) matches.add(GuideMatch(id, programme))
                         if (end>now && (channelIds.isEmpty() || id in acceptedIds) && start < now + 86400000L) {
                             val items = programmes.getOrPut(id) { ArrayList() }
                             items.add(programme)

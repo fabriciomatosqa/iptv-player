@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">أحداث المباراة غير متاحة حاليًا.</string>
     <string name="football_incidents_empty">لم تُسجل أهداف أو بطاقات لهذه المباراة.</string>
     <string name="womens_games">مباريات السيدات</string>
+    <string name="sports">الرياضة</string>
+    <string name="sports_help">الرياضات والبطولات في قائمتك</string>
+    <string name="search_sport_events">ابحث عن فريق أو سباق أو حدث</string>
+    <string name="one_sport_event">حدث واحد</string>
+    <string name="sport_event_count">%1$d أحداث</string>
+    <string name="no_sport_events">لا توجد أحداث لهذه الرياضة.</string>
+    <string name="sport_basketball">كرة السلة</string>
+    <string name="sport_american_football">كرة القدم الأمريكية</string>
+    <string name="sport_baseball">البيسبول</string>
+    <string name="sport_hockey">الهوكي</string>
+    <string name="sport_motorsport">رياضة المحركات</string>
+    <string name="sport_volleyball">الكرة الطائرة</string>
+    <string name="sport_tennis">التنس</string>
 </resources>

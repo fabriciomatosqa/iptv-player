@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">События матча сейчас недоступны.</string>
     <string name="football_incidents_empty">Нет данных о голах и карточках в этом матче.</string>
     <string name="womens_games">Женский футбол</string>
+    <string name="sports">Спорт</string>
+    <string name="sports_help">Спорт и турниры из вашего списка</string>
+    <string name="search_sport_events">Поиск команд, гонок и событий</string>
+    <string name="one_sport_event">1 событие</string>
+    <string name="sport_event_count">%1$d событий</string>
+    <string name="no_sport_events">События по этому виду спорта не найдены.</string>
+    <string name="sport_basketball">Баскетбол</string>
+    <string name="sport_american_football">Американский футбол</string>
+    <string name="sport_baseball">Бейсбол</string>
+    <string name="sport_hockey">Хоккей</string>
+    <string name="sport_motorsport">Автоспорт</string>
+    <string name="sport_volleyball">Волейбол</string>
+    <string name="sport_tennis">Теннис</string>
 </resources>

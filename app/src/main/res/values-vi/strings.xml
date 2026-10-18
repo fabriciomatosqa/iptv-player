@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">Hiện chưa có dữ liệu diễn biến trận đấu.</string>
     <string name="football_incidents_empty">Không có dữ liệu bàn thắng hoặc thẻ phạt cho trận này.</string>
     <string name="womens_games">Bóng đá nữ</string>
+    <string name="sports">Thể thao</string>
+    <string name="sports_help">Các môn thể thao và giải đấu trong danh sách</string>
+    <string name="search_sport_events">Tìm đội, cuộc đua hoặc sự kiện</string>
+    <string name="one_sport_event">1 sự kiện</string>
+    <string name="sport_event_count">%1$d sự kiện</string>
+    <string name="no_sport_events">Không có sự kiện cho môn này.</string>
+    <string name="sport_basketball">Bóng rổ</string>
+    <string name="sport_american_football">Bóng bầu dục Mỹ</string>
+    <string name="sport_baseball">Bóng chày</string>
+    <string name="sport_hockey">Khúc côn cầu</string>
+    <string name="sport_motorsport">Đua xe thể thao</string>
+    <string name="sport_volleyball">Bóng chuyền</string>
+    <string name="sport_tennis">Quần vợt</string>
 </resources>

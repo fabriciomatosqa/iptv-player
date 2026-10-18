@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">目前無法取得比賽事件。</string>
     <string name="football_incidents_empty">此場比賽沒有進球或紅黃牌紀錄。</string>
     <string name="womens_games">女子足球</string>
+    <string name="sports">體育</string>
+    <string name="sports_help">播放清單中的運動賽事與聯賽</string>
+    <string name="search_sport_events">搜尋球隊、比賽或賽事</string>
+    <string name="one_sport_event">1 場賽事</string>
+    <string name="sport_event_count">%1$d 場賽事</string>
+    <string name="no_sport_events">此運動目前沒有賽事。</string>
+    <string name="sport_basketball">籃球</string>
+    <string name="sport_american_football">美式足球</string>
+    <string name="sport_baseball">棒球</string>
+    <string name="sport_hockey">冰球</string>
+    <string name="sport_motorsport">賽車運動</string>
+    <string name="sport_volleyball">排球</string>
+    <string name="sport_tennis">網球</string>
 </resources>

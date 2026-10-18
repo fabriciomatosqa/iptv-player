@@ -55,13 +55,24 @@ private fun competitionBase(value: String) = normalized(value)
     .replace(Regex("\\s+"), " ").trim()
 private val compiledFootballRules = footballCompetitionRules.map { it to Regex("(?:${it.aliases})") }
 fun footballCompetitionRule(value: String): FootballCompetitionRule? {
-    val key = competitionBase(value)
-    return compiledFootballRules.firstOrNull { it.second.matches(key) }?.first
+    val key = competitionBase(value).trim()
+    // Respect full names and explicit divisions before attempting to discard editorial prose.
+    compiledFootballRules.firstOrNull { it.second.matches(key.replace(',', ' ').replace(Regex("\\s+")," ").trim()) }
+        ?.let { return it.first }
+    val prose = key.substringAfter(',', "").trim()
+    if (prose.isNotBlank() && !Regex("^(?:serie|series|segunda|segunda divisao|2\\b|feminin|sub\\s*\\d)").containsMatchIn(prose)) {
+        val heading = key.substringBefore(',').trim()
+        return compiledFootballRules.firstOrNull { it.second.matches(heading) }?.first
+    }
+    return null
 }
 /** Preserve qualifiers in prose; a partial alias must never erase a country or lower division. */
 fun footballCompetitionMention(value: String): String? {
     val candidate=Regex("(?i)\\b((?:campeonato|copa|taça|libertadores|brasileirão|(?:women['’]s\\s+)?(?:champions league|super league|world cup)|premier league|bundesliga|j1 league|liga)\\b[^.;|\\n]*)")
-        .find(value)?.groupValues?.get(1)?.trim()?.takeIf { it.length <= 160 && !hasFootballMatchup(it) } ?: return null
+        .find(value)?.groupValues?.get(1)?.trim()
+        ?.substringBefore(',')?.trim()
+        ?.takeIf { it.length in 3..64 && !hasFootballMatchup(it) &&
+            !Regex("\\b(recebem|recebe|enfrentam|enfrenta|divisao de elite)\\b").containsMatchIn(normalized(it)) } ?: return null
     return candidate + if(footballGender(value)==FootballGender.WOMEN && footballGender(candidate)==FootballGender.UNKNOWN) " Feminina" else ""
 }
 fun footballCompetitionRule(details: FootballDetails): FootballCompetitionRule? {
@@ -83,7 +94,8 @@ fun footballCompetitionIdentity(details: FootballDetails): String {
     return base + gender + details.ageGroup.takeIf(String::isNotBlank)?.let { ":u$it" }.orEmpty()
 }
 fun footballCompetitionTitle(details: FootballDetails): String {
-    val title = footballCompetitionRule(details)?.title ?: listOf(details.competition,details.country).filter(String::isNotBlank).joinToString(" — ")
+    val fallback = details.competition.substringBefore(',').trim().takeIf { it.length in 3..54 }.orEmpty()
+    val title = footballCompetitionRule(details)?.title ?: fallback
     return title + (if(details.gender == FootballGender.WOMEN && footballGender(title) != FootballGender.WOMEN) " Feminina" else "") +
         (if(details.ageGroup.isNotBlank() && footballAgeGroup(title).isBlank()) " Sub-${details.ageGroup}" else "")
 }
@@ -95,7 +107,9 @@ fun isCompetitionValue(value: String): Boolean {
 fun isCompetitionLabel(value: String): Boolean {
     val key = normalized(value)
     if(!isCompetitionValue(value)) return false
-    return footballCompetitionRule(value) != null || Regex("\\b(campeonato|copa|cup|liga|league|championship|bundesliga|torneio|taca|eliminatorias|amistoso|eurocopa|serie [abcd]|libertadores)\\b").containsMatchIn(key)
+    return footballCompetitionRule(value) != null ||
+        (value.length <= 64 && !value.contains(',') &&
+        Regex("\\b(campeonato|copa|cup|liga|league|championship|bundesliga|torneio|taca|eliminatorias|amistoso|eurocopa|serie [abcd]|libertadores)\\b").containsMatchIn(key))
 }
 
 fun footballCategoryPriority(details: FootballDetails): FootballCategoryPriority {

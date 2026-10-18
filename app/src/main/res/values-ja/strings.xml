@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">試合の出来事は現在取得できません。</string>
     <string name="football_incidents_empty">この試合のゴールやカードの記録はありません。</string>
     <string name="womens_games">女子サッカー</string>
+    <string name="sports">スポーツ</string>
+    <string name="sports_help">プレイリストの競技と大会</string>
+    <string name="search_sport_events">チーム、レース、大会を検索</string>
+    <string name="one_sport_event">1 件のイベント</string>
+    <string name="sport_event_count">%1$d 件のイベント</string>
+    <string name="no_sport_events">この競技のイベントはありません。</string>
+    <string name="sport_basketball">バスケットボール</string>
+    <string name="sport_american_football">アメリカンフットボール</string>
+    <string name="sport_baseball">野球</string>
+    <string name="sport_hockey">ホッケー</string>
+    <string name="sport_motorsport">モータースポーツ</string>
+    <string name="sport_volleyball">バレーボール</string>
+    <string name="sport_tennis">テニス</string>
 </resources>

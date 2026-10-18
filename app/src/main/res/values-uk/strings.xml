@@ -188,4 +188,17 @@
     <string name="football_incidents_unavailable">Події матчу зараз недоступні.</string>
     <string name="football_incidents_empty">Немає даних про голи й картки в цьому матчі.</string>
     <string name="womens_games">Жіночий футбол</string>
+    <string name="sports">Спорт</string>
+    <string name="sports_help">Види спорту та турніри зі списку</string>
+    <string name="search_sport_events">Пошук команд, перегонів і подій</string>
+    <string name="one_sport_event">1 подія</string>
+    <string name="sport_event_count">%1$d подій</string>
+    <string name="no_sport_events">Подій для цього виду спорту немає.</string>
+    <string name="sport_basketball">Баскетбол</string>
+    <string name="sport_american_football">Американський футбол</string>
+    <string name="sport_baseball">Бейсбол</string>
+    <string name="sport_hockey">Хокей</string>
+    <string name="sport_motorsport">Автоспорт</string>
+    <string name="sport_volleyball">Волейбол</string>
+    <string name="sport_tennis">Теніс</string>
 </resources>

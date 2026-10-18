@@ -71,11 +71,22 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var parentalBusy by mutableStateOf(false); private set
     private var protectedAction: (() -> Unit)? = null
     var football by mutableStateOf(emptyList<FootballMatch>()); private set
+    var sportsEvents by mutableStateOf(emptyList<SportEvent>()); private set
+    var selectedSport by mutableStateOf(SportKind.FOOTBALL)
+    var selectedSportLeague by mutableStateOf(SPORTS_ALL)
     var footballFeed by mutableStateOf(FootballFeed()); private set
     var footballScoresLoading by mutableStateOf(false); private set
     var footballSearch by mutableStateOf("")
     var footballTab by mutableStateOf(FOOTBALL_GAMES)
     var footballPosition: Pair<Pair<String,String>,Pair<Int,Int>>? = null
+    // Keep the scroll anchor of each sport and competition independently.
+    private val sportScroll=LinkedHashMap<Pair<String,String>,Pair<Int,Int>>()
+    fun sportsPosition(key:Pair<String,String>):Pair<Int,Int>? = sportScroll[key]
+    fun rememberSportsPosition(key:Pair<String,String>,position:Pair<Int,Int>) {
+        sportScroll[key]=position
+        if(key.first.startsWith("football:"))footballPosition=key to position
+        while(sportScroll.size>75)sportScroll.remove(sportScroll.keys.first())
+    }
     var fromFootball by mutableStateOf(false); private set
     var guideLoading by mutableStateOf(false); private set
     var guideError by mutableStateOf(false); private set
@@ -169,7 +180,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch { while(true) { delay(5000L); checkpointPlayback() } }
         viewModelScope.launch {
-            snapshotFlow {if(initialized && foreground && page==Page.FOOTBALL && !settingsOpen)football else null}.collectLatest {matches->
+            snapshotFlow {if(initialized && foreground && page==Page.FOOTBALL && selectedSport==SportKind.FOOTBALL && !settingsOpen)football else null}.collectLatest {matches->
                 if(matches!=null)while(true) {
                     val next=System.currentTimeMillis()+FOOTBALL_REFRESH_MS
                     updateFootballScores()
@@ -243,6 +254,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     selectedKind=MediaKind.LIVE;favoritesOnly=false;adultUnlocked=false;dismissParental()
                     catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
                     footballFeed=FootballFeed();footballSearch="";footballTab=FOOTBALL_GAMES;footballPosition=null;fromFootball=false
+                    sportsEvents=emptyList();selectedSport=SportKind.FOOTBALL;selectedSportLeague=SPORTS_ALL;sportScroll.clear()
                     football=emptyList();recent=null
                 }
                 playlistUrl=clean;playlistName=name.trim().ifBlank {"Minha playlist"}
@@ -436,7 +448,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun playFootball(channel: Channel) {play(channel);fromFootball=true}
     suspend fun footballIncidents(score: FootballScore): List<FootballIncident>? = scores.incidents(score)
     private suspend fun updateFootballScores(force: Boolean = false) = scoreRefresh.withLock {
-        if(!foreground || page!=Page.FOOTBALL)return@withLock
+        if(!foreground || page!=Page.FOOTBALL || selectedSport!=SportKind.FOOTBALL)return@withLock
         val source=playlistUrl
         footballScoresLoading=true
         try {
@@ -497,13 +509,22 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             guideLoading=true
             try {
                 val channels=withContext(Dispatchers.IO) { repository.liveChannels(playlist) }
-                football=footballMatches(guide,channels)
+                val oldSports=withContext(Dispatchers.Default) {
+                    footballMatches(guide,channels) to sportsEvents(guide,channels)
+                }
+                football=oldSports.first
+                sportsEvents=oldSports.second
                 val checked=withContext(Dispatchers.IO) { repository.guideChecked(playlist) }
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
                     val fresh=withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
                     if(fresh.names.isNotEmpty() || fresh.programmes.isNotEmpty()) {
                         val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh);repository.savedGuide(playlist) }
-                        if(playlistUrl==playlist) { guide=merged;football=footballMatches(merged,channels);guideError=false }
+                        if(playlistUrl==playlist) {
+                            val classified=withContext(Dispatchers.Default) {
+                                footballMatches(merged,channels) to sportsEvents(merged,channels)
+                            }
+                            guide=merged;football=classified.first;sportsEvents=classified.second;guideError=false
+                        }
                     } else guideError=true
                 }
             } catch(e: CancellationException) { throw e }

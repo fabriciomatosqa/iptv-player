@@ -279,11 +279,11 @@ private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = M
 @Composable
 private fun FootballSummary(model: AuroraViewModel,modifier: Modifier=Modifier) {
     Row(modifier.clip(Shape).background(Panel).clickable { model.showFootball() }.padding(horizontal=16.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.SportsSoccer, null, tint = Mint)
+        Icon(Icons.Default.EmojiEvents, null, tint = Mint)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(tr(R.string.football), fontWeight = FontWeight.SemiBold)
-            Text(tr(R.string.football_help), color = Muted, fontSize = 12.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+            Text(tr(R.string.sports), fontWeight = FontWeight.SemiBold)
+            Text(tr(R.string.sports_help), color = Muted, fontSize = 12.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
         }
         Icon(Icons.Default.ChevronRight, null, tint = Muted)
     }
@@ -558,7 +558,7 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = if (compact) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
         if (!compact || series != null || model.current?.kind==MediaKind.MOVIES || model.fromFootball) IconButton(onClick = {model.backFromLibrary()}) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, if(model.fromFootball)tr(R.string.back_football)else if (series != null) tr(R.string.back_series) else if(model.current?.kind==MediaKind.MOVIES)tr(R.string.back)else tr(R.string.back_home))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, if(model.fromFootball)tr(if(model.selectedSport==SportKind.FOOTBALL)R.string.back_football else R.string.sports)else if (series != null) tr(R.string.back_series) else if(model.current?.kind==MediaKind.MOVIES)tr(R.string.back)else tr(R.string.back_home))
         }
         Column(Modifier.weight(1f)) {
             Text(series?.title ?: if (model.favoritesOnly) tr(R.string.favorites) else model.selectedKind?.let { kindLabel(it) } ?: tr(R.string.all_content),
