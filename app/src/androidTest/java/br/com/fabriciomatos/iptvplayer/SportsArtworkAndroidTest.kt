@@ -26,6 +26,20 @@ class SportsArtworkAndroidTest {
         assertEquals("",selectSportsTeamBadge("Baylor",teams))
     }
 
+    @Test fun officialNhlTeamCatalogResolvesVegasAndTampaCrests() {
+        val vegas="https://a.espncdn.com/i/teamlogos/nhl/500/vgk.png"
+        val tampa="https://a.espncdn.com/i/teamlogos/nhl/500/tb.png"
+        val payload=JSONObject().put("sports",JSONArray().put(JSONObject().put("leagues",
+            JSONArray().put(JSONObject().put("teams",JSONArray()
+                .put(team("Vegas Golden Knights","Vegas",vegas))
+                .put(team("Tampa Bay Lightning","Tampa Bay",tampa)))))))
+        val teams=sportsBundle(payload,JSONObject()).getJSONArray("teams")
+        assertEquals(vegas,selectSportsTeamBadge("Vegas Golden Knights",teams))
+        assertEquals(tampa,selectSportsTeamBadge("Tampa Bay Lightning",teams))
+        assertEquals(listOf("hockey/nhl"),sportsBadgeEndpoints(SportKind.HOCKEY,"nhl"))
+        assertTrue(sportsBadgeEndpoints(SportKind.HOCKEY,"khl").isEmpty())
+    }
+
     @Test fun duplicateAmbiguousNamesAndWrongSportNeverProduceIncorrectEscudos() {
         val sameName=JSONArray()
             .put(JSONObject().put("names",JSONArray().put("Giants"))

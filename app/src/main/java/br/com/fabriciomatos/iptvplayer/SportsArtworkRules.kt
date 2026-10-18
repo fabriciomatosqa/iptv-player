@@ -19,7 +19,11 @@ fun sportsBadgeEndpoints(sport: SportKind, competitionId: String): List<String> 
         "mlb" -> listOf("baseball/mlb")
         else -> listOf("baseball/mlb", "baseball/college-baseball")
     }
-    SportKind.HOCKEY -> listOf("hockey/nhl")
+    SportKind.HOCKEY -> when(competitionId) {
+        "nhl" -> listOf("hockey/nhl")
+        "khl" -> emptyList() // Never show an NHL logo for a KHL club with the same name.
+        else -> listOf("hockey/nhl")
+    }
     // Tennis/motorsport are not team-versus-team contests.
     else -> emptyList()
 }

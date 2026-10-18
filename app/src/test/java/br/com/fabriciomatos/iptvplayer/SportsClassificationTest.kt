@@ -74,6 +74,62 @@ class SportsClassificationTest {
         assertEquals(SportKind.AMERICAN_FOOTBALL,
             detectOtherSport(match("f","Eagles x Panthers",sport="Futebol Americano").programme))
     }
+    @Test fun realHockeyScreenshotDoesNotAppearUnderFootballAndFindsNhl() {
+        val title="Vegas Golden Knights vs Tampa Bay Lightning"
+        val description="liga de hóquei no gelo do mundo, com equipes dos EUA e do Canadá"
+        val channelOne=channel("a","ESPN 1 4K")
+        val channelTwo=channel("b","ESPN HD")
+        val programme=Programme(title,now+3600000L,now+7200000L,
+            category=description,metadata=FootballMetadata(
+                competition=description,sport="Hóquei no gelo"))
+        val guide=Guide(matches=listOf(GuideMatch("a",programme),GuideMatch("b",programme)))
+        val channels=listOf(channelOne,channelTwo)
+        assertNull(footballDetails(title,description,programme.metadata))
+        assertTrue(footballMatches(guide,channels,now).isEmpty())
+        val events=sportsEvents(guide,channels,now)
+        assertEquals(1,events.size)
+        val game=events.single()
+        assertEquals(SportKind.HOCKEY,game.sport)
+        assertEquals("NHL",game.competition)
+        assertEquals("Vegas Golden Knights",game.home)
+        assertEquals("Tampa Bay Lightning",game.away)
+        assertEquals(2,game.channels.size)
+        assertEquals("ESPN 1 4K",game.channels.first().name)
+        assertEquals(listOf("Ao Vivo","Jogos","NHL"),
+            sportsCategories(events,SportKind.HOCKEY).map {it.title})
+        assertTrue(sportsCategories(events,SportKind.FOOTBALL).none { it.title==description })
+    }
+
+    @Test fun descriptiveOtherSportsNeverBecomeFootballLeagues() {
+        val samples=listOf(
+            Triple("Celtics vs Knicks","Liga de basquete do mundo",SportKind.BASKETBALL),
+            Triple("Eagles vs Panthers","Liga profissional de futebol americano dos EUA",SportKind.AMERICAN_FOOTBALL),
+            Triple("Phillies vs Diamondbacks","Liga Nacional de Beisebol",SportKind.BASEBALL),
+            Triple("Rangers vs Penguins","NHL",SportKind.HOCKEY),
+            Triple("Alcaraz vs Sinner","ATP Tênis",SportKind.TENNIS),
+            Triple("Sada Cruzeiro vs Minas","Superliga de Vôlei",SportKind.VOLLEYBALL)
+        )
+        val guide=Guide(matches=samples.mapIndexed {index, (title,category,_) ->
+            match("sport$index",title,category)
+        })
+        val channels=samples.indices.map {channel("sport$it")}
+        assertTrue(footballMatches(guide,channels,now).isEmpty())
+        assertEquals(samples.map {it.third}.toSet(),
+            sportsEvents(guide,channels,now).map {it.sport}.toSet())
+        samples.forEach { (title,category,_) -> assertNull(footballDetails(title,category)) }
+    }
+
+    @Test fun strongFootballSportEvidenceIgnoresUnrelatedEditorialText() {
+        val game=Programme("Palmeiras vs Flamengo - Brasileirão",now,now+7200000L,
+            category="Futebol",metadata=FootballMetadata(sport="Futebol",
+                description="Em outros esportes, a NHL também realiza partidas hoje"))
+        assertNull(detectOtherSport(game))
+        assertNotNull(footballDetails(game.title,game.category,game.metadata))
+        val other=Programme("Rangers vs Penguins",now,now+7200000L,
+            metadata=FootballMetadata(sport="Hóquei",description="Jogo de futebol amanhã"))
+        assertEquals(SportKind.HOCKEY,detectOtherSport(other))
+    }
+
     @Test fun unclearOrNonSportTitlesStayOutOfTheCatalog() {
         val movie=match("x","Spy x Family",category="Anime")
         val news=match("b","Debate sobre os destaques da NBA")

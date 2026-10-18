@@ -18,7 +18,10 @@ private val matchSeparator = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
 fun footballDetails(title: String, category: String = "", metadata: FootballMetadata = FootballMetadata(),
     channelNames: List<String> = emptyList(), playlistGroups: List<String> = emptyList()): FootballDetails? {
     val text = normalized("$title $category ${metadata.sport}")
-    if (Regex("\\b(futebol americano|american football|nfl|rugby|basquete|basketball|nba|baseball|beisebol|ufc|bjj|volei|voleibol|tenis|handebol|futsal)\\b").containsMatchIn(text)) return null
+    // A head-to-head fixture does not imply soccer. Source sport and competition
+    // evidence take precedence, including longer EPG descriptions of the NHL.
+    if (detectOtherSport(Programme(title,0L,1L,category=category,metadata=metadata)) != null) return null
+    if (Regex("\\b(rugby|ufc|bjj|futsal)\\b").containsMatchIn(text)) return null
     if (Regex("\\b(resenha|debate|mesa redonda|central do|noticias|jornal|sportcenter|sportscenter|gols da rodada|melhores momentos|documentario|40 minutos)\\b").containsMatchIn(text)) return null
     val clean=title.replace(Regex("(?i)\\s*[\\[(](?:reprise|replay|ao vivo|live)[\\])]\\s*")," ")
         .replace(Regex("(?i)^(?:reprise|replay)\\s*(?::|-)?\\s+|\\s+[-–—]\\s+(?:reprise|replay|ao vivo|live)$"),"")

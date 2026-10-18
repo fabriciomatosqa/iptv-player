@@ -184,11 +184,16 @@ fun selectAnimePoster(title: String, json: JSONObject): String? {
 }
 fun sportsBundle(teamsJson: JSONObject, leagueJson: JSONObject): JSONObject {
     val league=teamsJson.optJSONArray("sports")?.optJSONObject(0)?.optJSONArray("leagues")?.optJSONObject(0)
+        ?: teamsJson.optJSONArray("leagues")?.optJSONObject(0)
     val teams=JSONArray()
-    league?.optJSONArray("teams")?.let { list -> for(i in 0 until list.length()) {
-        val team=list.optJSONObject(i)?.optJSONObject("team") ?: continue
-        val names=JSONArray(listOf("displayName","shortDisplayName","name","nickname","location","abbreviation").map {team.optString(it)}.filter(String::isNotBlank).distinct())
-        teams.put(JSONObject().put("names",names).put("badge",team.optJSONArray("logos")?.optJSONObject(0)?.optString("href").orEmpty()))
+    (league?.optJSONArray("teams") ?: teamsJson.optJSONArray("teams"))?.let { list -> for(i in 0 until list.length()) {
+        val item=list.optJSONObject(i) ?: continue
+        val team=item.optJSONObject("team") ?: item
+        val names=JSONArray(listOf("displayName","shortDisplayName","name","nickname","location","abbreviation")
+            .map {team.optString(it)}.filter(String::isNotBlank).distinct())
+        val badge=team.optJSONArray("logos")?.optJSONObject(0)?.optString("href")
+            .orEmpty().ifBlank { team.optString("logo") }
+        teams.put(JSONObject().put("names",names).put("badge",badge))
     } }
     return JSONObject().put("teams",teams).put("badge",leagueJson.optJSONArray("leagues")?.optJSONObject(0)?.optJSONArray("logos")?.optJSONObject(0)?.optString("href").orEmpty())
 }

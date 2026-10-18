@@ -34,7 +34,8 @@ val sportsCompetitionRules = listOf(
     SportsCompetitionRule("ncaa.fb", SportKind.AMERICAN_FOOTBALL, "NCAA — Futebol Americano", listOf("ncaa football", "college football"), 30),
     SportsCompetitionRule("mlb", SportKind.BASEBALL, "MLB", listOf("mlb", "major league baseball", "liga nacional, os .*phillies", "liga americana de beisebol"), 10),
     SportsCompetitionRule("npb", SportKind.BASEBALL, "NPB — Japão", listOf("npb", "nippon professional baseball"), 20),
-    SportsCompetitionRule("nhl", SportKind.HOCKEY, "NHL", listOf("nhl", "national hockey league"), 10),
+    SportsCompetitionRule("nhl", SportKind.HOCKEY, "NHL", listOf("nhl", "national hockey league",
+        "liga nacional de hoquei", "liga de hoquei no gelo do mundo", "liga de hockey no gelo do mundo"), 10),
     SportsCompetitionRule("khl", SportKind.HOCKEY, "KHL", listOf("khl", "kontinental hockey league"), 20),
     SportsCompetitionRule("f1", SportKind.MOTORSPORT, "Fórmula 1", listOf("formula 1", "formula one", "f1", "grand prix de formula 1"), 10),
     SportsCompetitionRule("f2", SportKind.MOTORSPORT, "Fórmula 2", listOf("formula 2", "f2", "fia formula 2"), 20),
@@ -61,11 +62,9 @@ private val compiledSportsRules=sportsCompetitionRules.map { rule ->
     rule to rule.patterns.map { Regex("(?<![a-z0-9])(?:$it)(?![a-z0-9])") }
 }
 private val headToHead = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
-private fun evidenceString(programme: Programme): String = listOf(
-    programme.metadata.sport,programme.metadata.competition,programme.category,
-    programme.metadata.originalTitle,programme.title,programme.metadata.subtitle,
-    programme.metadata.description
-).joinToString(" ")
+// Do not concatenate all source fields into a single string: an unrelated word in a
+// long description may otherwise override a trustworthy football competition.
+private val footballSportMarker=Regex("""\\b(futebol|soccer|football)\\b""")
 
 /** No team-name inference: require explicit sporting context in the EPG or title. */
 private val sportsMarkers = listOf(
@@ -79,8 +78,23 @@ private val sportsMarkers = listOf(
     SportKind.HANDBALL to Regex("\\b(handebol|handball)\\b")
 )
 fun detectOtherSport(programme: Programme): SportKind? {
-    val value=normalized(evidenceString(programme))
-    return sportsMarkers.firstOrNull { it.second.containsMatchIn(value) }?.first
+    // Strong evidence first, before free-form descriptions. A generic broadcaster
+    // like "ESPN HD" or a team nickname is not sufficient to identify a sport.
+    val primary=listOf(
+        programme.metadata.sport, programme.metadata.competition,
+        programme.title, programme.category, programme.metadata.originalTitle,
+        programme.metadata.subtitle
+    )
+    for(source in primary) {
+        val key=normalized(source)
+        if(key.isBlank())continue
+        sportsMarkers.firstOrNull { (_,marker)->marker.containsMatchIn(key) }?.let { return it.first }
+    }
+    // Editorial descriptions sometimes mention many sports. Use them only if the
+    // structured data did not explicitly identify the programme as football.
+    if(primary.any { footballSportMarker.containsMatchIn(normalized(it)) }) return null
+    val description=normalized(programme.metadata.description)
+    return sportsMarkers.firstOrNull { it.second.containsMatchIn(description) }?.first
 }
 fun sportsProgrammeCandidate(programme: Programme): Boolean {
     val kind=detectOtherSport(programme) ?: return false

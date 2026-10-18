@@ -35,6 +35,9 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
     guide.matches.asSequence().sortedBy { it.programme.start }.forEach { entry ->
         val available = (byId[entry.channelId].orEmpty() + epgNames[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
             .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
+        // Do not import basketball, hockey, NFL, MLB, etc. into the football fixtures
+        // even when an EPG description contains "Liga", "Campeonato" or "vs".
+        if (detectOtherSport(entry.programme) != null) return@forEach
         val details = footballDetails(entry.programme.title, entry.programme.category, entry.programme.metadata,
             available.map { it.name }, available.map { it.group }) ?: return@forEach
         val teams = listOf(footballScoreTeamKey(details.home), footballScoreTeamKey(details.away)).sorted()

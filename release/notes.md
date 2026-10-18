@@ -1,9 +1,11 @@
-AURORA IPTV Android 1.12.11 — escudos nas partidas dos esportes em equipe.
+AURORA IPTV Android 1.12.13 — correção de modalidades e escudos esportivos.
 
-- Exibe os escudos das equipes ao lado do nome nos cards de Basquete, Futebol Americano, Beisebol, Hóquei, Vôlei e Handebol, quando disponíveis em fontes confiáveis.
-- Consulta logos por modalidade e liga, incluindo times universitários de futebol americano (BYU e Notre Dame).
-- Preserva cache de imagens, conferência rigorosa dos nomes e fallback para iniciais em caso de indisponibilidade.
-- O layout dos eventos de automobilismo e esportes individuais permanece adequado a cada modalidade.
-- Preserva a atualização online, assinatura e dados do aplicativo.
+- Corrige a classificação que colocava partidas de hóquei (incluindo Vegas Golden Knights x Tampa Bay Lightning), basquete, beisebol e outros esportes na seção Futebol.
+- Prioriza a modalidade informada na programação antes de interpretar um confronto ou usar descrições longas de campeonatos.
+- A liga descritiva de hóquei mostrada na programação passa a ser identificada como NHL, com aba curta e correta.
+- Mantém os eventos no esporte correspondente e reúne canais da mesma partida sem duplicar cartões.
+- Reforça a busca de escudos de clubes por ligas oficiais com correspondência segura do nome do time, sem inventar imagens.
+- Adiciona testes de regressão para a separação dos esportes e para os escudos Vegas Golden Knights/Tampa Bay Lightning.
+- Preserva dados locais, favoritos, atualização online e assinatura de instalação.
 
 Atualize no app: Configurações → Atualizar online → Verificar atualizações.
