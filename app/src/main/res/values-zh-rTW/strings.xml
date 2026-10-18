@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">目前無法取得比賽事件。</string>
     <string name="football_incidents_empty">此場比賽沒有進球或紅黃牌紀錄。</string>
     <string name="womens_games">女子足球</string>
+    <string name="sports_hub">體育</string>
+    <string name="sports_hub_help">足球、籃球、賽車及更多項目</string>
+    <string name="sports_filter_help">選擇運動項目和賽事</string>
+    <string name="sports_competition">賽事</string>
+    <string name="sports_scheduled">預定轉播</string>
 </resources>

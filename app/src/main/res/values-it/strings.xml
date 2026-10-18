@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Gli eventi della partita non sono disponibili.</string>
     <string name="football_incidents_empty">Nessun gol o cartellino registrato per questa partita.</string>
     <string name="womens_games">Calcio femminile</string>
+    <string name="sports_hub">Sport</string>
+    <string name="sports_hub_help">Calcio, basket, automobilismo e altro</string>
+    <string name="sports_filter_help">Scegli uno sport e una competizione</string>
+    <string name="sports_competition">Competizione</string>
+    <string name="sports_scheduled">Trasmissione programmata</string>
 </resources>

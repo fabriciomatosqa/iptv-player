@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Wedstrijdgebeurtenissen zijn nu niet beschikbaar.</string>
     <string name="football_incidents_empty">Geen doelpunten of kaarten gemeld voor deze wedstrijd.</string>
     <string name="womens_games">Vrouwenvoetbal</string>
+    <string name="sports_hub">Sport</string>
+    <string name="sports_hub_help">Voetbal, basketbal, autosport en meer</string>
+    <string name="sports_filter_help">Kies een sport en competitie</string>
+    <string name="sports_competition">Competitie</string>
+    <string name="sports_scheduled">Geplande uitzending</string>
 </resources>

@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">أحداث المباراة غير متاحة حاليًا.</string>
     <string name="football_incidents_empty">لم تُسجل أهداف أو بطاقات لهذه المباراة.</string>
     <string name="womens_games">مباريات السيدات</string>
+    <string name="sports_hub">الرياضة</string>
+    <string name="sports_hub_help">كرة القدم وكرة السلة وسباقات السيارات والمزيد</string>
+    <string name="sports_filter_help">اختر الرياضة والبطولة</string>
+    <string name="sports_competition">البطولة</string>
+    <string name="sports_scheduled">بث مجدول</string>
 </resources>

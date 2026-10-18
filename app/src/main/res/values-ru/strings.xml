@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">События матча сейчас недоступны.</string>
     <string name="football_incidents_empty">Нет данных о голах и карточках в этом матче.</string>
     <string name="womens_games">Женский футбол</string>
+    <string name="sports_hub">Спорт</string>
+    <string name="sports_hub_help">Футбол, баскетбол, автоспорт и другие виды</string>
+    <string name="sports_filter_help">Выберите вид спорта и турнир</string>
+    <string name="sports_competition">Турнир</string>
+    <string name="sports_scheduled">Запланированная трансляция</string>
 </resources>

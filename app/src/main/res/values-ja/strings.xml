@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">試合の出来事は現在取得できません。</string>
     <string name="football_incidents_empty">この試合のゴールやカードの記録はありません。</string>
     <string name="womens_games">女子サッカー</string>
+    <string name="sports_hub">スポーツ</string>
+    <string name="sports_hub_help">サッカー、バスケットボール、モータースポーツなど</string>
+    <string name="sports_filter_help">競技と大会を選択</string>
+    <string name="sports_competition">大会</string>
+    <string name="sports_scheduled">放送予定</string>
 </resources>

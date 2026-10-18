@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Події матчу зараз недоступні.</string>
     <string name="football_incidents_empty">Немає даних про голи й картки в цьому матчі.</string>
     <string name="womens_games">Жіночий футбол</string>
+    <string name="sports_hub">Спорт</string>
+    <string name="sports_hub_help">Футбол, баскетбол, автоспорт та інші види</string>
+    <string name="sports_filter_help">Виберіть вид спорту та турнір</string>
+    <string name="sports_competition">Турнір</string>
+    <string name="sports_scheduled">Запланована трансляція</string>
 </resources>
