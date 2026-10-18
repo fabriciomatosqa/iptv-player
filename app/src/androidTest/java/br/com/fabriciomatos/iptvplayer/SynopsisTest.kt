@@ -80,9 +80,9 @@ class SynopsisTest {
             compose.waitUntil(10000) {!model.filtering && model.visibleCount==1 && compose.onAllNodesWithText(movie.name).fetchSemanticsNodes().isNotEmpty() && compose.onAllNodesWithTag("synopsis_content_action",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
             assertEquals("História do filme de teste.",runBlocking { model.synopsis(movie,null).plot })
             compose.onNodeWithText(movie.name).assertIsDisplayed()
-            compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
-            compose.waitForIdle()
-            try {compose.waitUntil(30000) {compose.onAllNodesWithText("História do filme de teste.").fetchSemanticsNodes().isNotEmpty()}}
+            compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true)
+                .performSemanticsAction(SemanticsActions.OnClick) {it()}
+            try {awaitSynopsis("História do filme de teste.")}
             catch(e: androidx.compose.ui.test.ComposeTimeoutException) {screenshot("movie-synopsis-failure");throw e}
             assertNull(model.current);screenshot("movie-synopsis")
             closeSynopsis(scenario)
@@ -90,19 +90,29 @@ class SynopsisTest {
             compose.waitUntil(10000) {compose.onAllNodesWithText("Série de teste").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Série de teste").performClick()
             compose.waitUntil(10000) {!model.filtering && compose.onAllNodesWithText(episode.name).fetchSemanticsNodes().isNotEmpty()}
-            compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true).performClick()
-            compose.waitForIdle()
-            compose.waitUntil(10000) {compose.onAllNodesWithText("História do episódio piloto.").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true)
+                .performSemanticsAction(SemanticsActions.OnClick) {it()}
+            awaitSynopsis("História do episódio piloto.")
             compose.onNodeWithText("História da série de teste.").assertExists()
             assertNull(model.current);screenshot("series-episode-synopsis")
             closeSynopsis(scenario)
             // Exercise the accessible button action after native dialog removal; input dispatch can lag window focus.
             compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).assertIsDisplayed()
                 .performSemanticsAction(SemanticsActions.OnClick) {it()}
-            compose.waitForIdle()
-            compose.waitUntil(10000) {compose.onAllNodesWithText("História da série de teste.").fetchSemanticsNodes().isNotEmpty()}
+            awaitSynopsis("História da série de teste.")
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
         }
+    }
+    private fun awaitSynopsis(text: String) {
+        compose.onNodeWithTag("synopsis_dialog",useUnmergedTree=true).assertExists()
+        compose.waitUntil(30000) {
+            // IO completion and the native dialog's recomposition may land on different frames.
+            // Advance several frames explicitly, then synchronize before reading the dialog tree.
+            compose.mainClock.advanceTimeBy(100)
+            compose.waitForIdle()
+            compose.onAllNodesWithText(text,useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText(text,useUnmergedTree=true).assertIsDisplayed()
     }
     private fun closeSynopsis(scenario: ActivityScenario<MainActivity>) {
         compose.onNodeWithText("Fechar").performClick()
