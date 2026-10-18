@@ -106,6 +106,41 @@ class GroupLogoRulesTest {
         assertEquals(logo,sportsLeagueLogo("NFL",listOf(nfl)))
     }
 
+    @Test fun aSingleUfcChannelCanProvideTheCategoryLogo() {
+        val logo="https://provider.example/ufc.png"
+        val group="UFC PARAMOUNT+ ⭐"
+        val cards=listOf(ChannelLogoCandidate("UFC - FHD",logo))
+        assertEquals(logo,providerGroupLogo(group,cards))
+        assertEquals(100.coerceAtMost(groupLogoMatchScore(group,"UFC - HD")),
+            groupLogoMatchScore(group,"UFC - HD"))
+    }
+
+    @Test fun sportsLeagueAndSoccerTabsPreferDedicatedProviderImages() {
+        fun channel(name:String,group:String,logo:String):Channel =
+            Channel(name,"https://example.test/"+normalized(name),group,imageUrl=logo)
+        val nflLogo="https://provider.example/nfl.png"
+        val nfl=listOf(
+            channel("Miami x Bengals","PPV | NFL",nflLogo),
+            channel("NFL Network HD","PPV | NFL",nflLogo),
+            channel("Eagles x Patriots","PPV | NFL",nflLogo)
+        )
+        assertEquals(nflLogo,sportsLeagueLogo("NFL",nfl))
+        val broadcaster=channel("ESPN HD","Canais Esportivos","https://provider.example/espn.png")
+        assertEquals("",sportsLeagueLogo("NHL",listOf(broadcaster)))
+        assertEquals("",sportsLeagueLogo("NBA",listOf(broadcaster)))
+
+        val brasilLogo="https://provider.example/brasileirao.png"
+        val brasileirao=channel("Brasileirão HD","BRASILEIRÃO",brasilLogo)
+        val start=1800000000000L
+        val p=Programme("Flamengo x Santos - Brasileirão",start,start+3600000L)
+        val match=FootballMatch("bra",p,listOf(brasileirao),FootballDetails("Brasileirão","Flamengo","Santos"))
+        val tab=FootballTab(FOOTBALL_BRAZIL,"Brasileirão")
+        assertEquals(brasilLogo,footballLeagueTabLogo(tab,listOf(match)))
+        assertEquals("",footballLeagueTabLogo(FootballTab(FOOTBALL_WOMEN,"Jogos Femininos"),listOf(match)))
+        assertEquals("",footballLeagueTabLogo(FootballTab(FOOTBALL_FIFA,"FIFA / Seleções"),listOf(match)))
+        assertEquals("",footballLeagueTabLogo(tab,listOf(match.copy(channels=listOf(broadcaster)))))
+    }
+
     @Test fun unrelatedChannelsAndGenericGroupsNeverSupplyLogos() {
         assertEquals(0, groupLogoMatchScore("REDE BANDEIRANTES", "RECORD TV"))
         assertEquals(0, groupLogoMatchScore("REDE RECORD", "BAND CURITIBA HD"))

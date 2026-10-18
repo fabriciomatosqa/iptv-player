@@ -75,6 +75,7 @@ private fun groupAliases(core: String): List<String> = when(core) {
     "insports" -> listOf("nsports", "in sports")
     "cazetv" -> listOf("caze tv", "cazetv")
     "amazon prime" -> listOf("amazon prime", "prime video", "amazon prime video")
+    "ufc paramount", "ufc paramount plus" -> listOf("ufc")
     "bandeirantes", "band" -> listOf("band", "bandeirantes")
     else -> listOf(core)
 }
@@ -124,7 +125,32 @@ internal fun providerGroupLogo(group: String, candidates: List<ChannelLogoCandid
     return if(allowConsensus && valid.size>=2)pick(valid,0.66) else ""
 }
 
-/** A sports LEAGUE may use a provider image only when a channel explicitly
- * names that league. Never display an ESPN logo as if it were an NHL crest. */
-internal fun sportsLeagueLogo(competition: String, channels: List<Channel>): String =
-    providerGroupLogo(competition,channels.map {ChannelLogoCandidate(it.name,it.imageUrl)},false)
+/**
+ * Reuse the original tvg-logo from a dedicated sports channel or from a matching
+ * provider group (PPV | NFL, PPV | NBA, etc.). The group variant is accepted only
+ * with consensus, never from a random broadcaster carrying that league's game.
+ * This avoids putting ESPN's logo on an NHL or Brasileirão filter.
+ */
+internal fun sportsLeagueLogo(competition: String, channels: List<Channel>): String {
+    if(channels.isEmpty()) return ""
+    val direct=providerGroupLogo(competition,channels.map {ChannelLogoCandidate(it.name,it.imageUrl)},false)
+    if(direct.isNotBlank()) return direct
+    val logos=channels.groupBy {it.group}
+        .filterKeys {groupLogoMatchScore(competition,it)>0}
+        .values.mapNotNull {groupChannels ->
+            providerGroupLogo(groupChannels.first().group,
+                groupChannels.map {ChannelLogoCandidate(it.name,it.imageUrl)})
+                .takeIf(String::isNotBlank)
+        }.distinct()
+    return logos.singleOrNull().orEmpty()
+}
+
+/** Soccer championship tabs share the same safe provider-first rule as other sports. */
+internal fun footballLeagueTabLogo(tab: FootballTab, matches: List<FootballMatch>): String {
+    if(tab.key in setOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_FIFA,FOOTBALL_WOMEN)) return ""
+    val channels=matches.asSequence()
+        .filter {footballTabKey(it.details)==tab.key}
+        .flatMap {it.channels.asSequence()}
+        .distinctBy {it.url}.toList()
+    return sportsLeagueLogo(tab.title,channels)
+}

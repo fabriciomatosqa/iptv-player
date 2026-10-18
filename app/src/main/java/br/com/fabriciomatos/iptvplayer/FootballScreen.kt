@@ -142,8 +142,9 @@ import java.util.Locale
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(tabs,key={it.key}) { tab ->
                     val selected=activeTab==tab.key
-                    val leagueLogo=remember(tab.key,model.sports,model.selectedSport) {
-                        if(soccer || tab.key==SPORTS_LIVE || tab.key==SPORTS_GAMES) ""
+                    val leagueLogo=remember(tab.key,tab.title,model.football,model.sports,model.selectedSport) {
+                        if(soccer) footballLeagueTabLogo(tab,model.football)
+                        else if(tab.key==SPORTS_LIVE || tab.key==SPORTS_GAMES) ""
                         else sportsLeagueLogo(tab.title,model.sports
                             .filter {it.sport==model.selectedSport && it.competitionId==tab.key}
                             .flatMap {it.channels}.distinctBy {it.url})
@@ -225,6 +226,9 @@ import java.util.Locale
     }
     val live=event.programme.broadcast==BroadcastHint.LIVE &&
         now in event.programme.start..event.programme.end
+    val eventLeagueLogo=remember(event.competition,event.channels) {
+        sportsLeagueLogo(event.competition,event.channels)
+    }
     val icon=when(event.sport) {
         SportKind.FOOTBALL->Icons.Default.SportsSoccer
         SportKind.BASKETBALL->Icons.Default.SportsBasketball
@@ -243,7 +247,10 @@ import java.util.Locale
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(11.dp)) {
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp))
                     .background(colors.mint.copy(alpha=.12f)),contentAlignment=Alignment.Center) {
-                    Icon(icon,null,tint=colors.mint,modifier=Modifier.size(23.dp))
+                    if(eventLeagueLogo.isNotBlank()) AsyncImage(catalogImage(eventLeagueLogo),null,
+                        Modifier.size(32.dp).clip(RoundedCornerShape(7.dp))
+                            .background(Color.White).padding(2.dp),contentScale=ContentScale.Fit)
+                    else Icon(icon,null,tint=colors.mint,modifier=Modifier.size(23.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(event.competition,maxLines=2,overflow=TextOverflow.Ellipsis,
