@@ -64,7 +64,7 @@ private val compiledSportsRules=sportsCompetitionRules.map { rule ->
 private val headToHead = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
 // Do not concatenate all source fields into a single string: an unrelated word in a
 // long description may otherwise override a trustworthy football competition.
-private val footballSportMarker=Regex("""\\b(futebol|soccer|football)\\b""")
+private val footballSportMarker=Regex("""\b(futebol|soccer|football)\b""")
 
 /** No team-name inference: require explicit sporting context in the EPG or title. */
 private val sportsMarkers = listOf(
