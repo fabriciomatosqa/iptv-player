@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -52,17 +53,25 @@ import java.util.Locale
     val soccer = model.selectedSport == SportKind.FOOTBALL
     val availableSports = remember(model.sports) {
         SportKind.entries.filter { sport ->
-            sport == SportKind.FOOTBALL || model.sports.any { it.sport == sport }
+            sport == SportKind.FOOTBALL || sport == SportKind.MOTORSPORT || model.sports.any { it.sport == sport }
         }
     }
     val tabs = remember(model.football,model.sports,model.selectedSport) {
         if (soccer) footballTabs(model.football)
-        else sportsCategories(model.sports,model.selectedSport).map {
+        else sportsCategories(model.sports,model.selectedSport).let { categories ->
+            if(model.selectedSport==SportKind.MOTORSPORT && categories.none { it.id=="f1" })
+                categories+SportsCategory("f1","Fórmula 1",10) else categories
+        }.map {
             FootballTab(it.id,if(model.selectedSport==SportKind.MOTORSPORT && it.id==SPORTS_GAMES)
                 "Eventos" else it.title)
         }
     }
     val activeTab = if (soccer) canonicalFootballTab(model.footballTab) else model.sportsCategory
+    var championshipOpen by rememberSaveable(model.selectedSport,activeTab) { mutableStateOf(false) }
+    if(championshipOpen && model.selectedSport==SportKind.MOTORSPORT && activeTab=="f1") {
+        MotorsportChampionshipScreen(model) { championshipOpen=false }
+        return
+    }
     LaunchedEffect(model.selectedSport,tabs) {
         if (tabs.none { it.key == activeTab }) {
             if (soccer) model.footballTab=FOOTBALL_GAMES else model.sportsCategory=SPORTS_GAMES
@@ -170,6 +179,14 @@ import java.util.Locale
                             selectedLabelColor=colors.mint),
                         border=BorderStroke(1.dp,if(selected)colors.mint.copy(alpha=.5f)
                             else colors.muted.copy(alpha=.16f)))
+                }
+            }
+            if(model.selectedSport==SportKind.MOTORSPORT && activeTab=="f1") {
+                OutlinedButton(onClick={championshipOpen=true},
+                    modifier=Modifier.fillMaxWidth().padding(horizontal=16.dp).testTag("open_f1_championship")) {
+                    Icon(Icons.Default.EmojiEvents,null,Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Página do Campeonato · Fórmula 1")
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=6.dp),

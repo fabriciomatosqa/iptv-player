@@ -1,3 +1,11 @@
+## Versão 1.12.17
+
+- **Fórmula 1:** Página do Campeonato em Esportes → Automobilismo → Fórmula 1, com resumo, pilotos, construtores, próxima corrida, calendário e estatísticas.
+- **Dados reais:** integração Jolpica-F1 / Ergast com cache persistente, carregamento sob demanda e horários do aparelho. Resultados são consultados ao expandir uma etapa.
+- **Transmissões:** acesso preservado aos eventos existentes da playlist, sem criar canais ou resultados artificiais.
+- **Limites:** dados ausentes, histórico de pontos e disputa matemática do título ficam indisponíveis quando não há confirmação suficiente.
+- **Compatibilidade:** assinatura, playlists, favoritos, configurações e atualizador online preservados. Detalhes em [docs/motorsport-championship.md](docs/motorsport-championship.md).
+
 ## Versão 1.12.11
 
 - **Escudos nos esportes em equipe:** Basquete, Futebol Americano, Beisebol, Hóquei, Vôlei e Handebol usam a mesma apresentação de escudos do Futebol. Futebol Americano universitário (por exemplo BYU e Notre Dame) também busca seus distintivos.

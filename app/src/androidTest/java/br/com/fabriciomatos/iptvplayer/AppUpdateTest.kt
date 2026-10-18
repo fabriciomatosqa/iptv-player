@@ -21,6 +21,20 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.security.MessageDigest
 
+/** Hash large APK fixtures without allocating the entire APK in the emulator's heap. */
+private fun File.updateFixtureSha256(): String {
+    val digest=MessageDigest.getInstance("SHA-256")
+    inputStream().use { input ->
+        val buffer=ByteArray(8192)
+        while(true) {
+            val count=input.read(buffer)
+            if(count<0)break
+            digest.update(buffer,0,count)
+        }
+    }
+    return digest.digest().hex()
+}
+
 private fun releaseEntry(version: String, size: Long, draft: Boolean = false, prerelease: Boolean = false) = JSONObject()
     .put("tag_name", "android-v$version").put("draft", draft).put("prerelease", prerelease)
     .put("assets", JSONArray().also { assets -> listOf(UPDATE_MANIFEST_NAME, UPDATE_APK_NAME).forEach { name ->
@@ -32,7 +46,7 @@ private class UpdateFixture(val context: Context) {
     val apk = File(context.applicationInfo.sourceDir)
     val update = AppUpdate(BuildConfig.VERSION_CODE.toLong(), BuildConfig.VERSION_NAME, 24,
         "https://github.com/$UPDATE_REPOSITORY/releases/download/android-v${BuildConfig.VERSION_NAME}/$UPDATE_APK_NAME",
-        apk.length(), MessageDigest.getInstance("SHA-256").digest(apk.readBytes()).hex(), "Atualização de teste")
+        apk.length(), apk.updateFixtureSha256(), "Atualização de teste")
     var advertised = update
     var payload = apk
     var releases = JSONArray().put(releaseEntry(update.versionName, update.size)).toString()
@@ -106,14 +120,14 @@ class AppUpdateTest {
         failure(R.string.app_update_integrity_error) { repository.download(fixture.update.copy(sha256 = "0".repeat(64)), {}, {}) }
         failure(R.string.app_update_invalid) { repository.download(fixture.update.copy(size = fixture.update.size + 1), {}, {}) }
         val testApk = File(InstrumentationRegistry.getInstrumentation().context.applicationInfo.sourceDir)
-        val wrongPackage = fixture.update.copy(size = testApk.length(), sha256 = MessageDigest.getInstance("SHA-256").digest(testApk.readBytes()).hex())
+        val wrongPackage = fixture.update.copy(size = testApk.length(), sha256 = testApk.updateFixtureSha256())
         fixture.payload = testApk
         failure(R.string.app_update_invalid) { repository.download(wrongPackage, {}, {}) }
         val wrongSigner = File(context.cacheDir, "wrong-signer.apk")
         try {
             InstrumentationRegistry.getInstrumentation().context.assets.open("wrong-signer.apk").use { input -> wrongSigner.outputStream().use { input.copyTo(it) } }
             fixture.payload = wrongSigner
-            val wrongSignature = fixture.update.copy(size = wrongSigner.length(), sha256 = MessageDigest.getInstance("SHA-256").digest(wrongSigner.readBytes()).hex())
+            val wrongSignature = fixture.update.copy(size = wrongSigner.length(), sha256 = wrongSigner.updateFixtureSha256())
             failure(R.string.app_update_signature_error) { repository.download(wrongSignature, {}, {}) }
         } finally { wrongSigner.delete() }
         assertFalse(repository.apkFile.exists()); assertNull(repository.restorePrepared())

@@ -52,6 +52,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private val repository = PlaylistRepository(application)
     private val artwork = ArtworkResolver(repository)
     private val scores = FootballScoreRepository(repository)
+    internal val motorsportChampionship = MotorsportChampionshipRepository(
+        cached={ repository.cachedArtwork(it) },
+        save={ key,json -> repository.saveArtwork(key,json,30L*86400000) }
+    )
     private val synopses = SynopsisRepository(repository)
     private val scoreRefresh = Mutex()
     private val coverRequests = mutableMapOf<String,Deferred<String?>>()
