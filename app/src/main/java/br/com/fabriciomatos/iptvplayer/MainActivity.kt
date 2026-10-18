@@ -279,11 +279,11 @@ private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = M
 @Composable
 private fun FootballSummary(model: AuroraViewModel,modifier: Modifier=Modifier) {
     Row(modifier.clip(Shape).background(Panel).clickable { model.showFootball() }.padding(horizontal=16.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.SportsSoccer, null, tint = Mint)
+        Icon(Icons.Default.EmojiEvents, null, tint = Mint)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(tr(R.string.football), fontWeight = FontWeight.SemiBold)
-            Text(tr(R.string.football_help), color = Muted, fontSize = 12.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+            Text(tr(R.string.sports_hub), fontWeight = FontWeight.SemiBold)
+            Text(tr(R.string.sports_hub_help), color = Muted, fontSize = 12.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
         }
         Icon(Icons.Default.ChevronRight, null, tint = Muted)
     }

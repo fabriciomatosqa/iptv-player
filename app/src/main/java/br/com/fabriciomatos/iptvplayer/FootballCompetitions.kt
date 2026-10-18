@@ -56,7 +56,16 @@ private fun competitionBase(value: String) = normalized(value)
 private val compiledFootballRules = footballCompetitionRules.map { it to Regex("(?:${it.aliases})") }
 fun footballCompetitionRule(value: String): FootballCompetitionRule? {
     val key = competitionBase(value)
-    return compiledFootballRules.firstOrNull { it.second.matches(key) }?.first
+    val exact = compiledFootballRules.firstOrNull { it.second.matches(key) }?.first
+    if(exact!=null) return exact
+    // Some providers append an editorial paragraph after the official league name.
+    // Only strip a real prose delimiter, never a division qualifier or age group.
+    val preface = listOf(',', ';', ':').fold(value) {acc, delimiter ->
+        acc.substringBefore(delimiter)
+    }.trim()
+    if(preface==value.trim()) return null
+    val concise=competitionBase(preface)
+    return compiledFootballRules.firstOrNull {it.second.matches(concise)}?.first
 }
 /** Preserve qualifiers in prose; a partial alias must never erase a country or lower division. */
 fun footballCompetitionMention(value: String): String? {
@@ -78,12 +87,14 @@ fun footballCompetitionRule(details: FootballDetails): FootballCompetitionRule? 
 fun footballAgeGroup(value: String): String = Regex("\\b(?:sub|u|under)\\s*(\\d{2})\\b")
     .find(normalized(value))?.groupValues?.get(1).orEmpty()
 fun footballCompetitionIdentity(details: FootballDetails): String {
-    val base = footballCompetitionRule(details)?.id ?: competitionBase("${details.competition} ${details.country}").ifBlank { "unknown" }
+    val base = footballCompetitionRule(details)?.id ?: competitionBase(details.competition.substringBefore(',').substringBefore(';')+" "+details.country).ifBlank { "unknown" }
     val gender = when(details.gender) { FootballGender.WOMEN -> ":women"; FootballGender.CONFLICT -> ":conflict"; else -> "" }
     return base + gender + details.ageGroup.takeIf(String::isNotBlank)?.let { ":u$it" }.orEmpty()
 }
 fun footballCompetitionTitle(details: FootballDetails): String {
-    val title = footballCompetitionRule(details)?.title ?: listOf(details.competition,details.country).filter(String::isNotBlank).joinToString(" — ")
+    val title = footballCompetitionRule(details)?.title ?:
+        details.competition.trim().substringBefore(',').substringBefore(';').substringBefore(':')
+            .take(52).trim().ifBlank { "Outro campeonato" }
     return title + (if(details.gender == FootballGender.WOMEN && footballGender(title) != FootballGender.WOMEN) " Feminina" else "") +
         (if(details.ageGroup.isNotBlank() && footballAgeGroup(title).isBlank()) " Sub-${details.ageGroup}" else "")
 }

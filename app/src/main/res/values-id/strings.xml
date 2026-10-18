@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Peristiwa pertandingan belum tersedia.</string>
     <string name="football_incidents_empty">Tidak ada informasi gol atau kartu untuk pertandingan ini.</string>
     <string name="womens_games">Sepak Bola Wanita</string>
+    <string name="sports_hub">Olahraga</string>
+    <string name="sports_hub_help">Sepak bola, bola basket, balap motor, dan lainnya</string>
+    <string name="sports_filter_help">Pilih olahraga dan kompetisi</string>
+    <string name="sports_competition">Kompetisi</string>
+    <string name="sports_scheduled">Siaran terjadwal</string>
 </resources>

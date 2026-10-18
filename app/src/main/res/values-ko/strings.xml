@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">경기 이벤트를 현재 불러올 수 없습니다.</string>
     <string name="football_incidents_empty">이 경기에 기록된 득점이나 카드가 없습니다.</string>
     <string name="womens_games">여자 축구</string>
+    <string name="sports_hub">스포츠</string>
+    <string name="sports_hub_help">축구, 농구, 모터스포츠 등</string>
+    <string name="sports_filter_help">종목 및 대회 선택</string>
+    <string name="sports_competition">대회</string>
+    <string name="sports_scheduled">방송 예정</string>
 </resources>

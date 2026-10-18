@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Match incidents aren\'t available right now.</string>
     <string name="football_incidents_empty">No goals or cards were reported for this match.</string>
     <string name="womens_games">Women’s Games</string>
+    <string name="sports_hub">Sports</string>
+    <string name="sports_hub_help">Football, basketball, motorsports and more</string>
+    <string name="sports_filter_help">Choose a sport and competition</string>
+    <string name="sports_competition">Competition</string>
+    <string name="sports_scheduled">Scheduled broadcast</string>
 </resources>

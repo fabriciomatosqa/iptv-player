@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">मैच की घटनाएँ अभी उपलब्ध नहीं हैं।</string>
     <string name="football_incidents_empty">इस मैच में गोल या कार्ड की जानकारी नहीं है।</string>
     <string name="womens_games">महिला फ़ुटबॉल</string>
+    <string name="sports_hub">खेल</string>
+    <string name="sports_hub_help">फ़ुटबॉल, बास्केटबॉल, मोटरस्पोर्ट और अन्य</string>
+    <string name="sports_filter_help">खेल और प्रतियोगिता चुनें</string>
+    <string name="sports_competition">प्रतियोगिता</string>
+    <string name="sports_scheduled">निर्धारित प्रसारण</string>
 </resources>

@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Maç olayları şu anda kullanılamıyor.</string>
     <string name="football_incidents_empty">Bu maç için gol veya kart bilgisi yok.</string>
     <string name="womens_games">Kadın Futbolu</string>
+    <string name="sports_hub">Spor</string>
+    <string name="sports_hub_help">Futbol, basketbol, motor sporları ve daha fazlası</string>
+    <string name="sports_filter_help">Spor ve turnuva seçin</string>
+    <string name="sports_competition">Turnuva</string>
+    <string name="sports_scheduled">Planlanan yayın</string>
 </resources>

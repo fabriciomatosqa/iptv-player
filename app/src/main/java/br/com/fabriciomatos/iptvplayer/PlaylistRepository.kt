@@ -666,7 +666,7 @@ class PlaylistRepository(context: Context) {
             while(it.moveToNext()) {
                 val hint=BroadcastHint.entries.getOrElse(it.getInt(8)){BroadcastHint.UNKNOWN}
                 val programme=Programme(it.getString(3),it.getLong(1),it.getLong(2),it.getString(4),it.getString(7),hint,decodeFootballMetadata(it.getString(9)))
-                if(it.getInt(5)==1 || hasFootballMatchup(programme.title))matches.add(GuideMatch(it.getString(0),programme))
+                if(it.getInt(5)==1 || hasFootballMatchup(programme.title) || sportsProgrammeCandidate(programme))matches.add(GuideMatch(it.getString(0),programme))
                 if(it.getInt(6)==1)shows.getOrPut(it.getString(0)){ArrayList()}.add(programme)
             }
         }

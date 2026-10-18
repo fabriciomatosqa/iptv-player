@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Wydarzenia meczowe są obecnie niedostępne.</string>
     <string name="football_incidents_empty">Brak informacji o golach i kartkach w tym meczu.</string>
     <string name="womens_games">Piłka nożna kobiet</string>
+    <string name="sports_hub">Sport</string>
+    <string name="sports_hub_help">Piłka nożna, koszykówka, sporty motorowe i więcej</string>
+    <string name="sports_filter_help">Wybierz sport i rozgrywki</string>
+    <string name="sports_competition">Rozgrywki</string>
+    <string name="sports_scheduled">Zaplanowana transmisja</string>
 </resources>

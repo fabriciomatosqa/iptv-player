@@ -2,6 +2,13 @@
 
 Aplicativo IPTV para Android 7+ com identidade visual inspirada nas auroras boreais.
 
+## Versão 1.12.10
+
+- **Esportes:** uma primeira navegação por modalidades (Futebol, Basquete, Futebol Americano, Beisebol, Automobilismo, Hóquei, Tênis, Vôlei, Handebol), seguida das competições de cada modalidade.
+- **EPG:** detecção independente de esporte, campeonato e status; eventos e confrontos são preservados em um catálogo compartilhado sem criar equipes fictícias para corridas.
+- **Nomes:** MLB, NFL, NBA, Fórmula 1 etc. recebem nomes curtos; descrições extensas sobre Premier League deixam de gerar abas duplicadas.
+- **Regressão:** placar de futebol e Futebol Feminino continuam separados, com canais, playlists, favoritos e atualizador online intactos.
+
 ## Versão 1.12.9
 
 - **Futebol feminino:** identificação estruturada pelo título original, competição, categoria e dados disponíveis, preservando o nome correto dos clubes. A aba **Jogos Femininos** agrupa torneios femininos sem confundir status "Ao Vivo" com nome de campeonato.

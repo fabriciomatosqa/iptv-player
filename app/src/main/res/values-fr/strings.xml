@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Les événements du match sont actuellement indisponibles.</string>
     <string name="football_incidents_empty">Aucun but ni carton enregistré pour ce match.</string>
     <string name="womens_games">Football féminin</string>
+    <string name="sports_hub">Sports</string>
+    <string name="sports_hub_help">Football, basket-ball, sport automobile et plus</string>
+    <string name="sports_filter_help">Choisissez un sport et une compétition</string>
+    <string name="sports_competition">Compétition</string>
+    <string name="sports_scheduled">Diffusion programmée</string>
 </resources>

@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Los eventos del partido no están disponibles ahora.</string>
     <string name="football_incidents_empty">No se registraron goles ni tarjetas para este partido.</string>
     <string name="womens_games">Fútbol femenino</string>
+    <string name="sports_hub">Deportes</string>
+    <string name="sports_hub_help">Fútbol, baloncesto, automovilismo y más</string>
+    <string name="sports_filter_help">Elige un deporte y una competición</string>
+    <string name="sports_competition">Competición</string>
+    <string name="sports_scheduled">Transmisión programada</string>
 </resources>

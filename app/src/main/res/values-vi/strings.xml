@@ -188,4 +188,9 @@
     <string name="football_incidents_unavailable">Hiện chưa có dữ liệu diễn biến trận đấu.</string>
     <string name="football_incidents_empty">Không có dữ liệu bàn thắng hoặc thẻ phạt cho trận này.</string>
     <string name="womens_games">Bóng đá nữ</string>
+    <string name="sports_hub">Thể thao</string>
+    <string name="sports_hub_help">Bóng đá, bóng rổ, đua xe và nhiều môn khác</string>
+    <string name="sports_filter_help">Chọn môn thể thao và giải đấu</string>
+    <string name="sports_competition">Giải đấu</string>
+    <string name="sports_scheduled">Phát sóng theo lịch</string>
 </resources>
