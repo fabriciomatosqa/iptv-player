@@ -157,6 +157,9 @@
     <string name="app_update_checking">Đang kiểm tra GitHub…</string>
     <string name="app_update_current">Bạn đang dùng phiên bản mới nhất.</string>
     <string name="app_update_available">Có phiên bản mới: %1$s</string>
+    <string name="app_update_startup_question">Bạn có muốn cập nhật AURORA IPTV ngay bây giờ không?</string>
+    <string name="app_update_startup_no">Không</string>
+    <string name="app_update_startup_yes">Có</string>
     <string name="app_update_downloading">Đang tải bản cập nhật: %1$d%%</string>
     <string name="app_update_verifying">Đang xác minh bản cập nhật…</string>
     <string name="app_update_ready">Phiên bản %1$s sẵn sàng cài đặt.</string>
