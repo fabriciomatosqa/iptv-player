@@ -166,6 +166,37 @@ class AppearanceAndPlaylistsTest {
         } finally {platformNight(originalNightMode)}
     }
 
+    @Test fun landscapeSidebarKeepsBrandFixedAndLeavesRoomForCategoryNames() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            lateinit var model: AuroraViewModel
+            scenario.onActivity { activity ->
+                model = ViewModelProvider(activity)[AuroraViewModel::class.java]
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
+            compose.waitUntil(15000) {
+                var landscape = false
+                scenario.onActivity { landscape = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+                model.initialized && landscape
+            }
+            scenario.onActivity { model.browse(MediaKind.SERIES) }
+            compose.waitUntil(10000) {
+                model.page == Page.LIBRARY &&
+                    compose.onAllNodesWithTag("landscape_rail_logo").fetchSemanticsNodes().isNotEmpty()
+            }
+            val logo = compose.onNodeWithTag("landscape_rail_logo").fetchSemanticsNode().boundsInRoot
+            val rail = compose.onNodeWithTag("landscape_navigation_rail").fetchSemanticsNode().boundsInRoot
+            val groups = compose.onNodeWithTag("landscape_group_panel").fetchSemanticsNode().boundsInRoot
+            val density = context.resources.displayMetrics.density
+            assertTrue("Remote navigation needs readable labels", rail.width >= 108f * density)
+            assertTrue("Categories need room for multi-line names", groups.width >= 166f * density)
+            compose.onNodeWithTag("landscape_rail_items").performScrollToIndex(6)
+            compose.waitForIdle()
+            assertEquals("The brand must not scroll with the remote navigation", logo,
+                compose.onNodeWithTag("landscape_rail_logo").fetchSemanticsNode().boundsInRoot)
+            compose.onNodeWithTag("landscape_categories_list").assertExists()
+        }
+    }
+
     private fun assertHomeFits() {
         listOf("home_recent","home_live","home_movies","home_series","home_football","home_total").forEach {compose.onNodeWithTag(it).assertIsDisplayed()}
         val viewport=compose.onNodeWithTag("home_content").fetchSemanticsNode().boundsInRoot

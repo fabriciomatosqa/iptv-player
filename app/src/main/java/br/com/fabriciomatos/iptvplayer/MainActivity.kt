@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -399,15 +400,19 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscapeHeight = maxHeight
             val compactLandscape = maxWidth < 920.dp || landscapeHeight < 520.dp
+            // Reserve readable widths for remote navigation and long category names.
+            // The content pane takes whatever space remains, instead of competing
+            // for the last pixels through multiple weights.
+            val navigationWidth = if (maxWidth < 760.dp) 112.dp else 124.dp
+            val categoryWidth = (maxWidth * 0.27f).coerceIn(170.dp, 224.dp)
             Row(Modifier.fillMaxSize()) {
-                NavigationRail(model, Modifier.width(if (compactLandscape) 82.dp else 102.dp).fillMaxHeight())
+                NavigationRail(model, Modifier.width(navigationWidth).fillMaxHeight()
+                    .testTag("landscape_navigation_rail"))
                 VerticalDivider(color = Elevated)
-                GroupPanel(model, Modifier.widthIn(
-                    min = if (compactLandscape) 110.dp else 135.dp,
-                    max = if (compactLandscape) 150.dp else 190.dp
-                ).weight(if (compactLandscape) 0.55f else 0.7f).fillMaxHeight())
+                GroupPanel(model, Modifier.width(categoryWidth).fillMaxHeight()
+                    .testTag("landscape_group_panel"))
                 VerticalDivider(color = Elevated)
-                Column(Modifier.weight(2.4f).fillMaxHeight()
+                Column(Modifier.weight(1f).fillMaxHeight()
                     .padding(horizontal = if (compactLandscape) 8.dp else 12.dp)) {
                     LibraryToolbar(model, compact = true)
                     if (model.current != null) {
@@ -522,10 +527,17 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
     }
     BoxWithConstraints(modifier) {
         val compact = maxWidth > maxHeight
-        // Keep a full poster and its caption visible on short landscape screens.
+        val landscape = LocalConfiguration.current.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        // Keep captions legible in projector mode: never pack five tiny posters
+        // into a narrow content pane just because the viewport is short.
+        // Preserve the existing portrait grid sizing exactly.
         val targetWidth = ((maxHeight - 82.dp).coerceAtLeast(48.dp) * (2f / 3f)).coerceAtMost(138.dp)
-        val columns = if (compact) GridCells.Fixed(kotlin.math.ceil((maxWidth.value + 12f) / (targetWidth.value + 12f)).toInt().coerceAtLeast(1))
-            else GridCells.Adaptive(138.dp)
+        val columns = when {
+            landscape -> GridCells.Adaptive(if (maxWidth < 390.dp) 146.dp else 164.dp)
+            compact -> GridCells.Fixed(kotlin.math.ceil((maxWidth.value + 12f) / (targetWidth.value + 12f)).toInt().coerceAtLeast(1))
+            else -> GridCells.Adaptive(138.dp)
+        }
         LazyVerticalGrid(columns = columns, state=scroll, modifier = Modifier.fillMaxSize().testTag("series_grid"),
             contentPadding = PaddingValues(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -544,7 +556,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
                     Column(Modifier.padding(if (compact) 8.dp else 10.dp)) {
                         Text(series.title, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 12.sp else 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text("${seasonCount(series.seasons.size)} • ${episodeCount(series.episodeCount)}", fontSize = if (compact) 9.sp else 10.sp, color = Muted,
-                            modifier = Modifier.padding(top = 4.dp), maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
+                            modifier = Modifier.padding(top = 4.dp), maxLines = if (landscape) 2 else if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -648,25 +660,37 @@ private fun LibraryToolbar(model: AuroraViewModel, compact: Boolean = false) {
 
 @Composable
 private fun NavigationRail(model: AuroraViewModel, modifier: Modifier) {
-    LazyColumn(modifier.background(Panel.copy(alpha = 0.5f)), contentPadding = PaddingValues(vertical = 8.dp)) {
-        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Logo(Modifier.size(48.dp)) } }
-        item { RailItem(tr(R.string.home), Icons.Default.Home, false) { model.page = Page.HOME } }
-        item { RailItem(tr(R.string.search), Icons.Default.Search, model.selectedKind == null && !model.favoritesOnly) { model.browse(null) } }
-        item { RailItem(tr(R.string.live), Icons.Default.LiveTv, model.selectedKind == MediaKind.LIVE && !model.favoritesOnly) { model.browse(MediaKind.LIVE) } }
-        item { RailItem(tr(R.string.movies), Icons.Default.Movie, model.selectedKind == MediaKind.MOVIES && !model.favoritesOnly) { model.browse(MediaKind.MOVIES) } }
-        item { RailItem(tr(R.string.series), Icons.Default.VideoLibrary, model.selectedKind == MediaKind.SERIES && !model.favoritesOnly) { model.browse(MediaKind.SERIES) } }
-        item { RailItem(tr(R.string.favorites), Icons.Default.Star, model.favoritesOnly) { model.browse(null, true) } }
-        item { RailItem(tr(R.string.settings), Icons.Default.Settings, false) { model.openSettings() } }
+    // The brand belongs to the stationary rail header, not the scrollable
+    // menu. Scrolling or navigating categories must never move the logo.
+    Column(modifier.background(Panel.copy(alpha = 0.5f))) {
+        Box(Modifier.fillMaxWidth().height(80.dp).testTag("landscape_rail_logo"),
+            contentAlignment = Alignment.Center) {
+            Logo(Modifier.size(54.dp))
+        }
+        HorizontalDivider(color = Elevated)
+        LazyColumn(Modifier.fillMaxWidth().weight(1f).testTag("landscape_rail_items"),
+            contentPadding = PaddingValues(vertical = 6.dp)) {
+            item { RailItem(tr(R.string.home), Icons.Default.Home, false) { model.page = Page.HOME } }
+            item { RailItem(tr(R.string.search), Icons.Default.Search, model.selectedKind == null && !model.favoritesOnly) { model.browse(null) } }
+            item { RailItem(tr(R.string.live), Icons.Default.LiveTv, model.selectedKind == MediaKind.LIVE && !model.favoritesOnly) { model.browse(MediaKind.LIVE) } }
+            item { RailItem(tr(R.string.movies), Icons.Default.Movie, model.selectedKind == MediaKind.MOVIES && !model.favoritesOnly) { model.browse(MediaKind.MOVIES) } }
+            item { RailItem(tr(R.string.series), Icons.Default.VideoLibrary, model.selectedKind == MediaKind.SERIES && !model.favoritesOnly) { model.browse(MediaKind.SERIES) } }
+            item { RailItem(tr(R.string.favorites), Icons.Default.Star, model.favoritesOnly) { model.browse(null, true) } }
+            item { RailItem(tr(R.string.settings), Icons.Default.Settings, false) { model.openSettings() } }
+        }
     }
 }
 
 @Composable
 private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent)
-        .landscapeRemoteClickable(onClick).padding(horizontal = 10.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 54.dp)
+        .background(if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent)
+        .landscapeRemoteClickable(onClick).padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = if (selected) Mint else Muted, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(title, color = if (selected) Txt else Muted, fontSize = 11.sp, maxLines = 1)
+        Spacer(Modifier.width(8.dp))
+        Text(title, color = if (selected) Txt else Muted, fontSize = 12.sp,
+            lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -674,14 +698,22 @@ private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClic
 private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
     val series = model.openedSeries
     val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
-    LazyColumn(modifier, contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        item { Text(if (series == null) tr(R.string.categories) else tr(R.string.seasons), color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
-        if (series == null) {
-            item { GroupRow(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
-            items(groups, key = { it }) { category -> GroupRow(groupDisplayName(groupLabel(category)), model.group == category) { model.selectGroup(category) } }
-        } else {
-            items(series.seasons, key = { it }) { season ->
-                GroupRow(tr(R.string.season,season), model.selectedSeason == season) { model.selectSeason(season) }
+    Column(modifier) {
+        Text(if (series == null) tr(R.string.categories) else tr(R.string.seasons),
+            color = Muted, fontSize = 11.sp, letterSpacing = 1.sp,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp))
+        LazyColumn(Modifier.fillMaxWidth().weight(1f).testTag("landscape_categories_list"),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (series == null) {
+                item { GroupRow(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
+                items(groups, key = { it }) { category ->
+                    GroupRow(groupDisplayName(groupLabel(category)), model.group == category) { model.selectGroup(category) }
+                }
+            } else {
+                items(series.seasons, key = { it }) { season ->
+                    GroupRow(tr(R.string.season, season), model.selectedSeason == season) { model.selectSeason(season) }
+                }
             }
         }
     }
@@ -689,9 +721,11 @@ private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
 
 @Composable
 private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
-    Text(title, color = if (selected) Mint else Txt, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
-            .background(if (selected) Elevated else Color.Transparent).landscapeRemoteClickable(onClick).padding(10.dp))
+    Text(title, color = if (selected) Mint else Txt, fontSize = 13.sp,
+        lineHeight = 18.sp, maxLines = 3, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(9.dp))
+            .background(if (selected) Elevated else Color.Transparent)
+            .landscapeRemoteClickable(onClick).padding(horizontal = 12.dp, vertical = 10.dp))
 }
 
 @Composable
