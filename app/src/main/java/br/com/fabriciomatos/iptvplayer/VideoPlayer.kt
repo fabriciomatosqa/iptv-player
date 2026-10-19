@@ -20,6 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +55,27 @@ internal fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: B
     var position by remember(player) {mutableLongStateOf(0)}
     var duration by remember(player) {mutableLongStateOf(0)}
     fun reveal() {visible=true;interaction++}
+    val remoteLandscape = fullscreen &&
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val videoFocus = remember { FocusRequester() }
+    LaunchedEffect(remoteLandscape) {
+        if (remoteLandscape) videoFocus.requestFocus()
+    }
+    // DPAD wakes a faded control layer. Center/Enter first reveals it instead of
+    // accidentally activating a control the user cannot see.
+    val remoteControls = if (remoteLandscape) {
+        Modifier.focusRequester(videoFocus).onPreviewKeyEvent { event ->
+            val isNavigation = event.key in setOf(
+                Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
+                Key.DirectionCenter, Key.Enter
+            )
+            if (event.type == KeyEventType.KeyDown && isNavigation) {
+                val wasHidden = !visible
+                reveal()
+                wasHidden && (event.key == Key.DirectionCenter || event.key == Key.Enter)
+            } else false
+        }.focusable()
+    } else Modifier
     DisposableEffect(player) {
         val listener=object: Player.Listener { override fun onTracksChanged(value: Tracks) {tracks=value} }
         player?.addListener(listener)
@@ -58,7 +88,7 @@ internal fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: B
         if(!model.isPlaying || menuOpen) {visible=true;return@LaunchedEffect}
         delay(3000);visible=false
     }
-    Box(modifier.testTag("video_surface").clip(RoundedCornerShape(if(fullscreen)0.dp else 12.dp)).background(Color.Black)
+    Box(modifier.then(remoteControls).testTag("video_surface").clip(RoundedCornerShape(if(fullscreen)0.dp else 12.dp)).background(Color.Black)
         .pointerInput(player) {detectTapGestures(onTap={reveal()})}) {
         if(player!=null) AndroidView(factory={context->PlayerView(context).apply {
             this.player=player;keepScreenOn=true;useController=false
