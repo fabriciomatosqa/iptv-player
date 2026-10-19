@@ -436,7 +436,7 @@ class PlaylistRepository(context: Context) {
                 val counting = CountingInputStream(stream)
                 counting.bufferedReader().use { reader ->
                     importReader(source, reader, resolvedSource = source, progress = progress,
-                        bytesRead = { counting.bytes }, totalBytes = size, requireEntries = true)
+                        bytesRead = { counting.bytes }, totalBytes = size, requireEntries = true, replaceMissing = true)
                 }
             }
             // Both files are in the same private directory: replacing the saved copy is atomic.
@@ -454,7 +454,7 @@ class PlaylistRepository(context: Context) {
             val counting = CountingInputStream(stream)
             counting.bufferedReader().use { reader ->
                 importReader(source, reader, resolvedSource = source, progress = progress,
-                    bytesRead = { counting.bytes }, totalBytes = saved.length(), requireEntries = true)
+                    bytesRead = { counting.bytes }, totalBytes = saved.length(), requireEntries = true, replaceMissing = true)
             }
         }
         invalidatePages()
@@ -521,8 +521,9 @@ class PlaylistRepository(context: Context) {
     }
     @Synchronized fun importReader(source: String, reader: java.io.Reader, metadata: ProviderMetadata = ProviderMetadata(),
         etag: String = "", modified: String = "", resolvedSource: String = source, progress: (CatalogProgress) -> Unit = {},
-        bytesRead: () -> Long = {0L},totalBytes: Long = 0L, requireEntries: Boolean = false): ImportResult =
-        importRows(source,etag,modified,true,requireEntries = requireEntries,
+        bytesRead: () -> Long = {0L},totalBytes: Long = 0L, requireEntries: Boolean = false,
+        replaceMissing: Boolean = false): ImportResult =
+        importRows(source,etag,modified,true,requireEntries = requireEntries, replaceMissing = replaceMissing,
             progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
             finalizing={progress(CatalogProgress(CatalogStage.FINALIZING,99))}) { accept ->
             progress(importProgress(0,totalBytes,0))
@@ -539,7 +540,8 @@ class PlaylistRepository(context: Context) {
     }
 
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
-        requireEntries: Boolean = false, progress: (Int) -> Unit = {}, finalizing: () -> Unit = {},
+        requireEntries: Boolean = false, replaceMissing: Boolean = false,
+        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {},
         scan: ((Channel) -> Unit) -> String): ImportResult {
         val db=helper.writableDatabase; val key=digest(source); var added=0; var parsed=0
         lateinit var result: ImportResult
@@ -588,11 +590,15 @@ class PlaylistRepository(context: Context) {
                 put("etag",etag);put("modified",modified);put("generation",generation)
                 if(epg.isNotBlank())put("epg_url",epg)
                 if(markChecked)put("checked",now)
-                if(added>0)put("updated",now)
+                if(added>0 || replaceMissing)put("updated",now)
             }
             finalizing()
             pinSavedCatalogUrls(db,prefs,key)
             repairCatalogProgress(db,key)
+            // A replaced local file is authoritative; remote provider refreshes stay additive.
+            // Favorite identities and playback checkpoints remain in their own persistent tables.
+            if (replaceMissing) db.delete("channels", "source_key=? AND seen_generation<>?",
+                arrayOf(key, generation.toString()))
             db.update("playlists",values,"source_key=?",arrayOf(key));rebuild(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
             db.setTransactionSuccessful();result=ImportResult(added,total)
