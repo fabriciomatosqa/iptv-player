@@ -18,7 +18,12 @@ internal data class AppUpdateState(val phase: UpdatePhase = UpdatePhase.IDLE, va
 
 internal class AppUpdateController(private val repository: AppUpdateRepository, private val scope: CoroutineScope) {
     var state by mutableStateOf(AppUpdateState()); private set
+    /** Only the foreground entry can offer an update; manual checks never open a popup. */
+    var startupOffer by mutableStateOf<AppUpdate?>(null); private set
     private var job: Job? = null
+    private var startupJob: Job? = null
+    private var foreground = false
+    private var allowStartupPrompt = false
 
     init {
         job = scope.launch {
@@ -26,7 +31,53 @@ internal class AppUpdateController(private val repository: AppUpdateRepository, 
         }
     }
 
+    /**
+     * Check once per foreground entry, asynchronously and without blocking catalog loading.
+     * Recreated activities keep the same ViewModel and do not trigger duplicate requests.
+     * The existing update screen remains the only place that starts a download.
+     */
+    fun onForeground() {
+        if (foreground) return
+        foreground = true
+        allowStartupPrompt = true
+        if (startupJob?.isActive == true || state.busy || state.phase == UpdatePhase.INSTALLER) return
+        val preceding = job
+        startupJob = scope.launch {
+            preceding?.join() // Restore a verified APK before comparing remote versions.
+            if (!foreground || state.busy || state.phase == UpdatePhase.INSTALLER) return@launch
+            val ready = state.update?.takeIf { state.phase == UpdatePhase.READY }
+            state = AppUpdateState(UpdatePhase.CHECKING)
+            try {
+                val available = repository.check()
+                state = when {
+                    available == null -> AppUpdateState(UpdatePhase.CURRENT)
+                    ready != null && ready.versionCode == available.versionCode && ready.sha256 == available.sha256 ->
+                        AppUpdateState(UpdatePhase.READY, available, 100)
+                    else -> AppUpdateState(UpdatePhase.AVAILABLE, available)
+                }
+                if (foreground && allowStartupPrompt && available != null) startupOffer = available
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                // A failed background check must not hide a previously verified download.
+                if (ready != null) state = AppUpdateState(UpdatePhase.READY, ready, 100)
+                else fail(e)
+            }
+        }
+    }
+
+    fun onBackground() {
+        foreground = false
+        startupOffer = null
+    }
+
+    fun dismissStartupOffer() {
+        allowStartupPrompt = false
+        startupOffer = null
+    }
+
     fun check() {
+        // Entering the manual update flow supersedes the startup invitation.
+        dismissStartupOffer()
         if (state.busy) return
         job?.cancel()
         state = AppUpdateState(UpdatePhase.CHECKING)
