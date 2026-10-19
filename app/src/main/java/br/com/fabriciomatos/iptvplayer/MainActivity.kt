@@ -12,6 +12,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -683,16 +685,22 @@ private fun NavigationRail(model: AuroraViewModel, modifier: Modifier) {
             Logo(Modifier.size(54.dp))
         }
         HorizontalDivider(color = Elevated)
-        LazyColumn(Modifier.fillMaxWidth().weight(1f).testTag("landscape_rail_items"),
-            contentPadding = PaddingValues(vertical = 6.dp)) {
-            item { RailItem(tr(R.string.home), Icons.Default.Home, false) { model.page = Page.HOME } }
-            item { RailItem(tr(R.string.search), Icons.Default.Search, model.selectedKind == null && !model.favoritesOnly) { model.browse(null) } }
-            item { RailItem(tr(R.string.live), Icons.Default.LiveTv, model.selectedKind == MediaKind.LIVE && !model.favoritesOnly) { model.browse(MediaKind.LIVE) } }
-            item { RailItem(tr(R.string.movies), Icons.Default.Movie, model.selectedKind == MediaKind.MOVIES && !model.favoritesOnly) { model.browse(MediaKind.MOVIES) } }
-            item { RailItem(tr(R.string.series), Icons.Default.VideoLibrary, model.selectedKind == MediaKind.SERIES && !model.favoritesOnly) { model.browse(MediaKind.SERIES) } }
-            item { RailItem(tr(R.string.favorites), Icons.Default.Star, model.favoritesOnly) { model.browse(null, true) } }
-            item { RailItem(tr(R.string.settings), Icons.Default.Settings, false,
-                labelTag = "landscape_settings_label") { model.openSettings() } }
+        // Only seven destinations: compose all of them instead of recycling the
+        // focused item during DPAD scrolling. The logo stays outside this scroller.
+        Column(
+            Modifier.fillMaxWidth().weight(1f)
+                .verticalScroll(rememberScrollState())
+                .testTag("landscape_rail_items")
+                .padding(vertical = 6.dp)
+        ) {
+            RailItem(tr(R.string.home), Icons.Default.Home, false) { model.page = Page.HOME }
+            RailItem(tr(R.string.search), Icons.Default.Search, model.selectedKind == null && !model.favoritesOnly) { model.browse(null) }
+            RailItem(tr(R.string.live), Icons.Default.LiveTv, model.selectedKind == MediaKind.LIVE && !model.favoritesOnly) { model.browse(MediaKind.LIVE) }
+            RailItem(tr(R.string.movies), Icons.Default.Movie, model.selectedKind == MediaKind.MOVIES && !model.favoritesOnly) { model.browse(MediaKind.MOVIES) }
+            RailItem(tr(R.string.series), Icons.Default.VideoLibrary, model.selectedKind == MediaKind.SERIES && !model.favoritesOnly) { model.browse(MediaKind.SERIES) }
+            RailItem(tr(R.string.favorites), Icons.Default.Star, model.favoritesOnly) { model.browse(null, true) }
+            RailItem(tr(R.string.settings), Icons.Default.Settings, false,
+                labelTag = "landscape_settings_label") { model.openSettings() }
         }
     }
 }
