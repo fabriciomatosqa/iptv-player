@@ -228,7 +228,7 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         RecentCard(model, Modifier.weight(1f).fillMaxHeight()
-                            .focusRequester(homeFocus).testTag("home_recent"))
+                            .testTag("home_recent"))
                         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             CategoryCard(tr(R.string.live), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
                                 model.catalog.live, Modifier.weight(1f).fillMaxWidth().testTag("home_live")) { model.browse(MediaKind.LIVE) }
