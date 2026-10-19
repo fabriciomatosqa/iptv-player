@@ -44,6 +44,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -400,10 +402,23 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscapeHeight = maxHeight
             val compactLandscape = maxWidth < 920.dp || landscapeHeight < 520.dp
-            // Reserve readable widths for remote navigation and long category names.
-            // The content pane takes whatever space remains, instead of competing
-            // for the last pixels through multiple weights.
-            val navigationWidth = if (maxWidth < 760.dp) 112.dp else 124.dp
+            // Measure actual translated labels at the SAME typography used in RailItem,
+            // including user font scaling. No fixed 112/124dp width can fit every locale.
+            // Width covers the widest full label, icon, gap, padding and focus outline.
+            val railLabels = listOf(
+                tr(R.string.home), tr(R.string.search), tr(R.string.live),
+                tr(R.string.movies), tr(R.string.series),
+                tr(R.string.favorites), tr(R.string.settings)
+            )
+            val railMeasurer = rememberTextMeasurer()
+            val widestLabel = railLabels.maxOf { label ->
+                railMeasurer.measure(
+                    text = label, style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                    maxLines = 1, softWrap = false
+                ).size.width
+            }
+            val navigationWidth = (with(LocalDensity.current) { widestLabel.toDp() } + 62.dp)
+                .coerceAtLeast(146.dp)
             val categoryWidth = (maxWidth * 0.27f).coerceIn(170.dp, 224.dp)
             Row(Modifier.fillMaxSize()) {
                 NavigationRail(model, Modifier.width(navigationWidth).fillMaxHeight()
@@ -676,21 +691,28 @@ private fun NavigationRail(model: AuroraViewModel, modifier: Modifier) {
             item { RailItem(tr(R.string.movies), Icons.Default.Movie, model.selectedKind == MediaKind.MOVIES && !model.favoritesOnly) { model.browse(MediaKind.MOVIES) } }
             item { RailItem(tr(R.string.series), Icons.Default.VideoLibrary, model.selectedKind == MediaKind.SERIES && !model.favoritesOnly) { model.browse(MediaKind.SERIES) } }
             item { RailItem(tr(R.string.favorites), Icons.Default.Star, model.favoritesOnly) { model.browse(null, true) } }
-            item { RailItem(tr(R.string.settings), Icons.Default.Settings, false) { model.openSettings() } }
+            item { RailItem(tr(R.string.settings), Icons.Default.Settings, false,
+                labelTag = "landscape_settings_label") { model.openSettings() } }
         }
     }
 }
 
 @Composable
-private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+private fun RailItem(
+    title: String, icon: ImageVector, selected: Boolean,
+    labelTag: String? = null, onClick: () -> Unit
+) {
     Row(Modifier.fillMaxWidth().heightIn(min = 54.dp)
         .background(if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent)
         .landscapeRemoteClickable(onClick).padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = if (selected) Mint else Muted, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text(title, color = if (selected) Txt else Muted, fontSize = 12.sp,
-            lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, color = if (selected) Txt else Muted, fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            lineHeight = 17.sp, maxLines = 1, softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = labelTag?.let { Modifier.testTag(it) } ?: Modifier)
     }
 }
 
