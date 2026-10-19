@@ -72,7 +72,7 @@ class PlaylistTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun refusesHlsMediaSequenceEvenWithAbsoluteSegments() {
-        parse("#EXTM3U\\n#EXT-X-MEDIA-SEQUENCE:0\\n#EXTINF:6,\\nhttps://example.test/segment.ts")
+        parse("#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:6,\nhttps://example.test/segment.ts")
     }
 
     @Test fun allowsIptvHeaderWithSessionMetadataAndRemoteChannel() {
