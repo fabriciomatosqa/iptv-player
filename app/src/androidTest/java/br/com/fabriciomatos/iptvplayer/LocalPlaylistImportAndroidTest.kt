@@ -77,6 +77,14 @@ class LocalPlaylistImportAndroidTest {
             assertEquals(1, repository.reimportLocalFile(source).total)
             assertEquals(2, repository.importLocalFile(source, bytes(replacement)).total)
             assertEquals(2, repository.reimportLocalFile(source).total)
+            // Local replacement removes missing channels, unlike the additive online refresh.
+            val onlyNew = """
+                #EXTM3U
+                #EXTINF:-1,Canal novo
+                https://example.test/live/new
+            """
+            assertEquals(1, repository.importLocalFile(source, bytes(onlyNew)).total)
+            assertEquals(1, repository.reimportLocalFile(source).total)
             assertEquals(setOf("https://example.test/live/old"), repository.favorites())
             assertEquals(15000L, repository.playbackProgress(source,"https://example.test/live/old")?.positionMs)
             repository.close()
