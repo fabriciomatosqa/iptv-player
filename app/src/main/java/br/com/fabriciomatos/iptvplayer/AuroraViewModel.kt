@@ -1,6 +1,9 @@
 package br.com.fabriciomatos.iptvplayer
 
 import android.app.Application
+import android.net.Uri
+import java.io.IOException
+import java.util.UUID
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
@@ -65,6 +68,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var epgOverride by mutableStateOf(""); private set
     var savedPlaylists by mutableStateOf(emptyList<SavedPlaylist>()); private set
     var switchingPlaylist by mutableStateOf(false); private set
+    var importingLocal by mutableStateOf(false); private set
     private val playlistSwitch = Mutex()
     var parentalConfigured by mutableStateOf(preferences.hasPassword()); private set
     var adultUnlocked by mutableStateOf(false); private set
@@ -237,8 +241,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
     fun savePlaylist(url: String, name: String) {
         val clean = url.trim()
-        if (!PlaylistRepository.validUrl(clean)) { message = preferences.text(R.string.invalid_url); return }
-        if(!initialized || switchingPlaylist)return
+        if (!PlaylistRepository.validSource(clean)) { message = preferences.text(R.string.invalid_url); return }
+        if(!initialized || switchingPlaylist || importingLocal)return
         switchingPlaylist=true
         viewModelScope.launch {playlistSwitch.withLock {
             try {
@@ -272,13 +276,46 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             catch(_: Exception) {message=preferences.text(R.string.load_failed)}
             finally {switchingPlaylist=false;loading=false;progressText=null;progressPercent=null}
             // A saved catalog appears immediately; only the daily background check may download it again.
-            if(playlistUrl==clean)refreshDaily()
+            if(playlistUrl==clean && !PlaylistRepository.isLocalSource(clean))refreshDaily()
         }}
     }
+    /**
+     * SAF streams directly into the existing transactional SQLite importer. Never keep a
+     * provider URI as the playlist identity: grants and file paths can expire or change.
+     */
+    fun importLocalPlaylist(uri: Uri, name: String, existingSource: String? = null) {
+        if (!initialized || switchingPlaylist || importingLocal) return
+        val source = existingSource?.takeIf(PlaylistRepository::isLocalSource)
+            ?: "local-m3u://" + UUID.randomUUID().toString()
+        importingLocal = true
+        loading = true
+        message = null
+        viewModelScope.launch {
+            var imported = false
+            try {
+                withContext(Dispatchers.IO) {
+                    val stream = getApplication<Application>().contentResolver.openInputStream(uri)
+                        ?: throw IOException("Não foi possível abrir o arquivo selecionado.")
+                    stream.bufferedReader().use { reader ->
+                        repository.importReader(source, reader, progress = ::showProgress)
+                    }
+                }
+                imported = true
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { message = "Não foi possível importar esta playlist M3U/M3U8. Verifique o arquivo." }
+            finally { importingLocal = false; loading = false; progressText = null; progressPercent = null }
+            if (imported) savePlaylist(source, name)
+        }
+    }
+
     fun switchPlaylist(playlist: SavedPlaylist) = savePlaylist(playlist.url,playlist.name)
     private fun refreshDaily() = refresh(silent = true,daily = true)
     fun refresh(force: Boolean = false, silent: Boolean = false, daily: Boolean = false) {
         if (playlistUrl.isBlank()) { settingsOpen = true; return }
+        if (PlaylistRepository.isLocalSource(playlistUrl)) {
+            message = "Para atualizar esta lista local, selecione novamente um arquivo M3U/M3U8 em Minha playlist."
+            return
+        }
         if (refreshJob?.isActive == true) return
         val source = playlistUrl
         refreshJob = viewModelScope.launch {

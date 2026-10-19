@@ -1,6 +1,10 @@
 package br.com.fabriciomatos.iptvplayer
 
 import android.os.Bundle
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -834,7 +838,34 @@ internal fun PlaylistSettings(model: AuroraViewModel) {
     var name by rememberSaveable(model.playlistName) { mutableStateOf(model.playlistName) }
     var reveal by remember { mutableStateOf(false) }
     var invalid by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = { model.settingsOpen = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    var fileMode by rememberSaveable(model.playlistUrl) { mutableStateOf(PlaylistRepository.isLocalSource(model.playlistUrl)) }
+    var selectedFile by remember { mutableStateOf<Uri?>(null) }
+    var selectedFileName by remember { mutableStateOf("") }
+    var fileError by remember { mutableStateOf(false) }
+    var updatingLocal by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { selected ->
+        if (selected != null) {
+            val filename = runCatching {
+                context.contentResolver.query(selected, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+            }.getOrNull().orEmpty().ifBlank { selected.lastPathSegment.orEmpty() }
+            if (!filename.endsWith(".m3u", true) && !filename.endsWith(".m3u8", true)) {
+                fileError = true
+            } else {
+                fileError = false
+                if (updatingLocal) model.importLocalPlaylist(selected, model.playlistName, model.playlistUrl)
+                else {
+                    selectedFile = selected
+                    selectedFileName = filename
+                    if (name.isBlank()) name = filename.substringBeforeLast('.')
+                }
+            }
+        }
+        updatingLocal = false
+    }
+    ModalBottomSheet(onDismissRequest = { if (!model.importingLocal) model.settingsOpen = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = Panel, contentColor = Txt) {
         LazyColumn(Modifier.fillMaxWidth().imePadding(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { TextButton(onClick={model.settingsSection=0}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,null);Text(tr(R.string.settings))} }
@@ -857,36 +888,75 @@ internal fun PlaylistSettings(model: AuroraViewModel) {
                             Text(playlist.name,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)
                             Text(tr(if(active)R.string.active_playlist else R.string.switch_playlist),fontSize=11.sp,color=Muted)
                         }
-                        IconButton(onClick={url=playlist.url;name=playlist.name;reveal=false;invalid=false},enabled=!model.switchingPlaylist) {
+                        IconButton(onClick={url=playlist.url;name=playlist.name;fileMode=PlaylistRepository.isLocalSource(playlist.url);selectedFile=null;selectedFileName="";fileError=false;reveal=false;invalid=false},enabled=!model.switchingPlaylist && !model.importingLocal) {
                             Icon(Icons.Default.Edit,tr(R.string.edit_playlist),tint=Muted)
                         }
                     }
                 }
             }
-            item {OutlinedButton(onClick={url="";name="";reveal=false;invalid=false},modifier=Modifier.fillMaxWidth().testTag("add_playlist"),enabled=!model.switchingPlaylist) {
+            item {OutlinedButton(onClick={url="";name="";fileMode=false;selectedFile=null;selectedFileName="";fileError=false;reveal=false;invalid=false},modifier=Modifier.fillMaxWidth().testTag("add_playlist"),enabled=!model.switchingPlaylist && !model.importingLocal) {
                 Icon(Icons.Default.Add,null);Spacer(Modifier.width(8.dp));Text(tr(R.string.add_playlist))
             }}
             item { OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(tr(R.string.list_name)) }, singleLine = true, shape = RoundedCornerShape(14.dp)) }
             item {
-                OutlinedTextField(url, { url = it; invalid = false }, Modifier.fillMaxWidth(), label = { Text(tr(R.string.list_address)) },
-                    placeholder = { Text("https://servidor.com/lista.m3u") }, singleLine = true, isError = invalid,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), shape = RoundedCornerShape(14.dp),
-                    visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { IconButton(onClick = { reveal = !reveal }) { Icon(if (reveal) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (reveal) tr(R.string.hide_address) else tr(R.string.show_address)) } },
-                    supportingText = { Text(if (invalid) tr(R.string.invalid_url) else tr(R.string.saved_text), color = if (invalid) Gold else Muted) })
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = !fileMode, onClick = { fileMode = false; fileError = false },
+                        label = { Text("Por URL") }, leadingIcon = { Icon(Icons.Default.Link, null, Modifier.size(18.dp)) })
+                    FilterChip(selected = fileMode, onClick = { fileMode = true; invalid = false },
+                        label = { Text("Por arquivo") }, leadingIcon = { Icon(Icons.Default.FolderOpen, null, Modifier.size(18.dp)) })
+                }
+            }
+            if (!fileMode) {
+                item {
+                    OutlinedTextField(url, { url = it; invalid = false }, Modifier.fillMaxWidth(), label = { Text(tr(R.string.list_address)) },
+                        placeholder = { Text("https://servidor.com/lista.m3u") }, singleLine = true, isError = invalid,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), shape = RoundedCornerShape(14.dp),
+                        visualTransformation = if (reveal) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = { IconButton(onClick = { reveal = !reveal }) { Icon(if (reveal) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (reveal) tr(R.string.hide_address) else tr(R.string.show_address)) } },
+                        supportingText = { Text(if (invalid) tr(R.string.invalid_url) else tr(R.string.saved_text), color = if (invalid) Gold else Muted) })
+                }
+            } else {
+                item {
+                    OutlinedButton(onClick = { updatingLocal = false; filePicker.launch(arrayOf("*/*")) },
+                        enabled = !model.importingLocal && !model.switchingPlaylist,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Icon(Icons.Default.FolderOpen, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (selectedFile == null) "Selecionar arquivo M3U/M3U8" else "Trocar arquivo")
+                    }
+                    if (selectedFile != null) Text(selectedFileName, color = Mint, fontSize = 12.sp)
+                    if (fileError) Text("Selecione um arquivo .m3u ou .m3u8.", color = Gold, fontSize = 12.sp)
+                    Text("A lista será importada para o aparelho e ficará disponível sem o arquivo original.", color = Muted, fontSize = 12.sp)
+                }
             }
             item {
                 Button(onClick = {
-                    invalid = !PlaylistRepository.validUrl(url.trim())
-                    if (!invalid) model.savePlaylist(url, name)
-                }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp), enabled = url.isNotBlank() && model.initialized && !model.switchingPlaylist) {
-                    Icon(Icons.Default.Save, null, Modifier.size(20.dp)); Spacer(Modifier.width(9.dp)); Text(tr(R.string.save_playlist), fontWeight = FontWeight.Bold)
+                    if (fileMode) {
+                        selectedFile?.let { model.importLocalPlaylist(it, name, url.takeIf(PlaylistRepository::isLocalSource)) }
+                    } else {
+                        invalid = !PlaylistRepository.validUrl(url.trim())
+                        if (!invalid) model.savePlaylist(url, name)
+                    }
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp),
+                    enabled = (if (fileMode) selectedFile != null else url.isNotBlank()) && model.initialized && !model.switchingPlaylist && !model.importingLocal) {
+                    Icon(Icons.Default.Save, null, Modifier.size(20.dp)); Spacer(Modifier.width(9.dp))
+                    Text(if (fileMode) "Importar playlist" else tr(R.string.save_playlist), fontWeight = FontWeight.Bold)
                 }
             }
             if (model.playlistUrl.isNotBlank()) item {
                 Text(tr(R.string.saved_count,formatCount(model.catalog.total)) + if (model.updated > 0) " · " + SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(model.updated)) else "",
                     color = Muted, fontSize = 12.sp)
-                OutlinedButton(onClick = { model.settingsOpen = false; model.refresh(force = true) }, enabled = !model.loading, modifier = Modifier.fillMaxWidth()) { Text(tr(R.string.refresh_now)) }
+                OutlinedButton(onClick = {
+                    if (PlaylistRepository.isLocalSource(model.playlistUrl)) {
+                        updatingLocal = true
+                        filePicker.launch(arrayOf("*/*"))
+                    } else {
+                        model.settingsOpen = false
+                        model.refresh(force = true)
+                    }
+                }, enabled = !model.loading && !model.importingLocal, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (PlaylistRepository.isLocalSource(model.playlistUrl)) "Reimportar arquivo local" else tr(R.string.refresh_now))
+                }
             }
         }
     }

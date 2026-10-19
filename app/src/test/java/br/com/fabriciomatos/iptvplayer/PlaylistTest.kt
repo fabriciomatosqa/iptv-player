@@ -5,6 +5,21 @@ import org.junit.Test
 import java.io.StringReader
 
 class PlaylistTest {
+    @Test fun localSourceIdentityAndAbsoluteStreams() {
+        val source = "local-m3u://123e4567-e89b-12d3-a456-426614174000"
+        assertTrue(PlaylistRepository.isLocalSource(source))
+        assertTrue(PlaylistRepository.validSource(source))
+        assertFalse(PlaylistRepository.validUrl(source))
+        assertFalse(PlaylistRepository.isLocalSource("file:///storage/emulated/0/private.m3u"))
+        val playlist = M3uParser.parse(StringReader("""
+            #EXTM3U
+            #EXTINF:-1 group-title="Brasil",Canal local
+            https://example.test/live/1.m3u8
+        """.trimIndent()), source)
+        assertEquals(1, playlist.channels.size)
+        assertEquals("https://example.test/live/1.m3u8", playlist.channels.single().url)
+    }
+
     private fun parse(text: String) = M3uParser.parse(StringReader(text.trimIndent()), "https://example.test/lists/list.m3u")
 
     @Test fun parsesQuotedCommasHeadersAndStreamOptions() {

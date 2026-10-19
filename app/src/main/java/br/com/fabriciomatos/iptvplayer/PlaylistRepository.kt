@@ -55,11 +55,11 @@ class PlaylistRepository(context: Context) {
             for(i in 0 until stored.length()) {
                 val row=stored.optJSONObject(i) ?: continue
                 val url=row.optString("url").trim()
-                if(validUrl(url))add(SavedPlaylist(url,row.optString("name").ifBlank {"Minha playlist"}))
+                if(validSource(url))add(SavedPlaylist(url,row.optString("name").ifBlank {"Minha playlist"}))
             }
         }.distinctBy {it.url}.toMutableList()
         val active=savedUrl()
-        if(validUrl(active) && lists.none {it.url==active})lists.add(0,SavedPlaylist(active,savedName()))
+        if(validSource(active) && lists.none {it.url==active})lists.add(0,SavedPlaylist(active,savedName()))
         return lists
     }
 
@@ -527,7 +527,7 @@ class PlaylistRepository(context: Context) {
                     if(parsed%5000==0)progress(parsed)
                 }
             } }
-            if(parsed==0 && scalar(db,"SELECT COUNT(*) FROM channels WHERE source_key=?",arrayOf(key))==0) throw IOException("Não encontrei conteúdos nesta M3U.")
+            if(parsed==0 && (isLocalSource(source) || scalar(db,"SELECT COUNT(*) FROM channels WHERE source_key=?",arrayOf(key))==0)) throw IOException("Não encontrei conteúdos nesta M3U.")
             val values=ContentValues().apply {
                 put("etag",etag);put("modified",modified);put("generation",generation)
                 if(epg.isNotBlank())put("epg_url",epg)
@@ -668,6 +668,8 @@ class PlaylistRepository(context: Context) {
     companion object {
         private const val RAW_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,c.series_image,c.season,c.episode,c.kind,c.adult"
         private const val CHANNEL_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,CASE WHEN lower(c.group_name) LIKE '%crunchyroll%' OR lower(c.group_name) LIKE '%anime%' OR lower(c.group_name) LIKE '%funimation%' OR lower(c.group_name) LIKE '%hidive%' THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.series_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.series_image) END,c.season,c.episode,c.kind,c.adult"
+        fun isLocalSource(value: String): Boolean = value.matches(Regex("local-m3u://[0-9a-fA-F-]{36}"))
+        fun validSource(value: String): Boolean = validUrl(value) || isLocalSource(value)
         fun validUrl(value: String): Boolean = runCatching { val u=URL(value);(u.protocol=="http"||u.protocol=="https")&&u.host.isNotBlank() }.getOrDefault(false)
         fun digest(value: String)=MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString(""){"%02x".format(it)}
         private fun ensureSource(db: SQLiteDatabase,key: String){db.execSQL("INSERT OR IGNORE INTO playlists(source_key) VALUES(?)",arrayOf(key))}
