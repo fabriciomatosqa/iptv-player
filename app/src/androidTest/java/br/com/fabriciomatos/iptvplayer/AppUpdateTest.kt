@@ -167,6 +167,9 @@ class AppUpdateTest {
 @RunWith(AndroidJUnit4::class)
 class AppUpdateUiTest {
     @get:Rule val compose = createComposeRule()
+    @Before fun resetPreparedUpdates() {
+        File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, "app-updates").deleteRecursively()
+    }
     @Test fun startupPromptCanBeDeclinedAndAcceptedWithoutStartingDownload() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val fixture = UpdateFixture(instrumentation.targetContext)
@@ -213,12 +216,14 @@ class AppUpdateUiTest {
         val fixture = UpdateFixture(instrumentation.targetContext)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         try {
+            compose.setContent { AuroraTheme(AppAppearance.DARK) { Surface { } } }
             val installed = AppUpdateRepository(instrumentation.targetContext, fixture.transport, fixture.update.versionCode)
             lateinit var current: AppUpdateController
             instrumentation.runOnMainSync { current = AppUpdateController(installed, scope); current.onForeground() }
             compose.waitUntil(15000) { current.state.phase == UpdatePhase.CURRENT }
             assertNull(current.startupOffer)
             fixture.failNetwork = true
+            compose.waitForIdle()
             instrumentation.runOnMainSync { current.onBackground(); current.onForeground() }
             compose.waitUntil(15000) { current.state.phase == UpdatePhase.ERROR }
             assertNull(current.startupOffer)
