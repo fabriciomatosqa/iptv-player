@@ -157,6 +157,9 @@
     <string name="app_update_checking">GitHubを確認中…</string>
     <string name="app_update_current">最新バージョンです。</string>
     <string name="app_update_available">新しいバージョン：%1$s</string>
+    <string name="app_update_startup_question">今すぐ AURORA IPTV を更新しますか？</string>
+    <string name="app_update_startup_no">いいえ</string>
+    <string name="app_update_startup_yes">はい</string>
     <string name="app_update_downloading">更新をダウンロード中：%1$d%%</string>
     <string name="app_update_verifying">更新を検証中…</string>
     <string name="app_update_ready">バージョン%1$sをインストールできます。</string>

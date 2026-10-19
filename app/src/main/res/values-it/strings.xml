@@ -157,6 +157,9 @@
     <string name="app_update_checking">Controllo di GitHub…</string>
     <string name="app_update_current">Hai già la versione più recente.</string>
     <string name="app_update_available">Nuova versione disponibile: %1$s</string>
+    <string name="app_update_startup_question">Vuoi aggiornare AURORA IPTV ora?</string>
+    <string name="app_update_startup_no">No</string>
+    <string name="app_update_startup_yes">Sì</string>
     <string name="app_update_downloading">Download aggiornamento: %1$d%%</string>
     <string name="app_update_verifying">Verifica aggiornamento…</string>
     <string name="app_update_ready">La versione %1$s è pronta da installare.</string>

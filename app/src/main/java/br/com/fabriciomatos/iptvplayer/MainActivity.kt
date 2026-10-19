@@ -146,6 +146,10 @@ internal fun AuroraApp(model: AuroraViewModel) {
             }
             if (model.settingsOpen) SettingsPanel(model)
             if(model.parentalDialog)key(model.parentalRequestId){ParentalDialog(model)}
+            // Do not interrupt fullscreen playback, parental confirmation or other settings.
+            if (!model.settingsOpen && !model.parentalDialog && !model.fullscreen && model.current == null) {
+                StartupAppUpdateDialog(model.onlineUpdate) { model.openSettings(6) }
+            }
         }
     }
 }

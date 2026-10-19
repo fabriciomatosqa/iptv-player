@@ -63,7 +63,7 @@ import coil.compose.AsyncImage
                     item { SettingsItem(tr(R.string.language),appLanguages.first {it.tag==model.language}.label,Icons.Default.Language) {model.settingsSection=2} }
                     item { SettingsItem(tr(R.string.parental),tr(if(model.parentalConfigured)R.string.change_password else R.string.set_password),Icons.Default.Lock) {model.editParental()} }
                     item { SettingsItem(tr(R.string.programming),tr(R.string.football),Icons.Default.SportsSoccer) {model.settingsSection=4} }
-                    item { SettingsItem(tr(R.string.app_update_title),tr(R.string.app_update_installed,BuildConfig.VERSION_NAME),Icons.Default.SystemUpdate) {model.settingsSection=6;if(model.onlineUpdate.state.phase==UpdatePhase.IDLE)model.onlineUpdate.check()} }
+                    item { SettingsItem(tr(R.string.app_update_title),tr(R.string.app_update_installed,BuildConfig.VERSION_NAME),Icons.Default.SystemUpdate) {model.onlineUpdate.dismissStartupOffer();model.settingsSection=6;if(model.onlineUpdate.state.phase==UpdatePhase.IDLE)model.onlineUpdate.check()} }
                     item { Text("AURORA IPTV · ${BuildConfig.VERSION_NAME}",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp) }
                 }
                 2 -> items(appLanguages,key={it.tag}) {language ->

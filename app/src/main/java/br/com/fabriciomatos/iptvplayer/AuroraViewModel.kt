@@ -669,7 +669,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun retry() { current?.let(::play) }
     fun stop() { checkpointPlayback();playJob?.cancel();playerSource="";playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; playbackErrorDetails = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
     fun foreground(active: Boolean) {
+        val enteredForeground = active && !foreground
         foreground = active
+        if (enteredForeground) onlineUpdate.onForeground()
+        if (!active) onlineUpdate.onBackground()
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()
         if (!active) {
             checkpointPlayback()
