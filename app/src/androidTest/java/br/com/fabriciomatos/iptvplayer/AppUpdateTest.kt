@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -166,6 +167,66 @@ class AppUpdateTest {
 @RunWith(AndroidJUnit4::class)
 class AppUpdateUiTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun startupPromptCanBeDeclinedAndAcceptedWithoutStartingDownload() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val fixture = UpdateFixture(instrumentation.targetContext)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        lateinit var controller: AppUpdateController
+        val showDetails = mutableStateOf(false)
+        instrumentation.runOnMainSync { controller = AppUpdateController(fixture.repository, scope) }
+        try {
+            compose.setContent {
+                AuroraTheme(AppAppearance.DARK) {
+                    Surface {
+                        StartupAppUpdateDialog(controller) { showDetails.value = true }
+                        if (showDetails.value) AppUpdateContent(controller)
+                    }
+                }
+            }
+            instrumentation.runOnMainSync { controller.onForeground() }
+            compose.waitUntil(15000) { controller.startupOffer != null }
+            compose.onNodeWithTag("update_startup_prompt").assertIsDisplayed()
+            compose.onNodeWithTag("update_startup_no").performClick()
+            assertNull(controller.startupOffer)
+            assertEquals(UpdatePhase.AVAILABLE, controller.state.phase)
+            val requests = fixture.requested.size
+            instrumentation.runOnMainSync { controller.onForeground() }
+            compose.waitForIdle()
+            assertEquals("Only one check per foreground entry", requests, fixture.requested.size)
+
+            instrumentation.runOnMainSync { controller.onBackground(); controller.onForeground() }
+            compose.waitUntil(15000) { controller.startupOffer != null }
+            compose.onNodeWithTag("update_startup_yes").performClick()
+            compose.waitUntil(5000) { showDetails.value }
+            assertNull(controller.startupOffer)
+            compose.onNodeWithTag("online_update_screen").assertIsDisplayed()
+            compose.onNodeWithTag("update_download").assertIsDisplayed()
+            assertFalse("Consent to view details must not automatically download an APK",
+                fixture.requested.contains(fixture.update.apkUrl))
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test fun startupCheckStaysSilentWhenCurrentOrOffline() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val fixture = UpdateFixture(instrumentation.targetContext)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        try {
+            val installed = AppUpdateRepository(instrumentation.targetContext, fixture.transport, fixture.update.versionCode)
+            lateinit var current: AppUpdateController
+            instrumentation.runOnMainSync { current = AppUpdateController(installed, scope); current.onForeground() }
+            compose.waitUntil(15000) { current.state.phase == UpdatePhase.CURRENT }
+            assertNull(current.startupOffer)
+            fixture.failNetwork = true
+            instrumentation.runOnMainSync { current.onBackground(); current.onForeground() }
+            compose.waitUntil(15000) { current.state.phase == UpdatePhase.ERROR }
+            assertNull(current.startupOffer)
+        } finally {
+            scope.cancel()
+        }
+    }
+
     @Test fun onlineUpdateShowsCurrentAndNewVersionsProgressAndAndroidInstaller() {
         val instrumentation = InstrumentationRegistry.getInstrumentation(); val context = instrumentation.targetContext
         File(context.cacheDir, "app-updates").deleteRecursively()
