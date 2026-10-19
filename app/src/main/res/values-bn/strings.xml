@@ -196,4 +196,14 @@
     <string name="broadcast_ended">সম্প্রচার শেষ</string>
     <string name="broadcast_scheduled">নির্ধারিত সম্প্রচার</string>
     <string name="broadcast_unconfirmed">সরাসরি সম্প্রচার নিশ্চিত নয়</string>
+    <string name="playlist_by_url">URL দিয়ে</string>
+    <string name="playlist_by_file">ফাইল থেকে</string>
+    <string name="choose_playlist_file">M3U/M3U8 ফাইল নির্বাচন করুন</string>
+    <string name="local_file_selected">নির্বাচিত ফাইল</string>
+    <string name="local_file_stored">এই ডিভাইসে ফাইল সংরক্ষিত আছে</string>
+    <string name="unsupported_playlist_file">.m3u বা .m3u8 ফাইল নির্বাচন করুন।</string>
+    <string name="import_playlist_file">প্লেলিস্ট আমদানি করুন</string>
+    <string name="reimport_local_playlist">সংরক্ষিত ফাইল আবার আমদানি করুন</string>
+    <string name="replace_local_playlist">ফাইল প্রতিস্থাপন করুন</string>
+    <string name="local_import_failed">প্লেলিস্ট আমদানি করা যায়নি। ফাইলটি পরীক্ষা করে আবার চেষ্টা করুন।</string>
 </resources>

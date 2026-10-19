@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Yayın sona erdi</string>
     <string name="broadcast_scheduled">Planlanan yayın</string>
     <string name="broadcast_unconfirmed">Canlı yayın doğrulanmadı</string>
+    <string name="playlist_by_url">URL ile</string>
+    <string name="playlist_by_file">Dosyadan</string>
+    <string name="choose_playlist_file">M3U/M3U8 dosyası seç</string>
+    <string name="local_file_selected">Seçilen dosya</string>
+    <string name="local_file_stored">Dosya bu cihaza kaydedildi</string>
+    <string name="unsupported_playlist_file">.m3u veya .m3u8 dosyası seçin.</string>
+    <string name="import_playlist_file">Oynatma listesini içe aktar</string>
+    <string name="reimport_local_playlist">Kayıtlı dosyayı yeniden içe aktar</string>
+    <string name="replace_local_playlist">Dosyayı değiştir</string>
+    <string name="local_import_failed">Oynatma listesi içe aktarılamadı. Dosyayı kontrol edip tekrar deneyin.</string>
 </resources>

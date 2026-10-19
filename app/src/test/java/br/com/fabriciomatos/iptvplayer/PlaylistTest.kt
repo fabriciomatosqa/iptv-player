@@ -70,6 +70,21 @@ class PlaylistTest {
         parse("#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXTINF:6,\nsegment.ts")
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun refusesHlsMediaSequenceEvenWithAbsoluteSegments() {
+        parse("#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:6,\nhttps://example.test/segment.ts")
+    }
+
+    @Test fun allowsIptvHeaderWithSessionMetadataAndRemoteChannel() {
+        val channels = parse("""
+            #EXTM3U
+            #EXT-X-SESSION-DATA:DATA-ID="example.test",VALUE="metadata"
+            #EXTINF:-1 group-title="Brasil",Canal Aurora
+            https://example.test/live/1
+        """).channels
+        assertEquals(1, channels.size)
+    }
+
     @Test fun filteringHandlesAccentsMultipleTermsFavoritesAndGroups() {
         val a = Channel("Notícias São Paulo", "https://example.test/a", "Brasil")
         val b = Channel("Cinema", "https://example.test/movie/b", "Filmes")

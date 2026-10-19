@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Трансляцію завершено</string>
     <string name="broadcast_scheduled">Запланована трансляція</string>
     <string name="broadcast_unconfirmed">Прямий ефір не підтверджено</string>
+    <string name="playlist_by_url">За URL</string>
+    <string name="playlist_by_file">З файлу</string>
+    <string name="choose_playlist_file">Вибрати файл M3U/M3U8</string>
+    <string name="local_file_selected">Вибраний файл</string>
+    <string name="local_file_stored">Файл збережено на пристрої</string>
+    <string name="unsupported_playlist_file">Виберіть файл .m3u або .m3u8.</string>
+    <string name="import_playlist_file">Імпортувати плейлист</string>
+    <string name="reimport_local_playlist">Повторно імпортувати збережений файл</string>
+    <string name="replace_local_playlist">Замінити файл</string>
+    <string name="local_import_failed">Не вдалося імпортувати плейлист. Перевірте файл і спробуйте ще раз.</string>
 </resources>

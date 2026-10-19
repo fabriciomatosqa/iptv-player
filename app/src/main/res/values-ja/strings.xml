@@ -196,4 +196,14 @@
     <string name="broadcast_ended">放送終了</string>
     <string name="broadcast_scheduled">放送予定</string>
     <string name="broadcast_unconfirmed">生中継未確認</string>
+    <string name="playlist_by_url">URLから</string>
+    <string name="playlist_by_file">ファイルから</string>
+    <string name="choose_playlist_file">M3U/M3U8ファイルを選択</string>
+    <string name="local_file_selected">選択したファイル</string>
+    <string name="local_file_stored">この端末に保存済み</string>
+    <string name="unsupported_playlist_file">.m3u または .m3u8 ファイルを選択してください。</string>
+    <string name="import_playlist_file">プレイリストを取り込む</string>
+    <string name="reimport_local_playlist">保存済みファイルを再取り込み</string>
+    <string name="replace_local_playlist">ファイルを置き換える</string>
+    <string name="local_import_failed">プレイリストを取り込めませんでした。ファイルを確認して再試行してください。</string>
 </resources>

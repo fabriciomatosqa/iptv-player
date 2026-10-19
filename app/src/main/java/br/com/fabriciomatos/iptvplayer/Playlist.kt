@@ -109,8 +109,10 @@ object M3uParser {
                 require(raw.length <= 131072) { "Uma entrada da lista é grande demais." }
                 val line = raw.trim().removePrefix("\uFEFF")
                 when {
-                    line.startsWith("#EXT-X-TARGETDURATION", true) || line.startsWith("#EXT-X-STREAM-INF", true) ->
-                        throw IllegalArgumentException("Este endereço é de um vídeo HLS. Cadastre a lista de canais M3U do provedor.")
+                    line.startsWith("#EXT-X-TARGETDURATION", true) || line.startsWith("#EXT-X-STREAM-INF", true) ||
+                        line.startsWith("#EXT-X-MEDIA-SEQUENCE", true) || line.startsWith("#EXT-X-PLAYLIST-TYPE", true) ||
+                        line.startsWith("#EXT-X-KEY:", true) || line.startsWith("#EXT-X-MAP:", true) ->
+                        throw IllegalArgumentException("Este arquivo ou endereço é um manifesto de vídeo HLS, não uma playlist IPTV de canais.")
                     line.startsWith("#EXTM3U", true) -> {
                         val header = attrs(line)
                         epg = resolve(source, (header["url-tvg"] ?: header["x-tvg-url"]).orEmpty().substringBefore(','))

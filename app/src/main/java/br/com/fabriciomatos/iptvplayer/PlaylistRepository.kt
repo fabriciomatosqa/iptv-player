@@ -12,9 +12,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import java.lang.ref.WeakReference
 import java.util.zip.GZIPInputStream
@@ -55,11 +57,11 @@ class PlaylistRepository(context: Context) {
             for(i in 0 until stored.length()) {
                 val row=stored.optJSONObject(i) ?: continue
                 val url=row.optString("url").trim()
-                if(validUrl(url))add(SavedPlaylist(url,row.optString("name").ifBlank {"Minha playlist"}))
+                if(validSource(url))add(SavedPlaylist(url,row.optString("name").ifBlank {"Minha playlist"}))
             }
         }.distinctBy {it.url}.toMutableList()
         val active=savedUrl()
-        if(validUrl(active) && lists.none {it.url==active})lists.add(0,SavedPlaylist(active,savedName()))
+        if(validSource(active) && lists.none {it.url==active})lists.add(0,SavedPlaylist(active,savedName()))
         return lists
     }
 
@@ -407,6 +409,58 @@ class PlaylistRepository(context: Context) {
         invalidatePages()
     }
 
+    /** Local M3U files are kept privately, with a stable identity unrelated to their filename. */
+    private fun localFile(source: String): File = File(app.filesDir, "local_playlists/" + digest(source) + ".m3u")
+
+    /** Copy the SAF stream in bounded chunks, then atomically import into the existing catalog. */
+    @Synchronized fun importLocalFile(source: String, input: InputStream,
+        progress: (CatalogProgress) -> Unit = {}): ImportResult {
+        require(isLocalSource(source)) { "Origem de arquivo inválida." }
+        val target = localFile(source)
+        if (target.parentFile?.isDirectory != true && target.parentFile?.mkdirs() != true)
+            throw IOException("Não foi possível preparar o armazenamento local.")
+        val staged = File(target.parentFile, target.name + "." + UUID.randomUUID() + ".partial")
+        try {
+            var size = 0L
+            input.use { stream -> staged.outputStream().buffered(65536).use { output ->
+                val buffer = ByteArray(65536)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    output.write(buffer, 0, count)
+                    size += count
+                }
+            } }
+            if (size == 0L) throw IOException("O arquivo M3U está vazio.")
+            val result = staged.inputStream().use { stream ->
+                val counting = CountingInputStream(stream)
+                counting.bufferedReader().use { reader ->
+                    importReader(source, reader, resolvedSource = source, progress = progress,
+                        bytesRead = { counting.bytes }, totalBytes = size, requireEntries = true, replaceMissing = true)
+                }
+            }
+            // Both files are in the same private directory: replacing the saved copy is atomic.
+            if (!staged.renameTo(target)) throw IOException("Não foi possível salvar a cópia da playlist.")
+            invalidatePages()
+            return result
+        } finally { staged.delete() }
+    }
+
+    @Synchronized fun reimportLocalFile(source: String, progress: (CatalogProgress) -> Unit = {}): ImportResult {
+        require(isLocalSource(source)) { "Origem de arquivo inválida." }
+        val saved = localFile(source)
+        if (!saved.isFile) throw IOException("A cópia da playlist não está disponível. Selecione novamente o arquivo.")
+        val result = saved.inputStream().use { stream ->
+            val counting = CountingInputStream(stream)
+            counting.bufferedReader().use { reader ->
+                importReader(source, reader, resolvedSource = source, progress = progress,
+                    bytesRead = { counting.bytes }, totalBytes = saved.length(), requireEntries = true, replaceMissing = true)
+            }
+        }
+        invalidatePages()
+        return result
+    }
+
     private fun readyFile(source: String): File = File(app.filesDir, "catalog_pending/" + digest(source) + ".ready")
     fun hasPending(source: String) = readyFile(source).isFile
     /** Download to disk, validate EOF, then atomically mark the file ready for resumable import. */
@@ -467,8 +521,10 @@ class PlaylistRepository(context: Context) {
     }
     @Synchronized fun importReader(source: String, reader: java.io.Reader, metadata: ProviderMetadata = ProviderMetadata(),
         etag: String = "", modified: String = "", resolvedSource: String = source, progress: (CatalogProgress) -> Unit = {},
-        bytesRead: () -> Long = {0L},totalBytes: Long = 0L): ImportResult =
-        importRows(source,etag,modified,true,progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
+        bytesRead: () -> Long = {0L},totalBytes: Long = 0L, requireEntries: Boolean = false,
+        replaceMissing: Boolean = false): ImportResult =
+        importRows(source,etag,modified,true,requireEntries = requireEntries, replaceMissing = replaceMissing,
+            progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
             finalizing={progress(CatalogProgress(CatalogStage.FINALIZING,99))}) { accept ->
             progress(importProgress(0,totalBytes,0))
             val stats=M3uParser.scan(reader,resolvedSource,metadata.categories) { accept(it) }
@@ -484,7 +540,9 @@ class PlaylistRepository(context: Context) {
     }
 
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
-        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, scan: ((Channel) -> Unit) -> String): ImportResult {
+        requireEntries: Boolean = false, replaceMissing: Boolean = false,
+        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {},
+        scan: ((Channel) -> Unit) -> String): ImportResult {
         val db=helper.writableDatabase; val key=digest(source); var added=0; var parsed=0
         lateinit var result: ImportResult
         db.beginTransactionNonExclusive()
@@ -527,16 +585,20 @@ class PlaylistRepository(context: Context) {
                     if(parsed%5000==0)progress(parsed)
                 }
             } }
-            if(parsed==0 && scalar(db,"SELECT COUNT(*) FROM channels WHERE source_key=?",arrayOf(key))==0) throw IOException("Não encontrei conteúdos nesta M3U.")
+            if(parsed==0 && (requireEntries || scalar(db,"SELECT COUNT(*) FROM channels WHERE source_key=?",arrayOf(key))==0)) throw IOException("Não encontrei conteúdos nesta M3U.")
             val values=ContentValues().apply {
                 put("etag",etag);put("modified",modified);put("generation",generation)
                 if(epg.isNotBlank())put("epg_url",epg)
                 if(markChecked)put("checked",now)
-                if(added>0)put("updated",now)
+                if(added>0 || replaceMissing)put("updated",now)
             }
             finalizing()
             pinSavedCatalogUrls(db,prefs,key)
             repairCatalogProgress(db,key)
+            // A replaced local file is authoritative; remote provider refreshes stay additive.
+            // Favorite identities and playback checkpoints remain in their own persistent tables.
+            if (replaceMissing) db.delete("channels", "source_key=? AND seen_generation<>?",
+                arrayOf(key, generation.toString()))
             db.update("playlists",values,"source_key=?",arrayOf(key));rebuild(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
             db.setTransactionSuccessful();result=ImportResult(added,total)
@@ -668,6 +730,10 @@ class PlaylistRepository(context: Context) {
     companion object {
         private const val RAW_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,c.series_image,c.season,c.episode,c.kind,c.adult"
         private const val CHANNEL_COLUMNS="c.name,c.url,c.group_name,c.image_url,c.tvg_id,c.user_agent,c.referrer,c.mime_type,c.type_hint,c.series_id,c.series_title,CASE WHEN lower(c.group_name) LIKE '%crunchyroll%' OR lower(c.group_name) LIKE '%anime%' OR lower(c.group_name) LIKE '%funimation%' OR lower(c.group_name) LIKE '%hidive%' THEN COALESCE(NULLIF((SELECT ac.image FROM anime_covers ac WHERE ac.source_key=c.source_key AND ac.name_norm=c.series_norm),''),CASE WHEN p.verified_anime=1 THEN p.image ELSE '' END) ELSE COALESCE(NULLIF(p.image,''),c.series_image) END,c.season,c.episode,c.kind,c.adult"
+        private val localSourcePattern = Regex("^aurora-local://playlist/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE)
+        fun isLocalSource(value: String): Boolean = localSourcePattern.matches(value)
+        fun newLocalSource(): String = "aurora-local://playlist/" + UUID.randomUUID()
+        fun validSource(value: String): Boolean = validUrl(value) || isLocalSource(value)
         fun validUrl(value: String): Boolean = runCatching { val u=URL(value);(u.protocol=="http"||u.protocol=="https")&&u.host.isNotBlank() }.getOrDefault(false)
         fun digest(value: String)=MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString(""){"%02x".format(it)}
         private fun ensureSource(db: SQLiteDatabase,key: String){db.execSQL("INSERT OR IGNORE INTO playlists(source_key) VALUES(?)",arrayOf(key))}

@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Đã kết thúc phát sóng</string>
     <string name="broadcast_scheduled">Lịch phát sóng</string>
     <string name="broadcast_unconfirmed">Chưa xác nhận phát trực tiếp</string>
+    <string name="playlist_by_url">Qua URL</string>
+    <string name="playlist_by_file">Từ tệp</string>
+    <string name="choose_playlist_file">Chọn tệp M3U/M3U8</string>
+    <string name="local_file_selected">Tệp đã chọn</string>
+    <string name="local_file_stored">Tệp đã lưu trên thiết bị này</string>
+    <string name="unsupported_playlist_file">Chọn tệp .m3u hoặc .m3u8.</string>
+    <string name="import_playlist_file">Nhập danh sách phát</string>
+    <string name="reimport_local_playlist">Nhập lại tệp đã lưu</string>
+    <string name="replace_local_playlist">Thay thế tệp</string>
+    <string name="local_import_failed">Không thể nhập danh sách phát. Kiểm tra tệp rồi thử lại.</string>
 </resources>

@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Uitzending afgelopen</string>
     <string name="broadcast_scheduled">Geplande uitzending</string>
     <string name="broadcast_unconfirmed">Live-uitzending niet bevestigd</string>
+    <string name="playlist_by_url">Via URL</string>
+    <string name="playlist_by_file">Via bestand</string>
+    <string name="choose_playlist_file">M3U/M3U8-bestand kiezen</string>
+    <string name="local_file_selected">Geselecteerd bestand</string>
+    <string name="local_file_stored">Bestand opgeslagen op dit apparaat</string>
+    <string name="unsupported_playlist_file">Kies een .m3u- of .m3u8-bestand.</string>
+    <string name="import_playlist_file">Afspeellijst importeren</string>
+    <string name="reimport_local_playlist">Opgeslagen bestand opnieuw importeren</string>
+    <string name="replace_local_playlist">Bestand vervangen</string>
+    <string name="local_import_failed">Afspeellijst importeren mislukt. Controleer het bestand en probeer opnieuw.</string>
 </resources>

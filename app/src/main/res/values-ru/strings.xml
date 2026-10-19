@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Трансляция завершена</string>
     <string name="broadcast_scheduled">Запланированная трансляция</string>
     <string name="broadcast_unconfirmed">Прямой эфир не подтверждён</string>
+    <string name="playlist_by_url">По ссылке</string>
+    <string name="playlist_by_file">Из файла</string>
+    <string name="choose_playlist_file">Выбрать файл M3U/M3U8</string>
+    <string name="local_file_selected">Выбранный файл</string>
+    <string name="local_file_stored">Файл сохранён на устройстве</string>
+    <string name="unsupported_playlist_file">Выберите файл .m3u или .m3u8.</string>
+    <string name="import_playlist_file">Импортировать плейлист</string>
+    <string name="reimport_local_playlist">Повторно импортировать сохранённый файл</string>
+    <string name="replace_local_playlist">Заменить файл</string>
+    <string name="local_import_failed">Не удалось импортировать плейлист. Проверьте файл и попробуйте снова.</string>
 </resources>
