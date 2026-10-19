@@ -680,21 +680,30 @@ private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClic
 private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
     val series = model.openedSeries
     val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
+    val initialCategoryFocus = remember { FocusRequester() }
+    LaunchedEffect(model.selectedKind, model.openedSeries, model.favoritesOnly) {
+        if (series == null || series.seasons.isNotEmpty()) initialCategoryFocus.requestFocus()
+    }
     LazyColumn(modifier, contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         item { Text(if (series == null) tr(R.string.categories) else tr(R.string.seasons), color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
         if (series == null) {
-            item { GroupRow(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
+            item { GroupRow(tr(R.string.all), model.group == null,
+                Modifier.focusRequester(initialCategoryFocus)) { model.selectGroup(null) } }
             items(groups, key = { it }) { category -> GroupRow(groupDisplayName(groupLabel(category)), model.group == category) { model.selectGroup(category) } }
         } else {
-            items(series.seasons, key = { it }) { season -> GroupRow(tr(R.string.season,season), model.selectedSeason == season) { model.selectSeason(season) } }
+            items(series.seasons, key = { it }) { season ->
+                GroupRow(tr(R.string.season,season), model.selectedSeason == season,
+                    if (season == series.seasons.firstOrNull()) Modifier.focusRequester(initialCategoryFocus) else Modifier
+                ) { model.selectSeason(season) }
+            }
         }
     }
 }
 
 @Composable
-private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
+private fun GroupRow(title: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(title, color = if (selected) Mint else Txt, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
+        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
             .background(if (selected) Elevated else Color.Transparent).landscapeRemoteClickable(onClick).padding(10.dp))
 }
 
