@@ -1,6 +1,8 @@
 package br.com.fabriciomatos.iptvplayer
 
 import android.app.Application
+import android.net.Uri
+import java.io.IOException
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
@@ -235,53 +237,98 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         updateFilter()
         refreshGuide()
     }
+    /** Activation is shared by URL playlists, saved local files and newly imported files. */
+    private suspend fun activatePlaylist(clean: String, name: String) {
+        refreshJob?.cancelAndJoin()
+        val changed = clean != playlistUrl
+        withContext(NonCancellable + Dispatchers.IO) { repository.saveSource(clean, name.trim()) }
+        if (changed) {
+            // Save playback state and clear only transient navigation from the former source.
+            stop(); guideJob?.cancelAndJoin(); filterJob?.cancelAndJoin()
+            openedSeries = null; openedSeriesId = null; selectedSeason = null; group = null; search = ""
+            selectedKind = MediaKind.LIVE; favoritesOnly = false; adultUnlocked = false; dismissParental()
+            catalogAnchors.clear(); seriesOrigin = null; playbackOrigin = null
+            footballFeed = FootballFeed(); footballSearch = ""; footballTab = FOOTBALL_GAMES
+            selectedSport = SportKind.FOOTBALL; sportsCategory = SPORTS_GAMES
+            sportsGuideBootstrapped = false
+            footballPosition = null; fromFootball = false
+            football = emptyList(); sports = emptyList(); recent = null
+        }
+        playlistUrl = clean; playlistName = name.trim().ifBlank { "Minha playlist" }
+        savedPlaylists = withContext(Dispatchers.IO) { repository.savedPlaylists() }
+        epgOverride = withContext(Dispatchers.IO) { preferences.epgUrl(clean) }
+        settingsOpen = false; message = null
+        if (changed) {
+            page = Page.HOME; loading = true
+            guide = withContext(Dispatchers.IO) { repository.savedGuide(clean) }
+            withContext(Dispatchers.IO) { repository.restore(clean, ::showProgress) }
+            recent = withContext(Dispatchers.IO) {
+                repository.channel(clean, repository.lastUrl(clean))?.takeUnless { it.adult }
+            }
+            reloadOverview()
+        }
+        if (playlistUrl == clean && !PlaylistRepository.isLocalSource(clean)) refreshDaily()
+    }
+
     fun savePlaylist(url: String, name: String) {
         val clean = url.trim()
-        if (!PlaylistRepository.validUrl(clean)) { message = preferences.text(R.string.invalid_url); return }
-        if(!initialized || switchingPlaylist)return
-        switchingPlaylist=true
-        viewModelScope.launch {playlistSwitch.withLock {
+        if (!PlaylistRepository.validSource(clean)) { message = preferences.text(R.string.invalid_url); return }
+        if (!initialized || switchingPlaylist) return
+        switchingPlaylist = true
+        viewModelScope.launch { playlistSwitch.withLock {
+            try { activatePlaylist(clean, name) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { message = preferences.text(R.string.load_failed) }
+            finally { switchingPlaylist = false; loading = false; progressText = null; progressPercent = null }
+        } }
+    }
+
+    /** The SAF Uri is only a transport. The private saved copy becomes the durable source. */
+    fun saveLocalPlaylist(uri: Uri, name: String, existingSource: String? = null) {
+        if (!initialized || switchingPlaylist) return
+        val source = existingSource?.takeIf(PlaylistRepository::isLocalSource)
+            ?: PlaylistRepository.newLocalSource()
+        switchingPlaylist = true
+        viewModelScope.launch { playlistSwitch.withLock {
             try {
                 refreshJob?.cancelAndJoin()
-                val changed=clean!=playlistUrl
-                withContext(NonCancellable+Dispatchers.IO) {repository.saveSource(clean,name.trim())}
-                if(changed) {
-                    // Save the old playback position before changing the active source.
-                    stop();guideJob?.cancelAndJoin();filterJob?.cancelAndJoin()
-                    openedSeries=null;openedSeriesId=null;selectedSeason=null;group=null;search=""
-                    selectedKind=MediaKind.LIVE;favoritesOnly=false;adultUnlocked=false;dismissParental()
-                    catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
-                    footballFeed=FootballFeed();footballSearch="";footballTab=FOOTBALL_GAMES
-                    selectedSport=SportKind.FOOTBALL;sportsCategory=SPORTS_GAMES
-                    sportsGuideBootstrapped=false
-                    footballPosition=null;fromFootball=false
-                    football=emptyList();sports=emptyList();recent=null
+                loading = true; updating = true; message = null
+                val result = withContext(Dispatchers.IO) {
+                    val stream = getApplication<Application>().contentResolver.openInputStream(uri)
+                        ?: throw IOException("Não foi possível abrir o arquivo selecionado.")
+                    stream.use { repository.importLocalFile(source, it, ::showProgress) }
                 }
-                playlistUrl=clean;playlistName=name.trim().ifBlank {"Minha playlist"}
-                savedPlaylists=withContext(Dispatchers.IO) {repository.savedPlaylists()}
-                epgOverride=withContext(Dispatchers.IO) {preferences.epgUrl(clean)}
-                settingsOpen=false;message=null
-                if(changed) {
-                    page=Page.HOME;loading=true
-                    guide=withContext(Dispatchers.IO) {repository.savedGuide(clean)}
-                    withContext(Dispatchers.IO) {repository.restore(clean,::showProgress)}
-                    recent=withContext(Dispatchers.IO) {repository.channel(clean,repository.lastUrl(clean))?.takeUnless {it.adult}}
-                    reloadOverview()
-                }
-            } catch(e: CancellationException) {throw e}
-            catch(_: Exception) {message=preferences.text(R.string.load_failed)}
-            finally {switchingPlaylist=false;loading=false;progressText=null;progressPercent=null}
-            // A saved catalog appears immediately; only the daily background check may download it again.
-            if(playlistUrl==clean)refreshDaily()
-        }}
+                if (result.total == 0) throw IOException("Nenhum conteúdo válido no arquivo.")
+                activatePlaylist(source, name)
+                if (playlistUrl == source) reloadOverview() // Also refresh the current source after replacement.
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { message = preferences.text(R.string.local_import_failed) }
+            finally {
+                switchingPlaylist = false; updating = false; loading = false
+                progressText = null; progressPercent = null
+            }
+        } }
     }
-    fun switchPlaylist(playlist: SavedPlaylist) = savePlaylist(playlist.url,playlist.name)
-    private fun refreshDaily() = refresh(silent = true,daily = true)
+
+    fun switchPlaylist(playlist: SavedPlaylist) = savePlaylist(playlist.url, playlist.name)
+    private fun refreshDaily() { if (!PlaylistRepository.isLocalSource(playlistUrl)) refresh(silent = true, daily = true) }
     fun refresh(force: Boolean = false, silent: Boolean = false, daily: Boolean = false) {
         if (playlistUrl.isBlank()) { settingsOpen = true; return }
+        if (daily && PlaylistRepository.isLocalSource(playlistUrl)) return
         if (refreshJob?.isActive == true) return
         val source = playlistUrl
         refreshJob = viewModelScope.launch {
+            if (PlaylistRepository.isLocalSource(source)) {
+                try {
+                    updating = true; loading = true; message = null
+                    withContext(Dispatchers.IO) { repository.reimportLocalFile(source, ::showProgress) }
+                    if (playlistUrl == source) reloadOverview()
+                    showProgress(CatalogProgress(CatalogStage.COMPLETE, 100))
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { message = preferences.text(R.string.local_import_failed) }
+                finally { updating = false; loading = false; progressText = null; progressPercent = null }
+                return@launch
+            }
             val quiet = silent && catalog.total > 0
             val progress: (CatalogProgress) -> Unit = { value -> if(playlistUrl==source)showProgress(value) }
             try {
@@ -312,8 +359,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 showProgress(CatalogProgress(CatalogStage.COMPLETE,100));delay(500)
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
-                if (!quiet) message = if(catalog.total>0) preferences.text(R.string.load_failed)
-                    else preferences.text(R.string.load_failed)
+                if (!quiet) message = preferences.text(R.string.load_failed)
             } finally { updating=false;loading=false;progressText=null;progressPercent=null }
         }
     }
