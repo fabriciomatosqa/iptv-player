@@ -63,3 +63,31 @@ import androidx.compose.ui.unit.dp
         }
     }
 }
+
+/**
+ * Lightweight startup question. Declining never downloads or installs an APK.
+ * Accepting simply navigates to the existing update details/download screen.
+ */
+@Composable internal fun StartupAppUpdateDialog(controller: AppUpdateController, onAccept: () -> Unit) {
+    val update = controller.startupOffer ?: return
+    AlertDialog(
+        onDismissRequest = controller::dismissStartupOffer,
+        modifier = Modifier.testTag("update_startup_prompt"),
+        icon = { Icon(Icons.Default.SystemUpdate, null) },
+        title = { Text(tr(R.string.app_update_available, update.versionName)) },
+        text = { Text(tr(R.string.app_update_startup_question)) },
+        confirmButton = {
+            TextButton(onClick = {
+                controller.dismissStartupOffer()
+                onAccept()
+            }, modifier = Modifier.testTag("update_startup_yes")) {
+                Text(tr(R.string.app_update_startup_yes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = controller::dismissStartupOffer, modifier = Modifier.testTag("update_startup_no")) {
+                Text(tr(R.string.app_update_startup_no))
+            }
+        }
+    )
+}
