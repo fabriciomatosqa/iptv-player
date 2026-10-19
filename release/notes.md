@@ -1,9 +1,9 @@
-AURORA IPTV Android 1.12.21 — Melhorias para projetores e controle remoto.
+AURORA IPTV Android 1.12.22 — Melhorias de legibilidade no modo horizontal.
 
-- Interface horizontal adaptável: a tela inicial usa cards em pares com rolagem em telas de menor altura, evitando elementos espremidos.
-- Navegação horizontal da biblioteca com menus e categorias compactos, preservando o espaço para reprodução e conteúdos.
-- Destaque visual de foco ao navegar por setas/OK do controle remoto nas categorias, canais, menus e futebol.
-- Controles do player em tela cheia podem ser revelados por teclas direcionais do controle remoto.
-- Ajustes de espaçamento no futebol quando o aplicativo está em paisagem.
-- A aparência vertical permanece como antes. O acesso por toque e as opções atuais continuam disponíveis.
-- Sem migração de dados; playlists, favoritos, progresso, preferências, assinatura do APK e atualização online são preservados.
+- Logo do AURORA fixo no topo do menu lateral: não se move ao percorrer opções com controle remoto ou ao rolar a lista.
+- Menu de navegação horizontal mais largo e nomes exibidos em até duas linhas.
+- Categorias mais largas, com título fixo e nomes em até três linhas sem corte desnecessário.
+- Cartazes de séries com largura mínima legível e informações de temporadas/episódios em até duas linhas na horizontal.
+- Melhor distribuição do espaço entre navegação, categorias e conteúdos, sem mexer no layout vertical.
+- Preservados as playlists, os favoritos, o progresso de reprodução, as preferências, a assinatura e o atualizador online.
+
