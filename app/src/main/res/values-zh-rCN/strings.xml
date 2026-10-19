@@ -158,8 +158,8 @@
     <string name="app_update_current">已是最新版本。</string>
     <string name="app_update_available">有新版本：%1$s</string>
     <string name="app_update_startup_question">是否立即更新 AURORA IPTV？</string>
-    <string name="app_update_startup_no">否</string>
-    <string name="app_update_startup_yes">是</string>
+    <string name="app_update_startup_no">暂不</string>
+    <string name="app_update_startup_yes">查看更新</string>
     <string name="app_update_downloading">正在下载更新：%1$d%%</string>
     <string name="app_update_verifying">正在验证更新…</string>
     <string name="app_update_ready">版本 %1$s 已准备好安装。</string>
