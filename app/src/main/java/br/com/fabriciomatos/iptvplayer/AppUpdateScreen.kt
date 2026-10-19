@@ -97,7 +97,7 @@ import androidx.compose.ui.unit.dp
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
-            Modifier.fillMaxWidth(0.92f).widthIn(max = 440.dp)
+            Modifier.widthIn(max = 440.dp).fillMaxWidth(0.92f)
                 .heightIn(max = screenHeight * 0.88f)
                 .background(
                     Brush.linearGradient(listOf(
@@ -118,7 +118,8 @@ import androidx.compose.ui.unit.dp
                     Image(
                         painter = painterResource(R.drawable.aurora_brand),
                         contentDescription = tr(R.string.logo),
-                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)),
+                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(16.dp))
+                            .testTag("update_startup_brand"),
                         contentScale = ContentScale.Fit
                     )
                     Spacer(Modifier.width(14.dp))
@@ -153,6 +154,7 @@ import androidx.compose.ui.unit.dp
                         ) {
                             Text(
                                 "v" + update.versionName,
+                                modifier = Modifier.testTag("update_startup_version"),
                                 color = aurora.cyan, fontWeight = FontWeight.Bold, fontSize = 16.sp
                             )
                         }
@@ -187,6 +189,7 @@ import androidx.compose.ui.unit.dp
                         }
                         Text(
                             update.notes.trim(), color = aurora.text.copy(alpha = 0.86f),
+                            modifier = Modifier.testTag("update_startup_notes"),
                             fontSize = 12.sp, lineHeight = 17.sp,
                             maxLines = 4, overflow = TextOverflow.Ellipsis
                         )
