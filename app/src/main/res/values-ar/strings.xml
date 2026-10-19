@@ -196,4 +196,14 @@
     <string name="broadcast_ended">انتهى البث</string>
     <string name="broadcast_scheduled">بث مجدول</string>
     <string name="broadcast_unconfirmed">البث المباشر غير مؤكد</string>
+    <string name="playlist_by_url">عبر الرابط</string>
+    <string name="playlist_by_file">من ملف</string>
+    <string name="choose_playlist_file">اختيار ملف M3U/M3U8</string>
+    <string name="local_file_selected">الملف المحدد</string>
+    <string name="local_file_stored">ملف محفوظ على هذا الجهاز</string>
+    <string name="unsupported_playlist_file">اختر ملفًا بصيغة .m3u أو .m3u8.</string>
+    <string name="import_playlist_file">استيراد قائمة التشغيل</string>
+    <string name="reimport_local_playlist">إعادة استيراد الملف المحفوظ</string>
+    <string name="replace_local_playlist">استبدال الملف</string>
+    <string name="local_import_failed">تعذر استيراد قائمة التشغيل. تحقق من الملف وحاول مرة أخرى.</string>
 </resources>

@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Übertragung beendet</string>
     <string name="broadcast_scheduled">Geplante Übertragung</string>
     <string name="broadcast_unconfirmed">Live-Übertragung unbestätigt</string>
+    <string name="playlist_by_url">Per URL</string>
+    <string name="playlist_by_file">Aus Datei</string>
+    <string name="choose_playlist_file">M3U/M3U8-Datei auswählen</string>
+    <string name="local_file_selected">Ausgewählte Datei</string>
+    <string name="local_file_stored">Datei auf diesem Gerät gespeichert</string>
+    <string name="unsupported_playlist_file">Bitte eine .m3u- oder .m3u8-Datei auswählen.</string>
+    <string name="import_playlist_file">Playlist importieren</string>
+    <string name="reimport_local_playlist">Gespeicherte Datei erneut importieren</string>
+    <string name="replace_local_playlist">Datei ersetzen</string>
+    <string name="local_import_failed">Playlist konnte nicht importiert werden. Datei prüfen und erneut versuchen.</string>
 </resources>
