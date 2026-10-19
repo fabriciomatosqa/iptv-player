@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Siaran berakhir</string>
     <string name="broadcast_scheduled">Siaran terjadwal</string>
     <string name="broadcast_unconfirmed">Siaran langsung belum dikonfirmasi</string>
+    <string name="playlist_by_url">Melalui URL</string>
+    <string name="playlist_by_file">Melalui berkas</string>
+    <string name="choose_playlist_file">Pilih berkas M3U/M3U8</string>
+    <string name="local_file_selected">Berkas terpilih</string>
+    <string name="local_file_stored">Berkas tersimpan di perangkat ini</string>
+    <string name="unsupported_playlist_file">Pilih berkas .m3u atau .m3u8.</string>
+    <string name="import_playlist_file">Impor daftar putar</string>
+    <string name="reimport_local_playlist">Impor ulang berkas tersimpan</string>
+    <string name="replace_local_playlist">Ganti berkas</string>
+    <string name="local_import_failed">Daftar putar tidak dapat diimpor. Periksa berkas lalu coba lagi.</string>
 </resources>

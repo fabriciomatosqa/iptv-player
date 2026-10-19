@@ -196,4 +196,14 @@
     <string name="broadcast_ended">Transmisja zakończona</string>
     <string name="broadcast_scheduled">Zaplanowana transmisja</string>
     <string name="broadcast_unconfirmed">Transmisja na żywo niepotwierdzona</string>
+    <string name="playlist_by_url">Przez URL</string>
+    <string name="playlist_by_file">Z pliku</string>
+    <string name="choose_playlist_file">Wybierz plik M3U/M3U8</string>
+    <string name="local_file_selected">Wybrany plik</string>
+    <string name="local_file_stored">Plik zapisany na urządzeniu</string>
+    <string name="unsupported_playlist_file">Wybierz plik .m3u lub .m3u8.</string>
+    <string name="import_playlist_file">Importuj playlistę</string>
+    <string name="reimport_local_playlist">Importuj ponownie zapisany plik</string>
+    <string name="replace_local_playlist">Zastąp plik</string>
+    <string name="local_import_failed">Nie można zaimportować playlisty. Sprawdź plik i spróbuj ponownie.</string>
 </resources>
