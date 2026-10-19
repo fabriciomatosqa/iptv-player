@@ -403,7 +403,8 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     if (wide) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val compactLandscape = maxWidth < 920.dp || maxHeight < 520.dp
+            val landscapeHeight = maxHeight
+            val compactLandscape = maxWidth < 920.dp || landscapeHeight < 520.dp
             Row(Modifier.fillMaxSize()) {
                 NavigationRail(model, Modifier.width(if (compactLandscape) 82.dp else 102.dp).fillMaxHeight())
                 VerticalDivider(color = Elevated)
@@ -420,7 +421,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                             // Horizontal layouts with limited height keep the catalog usable
                             // instead of squeezing playback, guide and list into tiny rows.
                             VideoPane(model, Modifier.fillMaxWidth()
-                                .height((maxHeight * 0.35f).coerceIn(110.dp, 230.dp)))
+                                .height((landscapeHeight * 0.35f).coerceIn(110.dp, 230.dp)))
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text(model.current!!.name, Modifier.weight(1f),
                                     maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
