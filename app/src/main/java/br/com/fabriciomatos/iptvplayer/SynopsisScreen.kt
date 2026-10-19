@@ -12,24 +12,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable internal fun SynopsisAction(model: AuroraViewModel, channel: Channel? = null, series: SeriesEntry? = null, iconOnly: Boolean = false) {
-    var open by remember(model.playlistUrl,channel?.url,series?.id) {mutableStateOf(false)}
-    val label=tr(R.string.synopsis)
-    val tag=if(channel==null)"synopsis_series_action"else"synopsis_content_action"
-    if(iconOnly)IconButton(onClick={open=true},Modifier.size(48.dp).testTag(tag)) {Icon(Icons.Outlined.Info,label,Modifier.size(20.dp))}
-    else TextButton(onClick={open=true},modifier=Modifier.testTag(tag)) {Icon(Icons.Outlined.Info,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text(label)}
-    if(open)SynopsisDialog(model,channel,series) {open=false}
+    val scope = rememberCoroutineScope()
+    var open by remember(model.playlistUrl,channel?.url,series?.id) { mutableStateOf(false) }
+    var result by remember(model.playlistUrl,channel?.url,series?.id) { mutableStateOf<Synopsis?>(null) }
+    var requestNumber by remember(model.playlistUrl,channel?.url,series?.id) { mutableIntStateOf(0) }
+    fun load(force: Boolean) {
+        val request = ++requestNumber
+        result = null
+        // Start work on the actual click, so native dialog composition cannot delay
+        // loading cached synopsis data on slower Android projectors/emulators.
+        scope.launch {
+            val loaded = model.synopsis(channel, series, force)
+            if (request == requestNumber) result = loaded
+        }
+    }
+    val label = tr(R.string.synopsis)
+    val tag = if (channel == null) "synopsis_series_action" else "synopsis_content_action"
+    val show = { open = true; load(false) }
+    if (iconOnly) IconButton(onClick = show, modifier = Modifier.size(48.dp).testTag(tag)) {
+        Icon(Icons.Outlined.Info, label, Modifier.size(20.dp))
+    } else TextButton(onClick = show, modifier = Modifier.testTag(tag)) {
+        Icon(Icons.Outlined.Info, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label)
+    }
+    if (open) SynopsisDialog(model, channel, series, result, onRetry = {load(true)}) {open = false}
 }
 
-@Composable private fun SynopsisDialog(model: AuroraViewModel, channel: Channel?, series: SeriesEntry?, dismiss: ()->Unit) {
+@Composable private fun SynopsisDialog(
+    model: AuroraViewModel, channel: Channel?, series: SeriesEntry?,
+    result: Synopsis?, onRetry: () -> Unit, dismiss: () -> Unit
+) {
     val movie=channel?.kind==MediaKind.MOVIES
     val restricted=(channel?.adult==true || series?.adult==true) && !model.adultUnlocked
     LaunchedEffect(restricted) {if(restricted)dismiss()}
     if(restricted)return
-    var result by remember {mutableStateOf<Synopsis?>(null)}
-    var attempt by remember {mutableIntStateOf(0)}
-    LaunchedEffect(attempt) {result=null;result=model.synopsis(channel,series,attempt>0)}
     val title=if(movie)channel!!.name else series?.title ?: channel?.let {seriesIdentity(it).title}.orEmpty()
     AlertDialog(onDismissRequest=dismiss,modifier=Modifier.testTag("synopsis_dialog"),
         title={Text(title,fontWeight=FontWeight.Bold)},
@@ -39,7 +59,7 @@ import androidx.compose.ui.unit.dp
                 details==null->Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(Modifier.size(24.dp));Text(tr(R.string.loading))
                 }
-                details.failed->{Text(tr(R.string.synopsis_failed));TextButton(onClick={attempt++}) {Text(tr(R.string.retry))}}
+                details.failed->{Text(tr(R.string.synopsis_failed));TextButton(onClick=onRetry) {Text(tr(R.string.retry))}}
                 else->{
                     Text(tr(if(movie)R.string.synopsis else R.string.series_synopsis),color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.SemiBold)
                     Text(details.plot.ifBlank {tr(R.string.synopsis_unavailable)},Modifier.testTag("content_synopsis"))

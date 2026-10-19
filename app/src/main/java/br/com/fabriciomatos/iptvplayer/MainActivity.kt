@@ -179,7 +179,7 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
                 Text(SimpleDateFormat("EEE, dd MMM", Locale.getDefault()).format(Date(now)), fontSize = 11.sp, color = Muted)
             }
         }
-        IconButton(onClick = { model.openSettings() },modifier=Modifier.testTag("settings_gear")) { Icon(Icons.Default.Settings, tr(R.string.settings), tint = Muted) }
+        IconButton(onClick = { model.openSettings() },modifier=Modifier.landscapeFocusRing().testTag("settings_gear")) { Icon(Icons.Default.Settings, tr(R.string.settings), tint = Muted) }
     }
 }
 
@@ -190,22 +190,61 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
         BrandHeader(model, wide)
         if (model.updating) CatalogLoadingIndicator(model)
         if (wide) {
-            Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                RecentCard(model, Modifier.weight(1f).fillMaxHeight().testTag("home_recent"))
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CategoryCard(tr(R.string.live), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
-                        model.catalog.live, Modifier.weight(1f).fillMaxWidth().testTag("home_live")) { model.browse(MediaKind.LIVE) }
-                    CategoryCard(tr(R.string.movies), tr(R.string.movies), Icons.Default.Movie, listOf(Violet, Cyan),
-                        model.catalog.movies, Modifier.weight(1f).fillMaxWidth().testTag("home_movies")) { model.browse(MediaKind.MOVIES) }
-                }
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CategoryCard(tr(R.string.series), tr(R.string.series), Icons.Default.VideoLibrary, listOf(Mint, Cyan),
-                        model.catalog.series, Modifier.weight(1f).fillMaxWidth().testTag("home_series")) { model.browse(MediaKind.SERIES) }
-                    FootballSummary(model,Modifier.weight(1f).fillMaxWidth().testTag("home_football"))
-                    HomeTotal(model)
+            // Projectors and phones in landscape can have far less vertical space than a tablet.
+            // Keep the spacious three-column dashboard only when both dimensions allow it.
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val compactLandscape = maxWidth < 980.dp || maxHeight < 470.dp
+                if (compactLandscape) {
+                    LazyColumn(
+                        Modifier.fillMaxSize().testTag("home_landscape_compact"),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        item {
+                            RecentCard(model, Modifier.fillMaxWidth().height(136.dp)
+                                .testTag("home_recent"))
+                        }
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CategoryCard(tr(R.string.live), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
+                                    model.catalog.live, Modifier.weight(1f).heightIn(min = 104.dp).testTag("home_live")) { model.browse(MediaKind.LIVE) }
+                                CategoryCard(tr(R.string.movies), tr(R.string.movies), Icons.Default.Movie, listOf(Violet, Cyan),
+                                    model.catalog.movies, Modifier.weight(1f).heightIn(min = 104.dp).testTag("home_movies")) { model.browse(MediaKind.MOVIES) }
+                            }
+                        }
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CategoryCard(tr(R.string.series), tr(R.string.series), Icons.Default.VideoLibrary, listOf(Mint, Cyan),
+                                    model.catalog.series, Modifier.weight(1f).heightIn(min = 104.dp).testTag("home_series")) { model.browse(MediaKind.SERIES) }
+                                FootballSummary(model, Modifier.weight(1f).heightIn(min = 104.dp).testTag("home_football"))
+                            }
+                        }
+                        item { HomeTotal(model, Modifier.height(28.dp)) }
+                        model.message?.let { message ->
+                            item { Text(message, color = Gold, fontSize = 11.sp, maxLines = 2) }
+                        }
+                    }
+                } else {
+                    Row(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        RecentCard(model, Modifier.weight(1f).fillMaxHeight()
+                            .testTag("home_recent"))
+                        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            CategoryCard(tr(R.string.live), tr(R.string.live), Icons.Default.LiveTv, listOf(Cyan, Mint),
+                                model.catalog.live, Modifier.weight(1f).fillMaxWidth().testTag("home_live")) { model.browse(MediaKind.LIVE) }
+                            CategoryCard(tr(R.string.movies), tr(R.string.movies), Icons.Default.Movie, listOf(Violet, Cyan),
+                                model.catalog.movies, Modifier.weight(1f).fillMaxWidth().testTag("home_movies")) { model.browse(MediaKind.MOVIES) }
+                        }
+                        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            CategoryCard(tr(R.string.series), tr(R.string.series), Icons.Default.VideoLibrary, listOf(Mint, Cyan),
+                                model.catalog.series, Modifier.weight(1f).fillMaxWidth().testTag("home_series")) { model.browse(MediaKind.SERIES) }
+                            FootballSummary(model, Modifier.weight(1f).fillMaxWidth().testTag("home_football"))
+                            HomeTotal(model)
+                        }
+                    }
                 }
             }
-            model.message?.let { Text(it, color = Gold, fontSize = 11.sp, maxLines = 2, modifier = Modifier.padding(horizontal = 20.dp)) }
+
         } else {
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val scale=LocalDensity.current.fontScale
@@ -250,7 +289,7 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
 @Composable
 private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, colors: List<Color>, count: Int, modifier: Modifier, large: Boolean = false, onClick: () -> Unit) {
     val card = modifier.clip(Shape).background(Brush.linearGradient(colors.map { it.copy(alpha = 0.23f) }))
-        .border(1.dp, colors.first().copy(alpha = 0.32f), Shape).clickable(onClick = onClick).padding(horizontal=16.dp,vertical=10.dp)
+        .border(1.dp, colors.first().copy(alpha = 0.32f), Shape).landscapeRemoteClickable(onClick).padding(horizontal=16.dp,vertical=10.dp)
     if (large) Column(card, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = colors.first(), modifier = Modifier.size(60.dp))
         Spacer(Modifier.height(16.dp))
@@ -276,7 +315,7 @@ private fun CategoryCard(title: String, subtitle: String, icon: ImageVector, col
 
 @Composable
 private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp)).background(Panel).clickable(onClick = onClick).padding(10.dp),
+    Row(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp)).background(Panel).landscapeRemoteClickable(onClick).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = Cyan, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
@@ -286,7 +325,7 @@ private fun SmallAction(title: String, icon: ImageVector, modifier: Modifier = M
 
 @Composable
 private fun FootballSummary(model: AuroraViewModel,modifier: Modifier=Modifier) {
-    Row(modifier.clip(Shape).background(Panel).clickable { model.showFootball() }.padding(horizontal=16.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.clip(Shape).background(Panel).landscapeRemoteClickable { model.showFootball() }.padding(horizontal=16.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.EmojiEvents, null, tint = Mint)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -310,7 +349,7 @@ private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
         }
         return
     }
-    Box(modifier.clip(Shape).background(Panel).clickable {
+    Box(modifier.clip(Shape).background(Panel).landscapeRemoteClickable {
         when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.openSettings() }
     }) {
         val cover = channel?.let { if(it.kind==MediaKind.SERIES)it.seriesImageUrl.ifBlank {it.imageUrl}else it.imageUrl }
@@ -344,7 +383,7 @@ private fun HomeNavigation(model: AuroraViewModel) {
 
 @Composable
 private fun NavigationItem(title: String, icon: ImageVector, selected: Boolean = false, onClick: () -> Unit) {
-    Column(Modifier.widthIn(min = 48.dp).heightIn(min = 52.dp).clickable(onClick = onClick).padding(vertical = 7.dp, horizontal = 3.dp),
+    Column(Modifier.widthIn(min = 48.dp).heightIn(min = 52.dp).landscapeRemoteClickable(onClick).padding(vertical = 7.dp, horizontal = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, title, tint = if (selected) Mint else Muted, modifier = Modifier.size(20.dp))
         Text(title, fontSize = 10.sp, color = if (selected) Mint else Muted)
@@ -357,29 +396,56 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
     val series = model.openedSeries
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     if (wide) {
-        Row(Modifier.fillMaxSize()) {
-            NavigationRail(model, Modifier.width(102.dp).fillMaxHeight())
-            VerticalDivider(color = Elevated)
-            GroupPanel(model, Modifier.widthIn(min = 135.dp, max = 190.dp).weight(0.7f).fillMaxHeight())
-            VerticalDivider(color = Elevated)
-            Column(Modifier.weight(2.4f).fillMaxHeight().padding(horizontal = 12.dp)) {
-                LibraryToolbar(model, compact = true)
-                if (model.current != null) {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 100.dp).weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        VideoPane(model, Modifier.weight(1.7f).fillMaxHeight())
-                        CurrentProgramme(model, Modifier.weight(1f).fillMaxHeight())
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val landscapeHeight = maxHeight
+            val compactLandscape = maxWidth < 920.dp || landscapeHeight < 520.dp
+            Row(Modifier.fillMaxSize()) {
+                NavigationRail(model, Modifier.width(if (compactLandscape) 82.dp else 102.dp).fillMaxHeight())
+                VerticalDivider(color = Elevated)
+                GroupPanel(model, Modifier.widthIn(
+                    min = if (compactLandscape) 110.dp else 135.dp,
+                    max = if (compactLandscape) 150.dp else 190.dp
+                ).weight(if (compactLandscape) 0.55f else 0.7f).fillMaxHeight())
+                VerticalDivider(color = Elevated)
+                Column(Modifier.weight(2.4f).fillMaxHeight()
+                    .padding(horizontal = if (compactLandscape) 8.dp else 12.dp)) {
+                    LibraryToolbar(model, compact = true)
+                    if (model.current != null) {
+                        if (compactLandscape) {
+                            // Horizontal layouts with limited height keep the catalog usable
+                            // instead of squeezing playback, guide and list into tiny rows.
+                            VideoPane(model, Modifier.fillMaxWidth()
+                                .height((landscapeHeight * 0.35f).coerceIn(110.dp, 230.dp)))
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text(model.current!!.name, Modifier.weight(1f),
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
+                                IconButton(onClick = model::closeVideo, modifier = Modifier.size(44.dp)) {
+                                    Icon(Icons.Default.Close, tr(R.string.close_video))
+                                }
+                            }
+                        } else {
+                            Row(Modifier.fillMaxWidth().heightIn(min = 100.dp).weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                VideoPane(model, Modifier.weight(1.7f).fillMaxHeight())
+                                CurrentProgramme(model, Modifier.weight(1f).fillMaxHeight())
+                            }
+                        }
+                        Spacer(Modifier.height(if (compactLandscape) 4.dp else 8.dp))
+                        if (live && !compactLandscape) GuideHeading()
+                        else if (series != null) SeasonChips(model, series)
+                        if(model.favoritesOnly && model.selectedKind==null)
+                            FavoritesList(model, Modifier.weight(1.15f).fillMaxWidth())
+                        else ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(),
+                            guideMode = live && !compactLandscape)
+                    } else {
+                        if (series != null) SeriesHeader(model,series)
+                        SearchBox(model)
+                        if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
+                        if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth())
+                        else if(model.favoritesOnly && model.selectedKind==null)
+                            FavoritesList(model, Modifier.weight(1f).fillMaxWidth())
+                        else ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = live)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    if (live) GuideHeading() else if (series != null) SeasonChips(model, series)
-                    if(model.favoritesOnly && model.selectedKind==null)FavoritesList(model,Modifier.weight(1.15f).fillMaxWidth())
-                    else ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(), guideMode = live)
-                } else {
-                    if (series != null) SeriesHeader(model,series)
-                    SearchBox(model)
-                    if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
-                    if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth())
-                    else if(model.favoritesOnly && model.selectedKind==null)FavoritesList(model,Modifier.weight(1f).fillMaxWidth())
-                    else ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = live)
                 }
             }
         }
@@ -597,7 +663,7 @@ private fun NavigationRail(model: AuroraViewModel, modifier: Modifier) {
 @Composable
 private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent)
-        .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        .landscapeRemoteClickable(onClick).padding(horizontal = 10.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = if (selected) Mint else Muted, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
         Text(title, color = if (selected) Txt else Muted, fontSize = 11.sp, maxLines = 1)
@@ -614,7 +680,9 @@ private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
             item { GroupRow(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
             items(groups, key = { it }) { category -> GroupRow(groupDisplayName(groupLabel(category)), model.group == category) { model.selectGroup(category) } }
         } else {
-            items(series.seasons, key = { it }) { season -> GroupRow(tr(R.string.season,season), model.selectedSeason == season) { model.selectSeason(season) } }
+            items(series.seasons, key = { it }) { season ->
+                GroupRow(tr(R.string.season,season), model.selectedSeason == season) { model.selectSeason(season) }
+            }
         }
     }
 }
@@ -623,7 +691,7 @@ private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
 private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
     Text(title, color = if (selected) Mint else Txt, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
-            .background(if (selected) Elevated else Color.Transparent).clickable(onClick = onClick).padding(10.dp))
+            .background(if (selected) Elevated else Color.Transparent).landscapeRemoteClickable(onClick).padding(10.dp))
 }
 
 @Composable
@@ -750,7 +818,7 @@ private fun CatalogStatus(model: AuroraViewModel, state: LoadState, retry: () ->
 private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Boolean, now: Long) {
     val selected = channel.url == model.current?.url
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) Mint.copy(alpha = 0.12f) else Panel)
-        .clickable { model.play(channel) }.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        .landscapeRemoteClickable { model.play(channel) }.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         val isLive = channel.kind == MediaKind.LIVE
         Box(Modifier.size(if (guideMode || isLive) 38.dp else 52.dp, if (guideMode || isLive) 38.dp else 68.dp)
             .clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {

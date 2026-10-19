@@ -1,10 +1,9 @@
-AURORA IPTV Android 1.12.20 — Aviso automático de atualizações.
+AURORA IPTV Android 1.12.21 — Melhorias para projetores e controle remoto.
 
-- Ao abrir o aplicativo, verifica discretamente se existe uma versão Android mais recente no GitHub.
-- Havendo atualização, pergunta se o usuário deseja atualizar agora, sem iniciar downloads automaticamente.
-- A opção Não fecha o aviso; a opção Sim abre as notas da atualização e os controles de download e instalação existentes.
-- Sem nova versão ou sem conexão, o uso do aplicativo continua sem interrupções.
-- O aviso aparece no máximo uma vez por abertura e não interrompe a reprodução em tela cheia.
-- Mantém playlists, favoritos, histórico, progresso e assinatura do APK.
-
-Também é possível conferir manualmente em Configurações → Atualizar online.
+- Interface horizontal adaptável: a tela inicial usa cards em pares com rolagem em telas de menor altura, evitando elementos espremidos.
+- Navegação horizontal da biblioteca com menus e categorias compactos, preservando o espaço para reprodução e conteúdos.
+- Destaque visual de foco ao navegar por setas/OK do controle remoto nas categorias, canais, menus e futebol.
+- Controles do player em tela cheia podem ser revelados por teclas direcionais do controle remoto.
+- Ajustes de espaçamento no futebol quando o aplicativo está em paisagem.
+- A aparência vertical permanece como antes. O acesso por toque e as opções atuais continuam disponíveis.
+- Sem migração de dados; playlists, favoritos, progresso, preferências, assinatura do APK e atualização online são preservados.

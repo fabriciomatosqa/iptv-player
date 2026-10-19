@@ -176,7 +176,12 @@ class AuroraUiTest {
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
             screenshot("landscape-home")
-            compose.onNode(hasText("Séries") and hasText("2 séries")).performClick()
+            // Small landscape screens now use a scrollable dashboard with two cards per row.
+            // Scroll to the series row before clicking, as a DPAD user would navigate to it.
+            if (compose.onAllNodesWithTag("home_landscape_compact").fetchSemanticsNodes().isNotEmpty()) {
+                compose.onNodeWithTag("home_landscape_compact").performScrollToIndex(2)
+            }
+            compose.onNodeWithTag("home_series").assertIsDisplayed().performClick()
             compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
             screenshot("landscape-series")
             waitForText("Rick e Morty")

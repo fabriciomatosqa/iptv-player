@@ -95,7 +95,7 @@ import coil.compose.AsyncImage
     }
 }
 @Composable private fun SettingsItem(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, click: () -> Unit) {
-    Card(onClick=click,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),
+    Card(onClick=click,modifier=Modifier.fillMaxWidth().landscapeFocusRing(),shape=RoundedCornerShape(16.dp),
         colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)) {
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
             Icon(icon,null,tint=MaterialTheme.colorScheme.primary)
