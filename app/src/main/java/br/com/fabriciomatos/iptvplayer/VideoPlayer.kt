@@ -20,8 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -58,14 +56,10 @@ internal fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: B
     fun reveal() {visible=true;interaction++}
     val remoteLandscape = fullscreen &&
         LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val videoFocus = remember { FocusRequester() }
-    LaunchedEffect(remoteLandscape) {
-        if (remoteLandscape) videoFocus.requestFocus()
-    }
     // DPAD wakes a faded control layer. Center/Enter first reveals it instead of
     // accidentally activating a control the user cannot see.
     val remoteControls = if (remoteLandscape) {
-        Modifier.focusRequester(videoFocus).onPreviewKeyEvent { event ->
+        Modifier.onPreviewKeyEvent { event ->
             val isNavigation = event.key in setOf(
                 Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
                 Key.DirectionCenter, Key.Enter
