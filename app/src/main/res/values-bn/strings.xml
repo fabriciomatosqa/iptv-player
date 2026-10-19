@@ -157,6 +157,9 @@
     <string name="app_update_checking">GitHub পরীক্ষা হচ্ছে…</string>
     <string name="app_update_current">আপনার কাছে সর্বশেষ সংস্করণ আছে।</string>
     <string name="app_update_available">নতুন সংস্করণ উপলব্ধ: %1$s</string>
+    <string name="app_update_startup_question">আপনি কি এখন AURORA IPTV আপডেট করতে চান?</string>
+    <string name="app_update_startup_no">না</string>
+    <string name="app_update_startup_yes">হ্যাঁ</string>
     <string name="app_update_downloading">আপডেট ডাউনলোড হচ্ছে: %1$d%%</string>
     <string name="app_update_verifying">আপডেট যাচাই হচ্ছে…</string>
     <string name="app_update_ready">সংস্করণ %1$s ইনস্টলের জন্য প্রস্তুত।</string>
