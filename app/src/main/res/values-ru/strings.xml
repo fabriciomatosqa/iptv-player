@@ -158,8 +158,8 @@
     <string name="app_update_current">Установлена последняя версия.</string>
     <string name="app_update_available">Доступна новая версия: %1$s</string>
     <string name="app_update_startup_question">Обновить AURORA IPTV сейчас?</string>
-    <string name="app_update_startup_no">Нет</string>
-    <string name="app_update_startup_yes">Да</string>
+    <string name="app_update_startup_no">Не сейчас</string>
+    <string name="app_update_startup_yes">Посмотреть обновление</string>
     <string name="app_update_downloading">Загрузка обновления: %1$d%%</string>
     <string name="app_update_verifying">Проверка обновления…</string>
     <string name="app_update_ready">Версия %1$s готова к установке.</string>

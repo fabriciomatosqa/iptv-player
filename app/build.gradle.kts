@@ -12,8 +12,8 @@ android {
         applicationId = "br.com.fabriciomatos.iptvplayer"
         minSdk = 24
         targetSdk = 35
-        versionCode = 43
-        versionName = "1.12.22"
+        versionCode = 44
+        versionName = "1.12.23"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
