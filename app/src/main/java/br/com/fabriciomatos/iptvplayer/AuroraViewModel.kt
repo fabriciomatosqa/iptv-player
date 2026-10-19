@@ -286,7 +286,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     /** The SAF Uri is only a transport. The private saved copy becomes the durable source. */
     fun saveLocalPlaylist(uri: Uri, name: String, existingSource: String? = null) {
         if (!initialized || switchingPlaylist) return
-        val source = existingSource?.takeIf(PlaylistRepository::isLocalSource)
+        val source = existingSource?.takeIf { PlaylistRepository.isLocalSource(it) }
             ?: PlaylistRepository.newLocalSource()
         switchingPlaylist = true
         viewModelScope.launch { playlistSwitch.withLock {
