@@ -189,13 +189,13 @@ class AppearanceAndPlaylistsTest {
             val density = context.resources.displayMetrics.density
             assertTrue("Remote navigation needs readable labels", rail.width >= 108f * density)
             assertTrue("Categories need room for multi-line names", groups.width >= 166f * density)
-            compose.onNodeWithTag("landscape_rail_items").performScrollToIndex(6)
+            // Always-composed destinations stay focusable on a remote even after
+            // navigating to the bottom; scrolling must not move the brand above.
+            compose.onNodeWithTag("landscape_settings_label", useUnmergedTree = true)
+                .performScrollTo().assertIsDisplayed()
             compose.waitForIdle()
-            // The Compose text node may be offscreen immediately after a lazy-list
-            // scroll animation even though its one-line layout remains valid.
-            // Assert measured geometry, not visibility in that transient frame.
-            val settingsLabel = compose.onNodeWithTag("landscape_settings_label")
-                .assertExists().fetchSemanticsNode().boundsInRoot
+            val settingsLabel = compose.onNodeWithTag("landscape_settings_label", useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot
             val railBounds = compose.onNodeWithTag("landscape_navigation_rail")
                 .fetchSemanticsNode().boundsInRoot
             assertTrue("Localized Settings must fit within the sidebar",
