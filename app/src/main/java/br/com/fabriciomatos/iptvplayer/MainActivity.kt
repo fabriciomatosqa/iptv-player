@@ -38,8 +38,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -188,10 +186,6 @@ private fun BrandHeader(model: AuroraViewModel, wide: Boolean) {
 @Composable
 private fun Home(model: AuroraViewModel, wide: Boolean) {
     val aurora=LocalAuroraColors.current
-    val homeFocus = remember { FocusRequester() }
-    LaunchedEffect(wide, model.current) {
-        if (wide && model.current == null) homeFocus.requestFocus()
-    }
     Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(aurora.glow, Bg, aurora.sky)))) {
         BrandHeader(model, wide)
         if (model.updating) CatalogLoadingIndicator(model)
@@ -208,7 +202,7 @@ private fun Home(model: AuroraViewModel, wide: Boolean) {
                     ) {
                         item {
                             RecentCard(model, Modifier.fillMaxWidth().height(136.dp)
-                                .focusRequester(homeFocus).testTag("home_recent"))
+                                .testTag("home_recent"))
                         }
                         item {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -680,30 +674,23 @@ private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClic
 private fun GroupPanel(model: AuroraViewModel, modifier: Modifier) {
     val series = model.openedSeries
     val groups = remember(model.catalog, model.selectedKind, model.favoritesOnly) { model.groups() }
-    val initialCategoryFocus = remember { FocusRequester() }
-    LaunchedEffect(model.selectedKind, model.openedSeries, model.favoritesOnly) {
-        if (series == null || series.seasons.isNotEmpty()) initialCategoryFocus.requestFocus()
-    }
     LazyColumn(modifier, contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         item { Text(if (series == null) tr(R.string.categories) else tr(R.string.seasons), color = Muted, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(vertical = 10.dp)) }
         if (series == null) {
-            item { GroupRow(tr(R.string.all), model.group == null,
-                Modifier.focusRequester(initialCategoryFocus)) { model.selectGroup(null) } }
+            item { GroupRow(tr(R.string.all), model.group == null) { model.selectGroup(null) } }
             items(groups, key = { it }) { category -> GroupRow(groupDisplayName(groupLabel(category)), model.group == category) { model.selectGroup(category) } }
         } else {
             items(series.seasons, key = { it }) { season ->
-                GroupRow(tr(R.string.season,season), model.selectedSeason == season,
-                    if (season == series.seasons.firstOrNull()) Modifier.focusRequester(initialCategoryFocus) else Modifier
-                ) { model.selectSeason(season) }
+                GroupRow(tr(R.string.season,season), model.selectedSeason == season) { model.selectSeason(season) }
             }
         }
     }
 }
 
 @Composable
-private fun GroupRow(title: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun GroupRow(title: String, selected: Boolean, onClick: () -> Unit) {
     Text(title, color = if (selected) Mint else Txt, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(9.dp))
             .background(if (selected) Elevated else Color.Transparent).landscapeRemoteClickable(onClick).padding(10.dp))
 }
 
