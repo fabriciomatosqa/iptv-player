@@ -189,6 +189,9 @@ class AppUpdateUiTest {
             instrumentation.runOnMainSync { controller.onForeground() }
             compose.waitUntil(15000) { controller.startupOffer != null }
             compose.onNodeWithTag("update_startup_prompt").assertIsDisplayed()
+            compose.onNodeWithTag("update_startup_brand").assertIsDisplayed()
+            compose.onNodeWithTag("update_startup_version").assertIsDisplayed()
+            compose.onNodeWithTag("update_startup_notes").assertExists()
             compose.onNodeWithTag("update_startup_no").performClick()
             assertNull(controller.startupOffer)
             assertEquals(UpdatePhase.AVAILABLE, controller.state.phase)
