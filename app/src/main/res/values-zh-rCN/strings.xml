@@ -196,4 +196,14 @@
     <string name="broadcast_ended">转播已结束</string>
     <string name="broadcast_scheduled">预定转播</string>
     <string name="broadcast_unconfirmed">直播尚未确认</string>
+    <string name="playlist_by_url">通过网址</string>
+    <string name="playlist_by_file">通过文件</string>
+    <string name="choose_playlist_file">选择 M3U/M3U8 文件</string>
+    <string name="local_file_selected">已选文件</string>
+    <string name="local_file_stored">文件已保存到此设备</string>
+    <string name="unsupported_playlist_file">请选择 .m3u 或 .m3u8 文件。</string>
+    <string name="import_playlist_file">导入播放列表</string>
+    <string name="reimport_local_playlist">重新导入已保存的文件</string>
+    <string name="replace_local_playlist">替换文件</string>
+    <string name="local_import_failed">无法导入播放列表。请检查文件后重试。</string>
 </resources>
