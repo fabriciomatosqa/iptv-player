@@ -158,8 +158,8 @@
     <string name="app_update_current">En son sürümü kullanıyorsunuz.</string>
     <string name="app_update_available">Yeni sürüm mevcut: %1$s</string>
     <string name="app_update_startup_question">AURORA IPTV uygulamasını şimdi güncellemek ister misiniz?</string>
-    <string name="app_update_startup_no">Hayır</string>
-    <string name="app_update_startup_yes">Evet</string>
+    <string name="app_update_startup_no">Şimdi değil</string>
+    <string name="app_update_startup_yes">Güncellemeyi gör</string>
     <string name="app_update_downloading">Güncelleme indiriliyor: %1$d%%</string>
     <string name="app_update_verifying">Güncelleme doğrulanıyor…</string>
     <string name="app_update_ready">%1$s sürümü kurulmaya hazır.</string>
