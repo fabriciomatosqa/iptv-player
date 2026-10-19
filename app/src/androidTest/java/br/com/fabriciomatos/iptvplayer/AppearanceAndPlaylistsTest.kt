@@ -126,9 +126,19 @@ class AppearanceAndPlaylistsTest {
                 // all cards. The portrait dashboard must still fit without scrolling.
                 val landscapeCompact = compose.onAllNodesWithTag("home_landscape_compact")
                     .fetchSemanticsNodes().isNotEmpty()
-                listOf("home_recent","home_live","home_movies","home_series","home_football","home_total").forEach { tag ->
-                    if (landscapeCompact) compose.onNodeWithTag(tag).performScrollTo()
-                    compose.onNodeWithTag(tag).assertIsDisplayed()
+                if (landscapeCompact) {
+                    listOf(
+                        listOf("home_recent"),
+                        listOf("home_live", "home_movies"),
+                        listOf("home_series", "home_football"),
+                        listOf("home_total")
+                    ).forEachIndexed { index, tags ->
+                        compose.onNodeWithTag("home_landscape_compact").performScrollToIndex(index)
+                        tags.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+                    }
+                } else {
+                    listOf("home_recent", "home_live", "home_movies", "home_series",
+                        "home_football", "home_total").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
                 }
                 screenshot("aurora-light-landscape")
                 scenario.onActivity {model.chooseAppearance(AppAppearance.SYSTEM)}
