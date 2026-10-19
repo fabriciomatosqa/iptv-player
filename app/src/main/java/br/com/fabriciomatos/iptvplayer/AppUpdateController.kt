@@ -40,11 +40,11 @@ internal class AppUpdateController(private val repository: AppUpdateRepository, 
         if (foreground) return
         foreground = true
         allowStartupPrompt = true
-        if (startupJob?.isActive == true || state.busy || state.phase == UpdatePhase.INSTALLER) return
+        if (startupJob?.isActive == true || state.busy || state.phase in setOf(UpdatePhase.PERMISSION, UpdatePhase.INSTALLER)) return
         val preceding = job
         startupJob = scope.launch {
             preceding?.join() // Restore a verified APK before comparing remote versions.
-            if (!foreground || state.busy || state.phase == UpdatePhase.INSTALLER) return@launch
+            if (!foreground || state.busy || state.phase in setOf(UpdatePhase.PERMISSION, UpdatePhase.INSTALLER)) return@launch
             val ready = state.update?.takeIf { state.phase == UpdatePhase.READY }
             state = AppUpdateState(UpdatePhase.CHECKING)
             try {
@@ -130,7 +130,7 @@ internal class AppUpdateController(private val repository: AppUpdateRepository, 
     }
 
     fun installerReturned() {
-        if (state.phase == UpdatePhase.INSTALLER) state = state.copy(phase = UpdatePhase.READY)
+        if (state.phase in setOf(UpdatePhase.PERMISSION, UpdatePhase.INSTALLER)) state = state.copy(phase = UpdatePhase.READY)
     }
     fun permissionUnavailable() { state = state.copy(phase = UpdatePhase.ERROR, error = R.string.app_update_install_error) }
     private fun fail(error: Exception, update: AppUpdate? = null) {
