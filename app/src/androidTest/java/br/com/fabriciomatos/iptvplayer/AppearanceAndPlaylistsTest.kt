@@ -191,6 +191,14 @@ class AppearanceAndPlaylistsTest {
             assertTrue("Categories need room for multi-line names", groups.width >= 166f * density)
             compose.onNodeWithTag("landscape_rail_items").performScrollToIndex(6)
             compose.waitForIdle()
+            val settingsLabel = compose.onNodeWithTag("landscape_settings_label")
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            val railBounds = compose.onNodeWithTag("landscape_navigation_rail")
+                .fetchSemanticsNode().boundsInRoot
+            assertTrue("Localized Settings must fit within the sidebar",
+                settingsLabel.left >= railBounds.left && settingsLabel.right <= railBounds.right)
+            assertTrue("Settings must remain on one line in landscape",
+                settingsLabel.height < 30f * density * context.resources.configuration.fontScale)
             assertEquals("The brand must not scroll with the remote navigation", logo,
                 compose.onNodeWithTag("landscape_rail_logo").fetchSemanticsNode().boundsInRoot)
             compose.onNodeWithTag("landscape_categories_list").assertExists()
