@@ -1,11 +1,10 @@
-AURORA IPTV Android 1.12.18 — Confiabilidade dos horários e canais do futebol.
+AURORA IPTV Android 1.12.19 — Importação de playlists por arquivo M3U/M3U8.
 
-- O horário da partida não altera mais o início ou o término das transmissões no EPG, inclusive após reabrir o aplicativo.
-- O filtro Ao Vivo respeita o intervalo original de cada canal, o fuso horário e programas que atravessam a meia-noite.
-- Placar e andamento da partida permanecem independentes da programação da televisão.
-- Identificadores conflitantes não são substituídos por nomes; canais sem identificador exigem correspondência inequívoca no guia.
-- Resultados finais e transmissões anteriores não classificam automaticamente uma programação futura como reprise.
-- Canais sem EPG continuam disponíveis no catálogo Ao Vivo, sem programação inventada.
-- Preserva assinatura Android, playlists, favoritos, configurações, reprodução e atualização online.
+- Agora é possível adicionar listas pelo gerenciador de arquivos do Android, além de cadastrar pela URL.
+- Playlists locais são importadas para o catálogo do aplicativo, permanecendo disponíveis após reiniciá-lo.
+- A opção de reimportar permite substituir o arquivo de origem quando necessário.
+- A importação reutiliza o processamento em fluxo para listas grandes e a identificação de canais, filmes e séries.
+- Favoritos, histórico e progresso de reprodução são preservados durante a atualização do aplicativo.
+- Corrige o versionamento para publicar um novo APK sem substituir a versão 1.12.18.
 
 Atualize em Configurações → Atualizar online → Verificar atualizações.
