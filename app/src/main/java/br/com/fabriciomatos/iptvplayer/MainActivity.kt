@@ -43,6 +43,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -403,10 +405,25 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
             // Reserve readable widths for remote navigation and long category names.
             // The content pane takes whatever space remains, instead of competing
             // for the last pixels through multiple weights.
-            val navigationWidth = if (maxWidth < 760.dp) 112.dp else 124.dp
+            val textMeasurer = rememberTextMeasurer()
+            val density = LocalDensity.current
+            // Measure localized menu labels rather than guessing a fixed width.
+            // The icon, gap and horizontal padding are included in the rail size.
+            val railLabels = listOf(
+                tr(R.string.home), tr(R.string.search), tr(R.string.live),
+                tr(R.string.movies), tr(R.string.series),
+                tr(R.string.favorites), tr(R.string.settings)
+            )
+            val widestLabel = railLabels.maxOf { label ->
+                textMeasurer.measure(label, style = TextStyle(fontSize = 12.sp),
+                    maxLines = 1, softWrap = false).size.width
+            }
+            val navigationWidth = with(density) { widestLabel.toDp() } + 18.dp + 8.dp + 20.dp + 12.dp
+            // Protect the content pane on unusually narrow landscape screens.
+            val safeNavigationWidth = navigationWidth.coerceAtMost(maxWidth * 0.36f)
             val categoryWidth = (maxWidth * 0.27f).coerceIn(170.dp, 224.dp)
             Row(Modifier.fillMaxSize()) {
-                NavigationRail(model, Modifier.width(navigationWidth).fillMaxHeight()
+                NavigationRail(model, Modifier.width(safeNavigationWidth).fillMaxHeight()
                     .testTag("landscape_navigation_rail"))
                 VerticalDivider(color = Elevated)
                 GroupPanel(model, Modifier.width(categoryWidth).fillMaxHeight()
@@ -690,7 +707,7 @@ private fun RailItem(title: String, icon: ImageVector, selected: Boolean, onClic
         Icon(icon, null, tint = if (selected) Mint else Muted, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(title, color = if (selected) Txt else Muted, fontSize = 12.sp,
-            lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            lineHeight = 16.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 
