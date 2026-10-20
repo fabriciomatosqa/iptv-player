@@ -1,9 +1,7 @@
-AURORA IPTV Android 1.12.22 — Melhorias de legibilidade no modo horizontal.
+AURORA IPTV Android 1.12.23 — Nova tela de atualização e menu horizontal responsivo.
 
-- Logo do AURORA fixo no topo do menu lateral: não se move ao percorrer opções com controle remoto ou ao rolar a lista.
-- Menu de navegação horizontal mais largo e nomes exibidos em até duas linhas.
-- Categorias mais largas, com título fixo e nomes em até três linhas sem corte desnecessário.
-- Cartazes de séries com largura mínima legível e informações de temporadas/episódios em até duas linhas na horizontal.
-- Melhor distribuição do espaço entre navegação, categorias e conteúdos, sem mexer no layout vertical.
-- Preservados as playlists, os favoritos, o progresso de reprodução, as preferências, a assinatura e o atualizador online.
-
+- Aviso de nova versão redesenhado com identidade visual Aurora: gradiente, borda iluminada, destaque de versão, descrição e botões estilizados.
+- Mantido o comportamento seguro: recusar fecha o aviso; aceitar abre a tela de detalhes e instalação existente, sem baixar automaticamente.
+- Primeira coluna horizontal calculada a partir da maior legenda localizada do menu, incluindo ícone e espaçamentos, para evitar que Configurações fique cortado.
+- Logo do Aurora permanece fixo; orientação vertical não é alterada.
+- Playlists, favoritos, progresso, preferências, assinatura original e atualização online preservados.
