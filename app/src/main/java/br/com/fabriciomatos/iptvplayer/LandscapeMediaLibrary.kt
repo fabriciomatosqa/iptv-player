@@ -87,7 +87,7 @@ import kotlinx.coroutines.flow.collectLatest
                     Text(model.playlistName, fontSize = 11.sp, color = Color(0xFF9EADBC),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(onClick = model::refresh) { Icon(Icons.Default.Refresh, tr(R.string.refresh)) }
+                IconButton(onClick = { model.refresh() }) { Icon(Icons.Default.Refresh, tr(R.string.refresh)) }
             }
             HorizontalDivider(color = Color(0xFF243347))
             Row(Modifier.fillMaxSize()) {
@@ -311,7 +311,7 @@ import kotlinx.coroutines.flow.collectLatest
                 } else if(series!=null) {
                     OutlinedButton(onClick={model.toggleSeriesFavorite(series)},
                         modifier=Modifier.testTag("landscape_details_favorite")) {
-                        Icon(if(model.isSeriesFavorite(series)) Icons.Default.Star else Icons.Default.StarBorder,
+                        Icon(if(series.id in model.seriesFavorites) Icons.Default.Star else Icons.Default.StarBorder,
                             null,tint=Color(0xFFFFD05C))
                         Spacer(Modifier.width(6.dp))
                         Text(tr(R.string.favorites),color=mainText)
