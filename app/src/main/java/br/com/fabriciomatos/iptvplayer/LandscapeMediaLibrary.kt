@@ -139,8 +139,25 @@ import kotlinx.coroutines.flow.collectLatest
                             Text(tr(R.string.item_count,formatCount(model.visibleCount)),
                                 fontSize=11.sp,color=Color(0xFF97A8BD))
                         }
+                        model.openedSeries?.let {entry ->
+                            SeriesFavoriteButton(model,entry)
+                        }
                     }
                     if(model.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    model.current?.let { playing ->
+                        // Keep an accessible playback preview when rotating from portrait
+                        // or returning from fullscreen; existing player remains attached.
+                        VideoPane(model,Modifier.fillMaxWidth()
+                            .height(if(small) 142.dp else 200.dp)
+                            .testTag("landscape_video_preview"))
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            Text(playing.name,Modifier.weight(1f).padding(start=8.dp),
+                                maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp)
+                            IconButton(onClick=model::closeVideo) {
+                                Icon(Icons.Default.Close,tr(R.string.close_video))
+                            }
+                        }
+                    }
                     when {
                         kind==MediaKind.MOVIES && model.openedSeries==null ->
                             LandscapeMovieGrid(model,Modifier.weight(1f).fillMaxWidth()) {chosenMovie=it}
