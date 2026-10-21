@@ -186,7 +186,11 @@ class AuroraUiTest {
             screenshot("landscape-series")
             waitForText("Rick e Morty")
             compose.onNodeWithText("Rick e Morty").performClick()
-            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
+            compose.onNodeWithTag("landscape_title_details").assertIsDisplayed()
+            assertNull("Choosing a poster must not auto-play",model.current)
+            screenshot("landscape-series-details")
+            compose.onNodeWithTag("landscape_details_play").performClick()
+            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering && model.openedSeries != null }
             screenshot("landscape-episodes")
             scenario.recreate()
             scenario.close()
