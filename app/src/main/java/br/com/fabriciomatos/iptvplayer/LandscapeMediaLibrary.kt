@@ -133,7 +133,7 @@ import kotlinx.coroutines.flow.collectLatest
                         Column(Modifier.weight(1f)) {
                             Text(model.group?.let {groupDisplayName(groupLabel(it))}
                                 ?: model.openedSeries?.title
-                                ?: kind?.let(::kindLabel) ?: tr(R.string.favorites),
+                                ?: kind?.let { kindLabel(it) } ?: tr(R.string.favorites),
                                 fontSize=19.sp,fontWeight=FontWeight.Bold,
                                 maxLines=1,overflow=TextOverflow.Ellipsis)
                             Text(tr(R.string.item_count,formatCount(model.visibleCount)),
