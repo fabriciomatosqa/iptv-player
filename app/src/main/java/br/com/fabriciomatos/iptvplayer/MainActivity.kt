@@ -529,7 +529,7 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
     }
 }
 
-@Composable private fun SeriesFavoriteButton(model: AuroraViewModel,series: SeriesEntry,modifier: Modifier = Modifier) {
+@Composable internal fun SeriesFavoriteButton(model: AuroraViewModel,series: SeriesEntry,modifier: Modifier = Modifier) {
     val selected=series.id in model.seriesFavorites
     IconButton(onClick={model.toggleSeriesFavorite(series)},modifier=modifier.size(48.dp).testTag("series_favorite_${series.id}")) {
         Icon(if(selected)Icons.Default.Star else Icons.Default.StarBorder,
