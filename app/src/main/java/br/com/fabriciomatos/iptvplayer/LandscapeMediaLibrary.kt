@@ -200,7 +200,7 @@ import kotlinx.coroutines.flow.collectLatest
         return
     }
     LazyVerticalGrid(
-        columns=GridCells.Adaptive(170.dp),
+        columns=GridCells.Adaptive(204.dp),
         state=state,
         modifier=modifier.testTag("landscape_movie_grid"),
         contentPadding=PaddingValues(top=8.dp,bottom=24.dp),
@@ -240,8 +240,11 @@ import kotlinx.coroutines.flow.collectLatest
     onBack: ()->Unit, onEpisodes: (SeriesEntry)->Unit
 ) {
     val title = movie?.name ?: series?.title.orEmpty()
-    val synopsis by produceState<Synopsis?>(null,model.playlistUrl,movie?.url,series?.id) {
-        value = model.synopsis(movie,series)
+    var synopsis by remember(model.playlistUrl,movie?.url,series?.id) {
+        mutableStateOf<Synopsis?>(null)
+    }
+    LaunchedEffect(model.playlistUrl,movie?.url,series?.id) {
+        synopsis = model.synopsis(movie,series)
     }
     val fallback = movie?.imageUrl ?: series?.imageUrl.orEmpty()
     val backdrop = synopsis?.backdropUrl?.takeIf(String::isNotBlank) ?: fallback
