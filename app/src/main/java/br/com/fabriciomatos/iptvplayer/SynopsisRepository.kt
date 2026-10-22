@@ -7,6 +7,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -34,7 +35,10 @@ class SynopsisRepository(private val repository: PlaylistRepository, private val
             decodePublicSynopsis(cached)
         } else {
             val found=try {
-                ExternalSynopsis(readJson).find(title,supplied.year,movie.not())
+                // Public services must never delay opening the details screen indefinitely.
+                withTimeoutOrNull(16000L) {
+                    ExternalSynopsis(readJson).find(title,supplied.year,!movie)
+                }
             } catch(e: CancellationException) {throw e} catch(_: Exception) {null}
             repository.saveArtwork(externalKey,encodePublicSynopsis(found).toString(),
                 if(found?.plot.isNullOrBlank())6*3600000L else 14L*86400000)
