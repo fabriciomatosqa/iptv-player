@@ -14,52 +14,118 @@ import java.net.URL
 import kotlin.coroutines.coroutineContext
 
 /** On-demand details from the playlist's own provider. No account data goes to another service. */
-class SynopsisRepository(private val repository: PlaylistRepository, private val readJson: (String)->JSONObject = ::readSynopsisJson) {
+class SynopsisRepository(
+    private val repository: PlaylistRepository,
+    private val readJson: (String)->JSONObject = ::readSynopsisJson,
+    private val publicLookup: PublicSynopsisLookup = PublicSynopsisLookup()
+) {
     private val indexLock=Mutex()
-    suspend fun load(source: String, channel: Channel? = null, series: SeriesEntry? = null, force: Boolean = false): Synopsis = withContext(Dispatchers.IO) {
-        val movie=channel?.kind==MediaKind.MOVIES
-        if(!movie && channel?.kind!=MediaKind.SERIES && series==null)return@withContext Synopsis()
-        if(ProviderApi.endpoint(source,"get_vod_info")==null)return@withContext Synopsis()
-        try {
-            val title=series?.title ?: channel?.let {seriesIdentity(it).title}.orEmpty()
-            val id=if(movie)playbackContentId(channel!!.url) ?: repository.synopsisMovieId(source,channel.name) ?: indexLock.withLock {
-                repository.refreshVodIds(source);repository.synopsisMovieId(source,channel.name)
-            } else channel?.seriesId?.takeIf {it.matches(Regex("[0-9]+"))}
-                ?: series?.id?.removePrefix("id:")?.takeIf {it.matches(Regex("[0-9]+"))}
-                ?: repository.synopsisSeriesId(source,title)
-                ?: cachedSeriesId(source,title)
-            if(id==null)return@withContext Synopsis()
-            val action=if(movie)"get_vod_info"else"get_series_info"
-            val key=synopsisCacheKey(source,movie,id)
-            val cached=repository.cachedArtwork(key,0)?.let {runCatching {decodeContentDetails(JSONObject(it))}.getOrNull()}
-            val fresh=repository.cachedArtwork(key)!=null
-            val details=if(!force && cached!=null && fresh)cached else try {
-                val address=ProviderApi.endpoint(source,action)+"&"+(if(movie)"vod_id"else"series_id")+"="+id
-                val json=readJson(address)
-                coroutineContext.ensureActive()
-                check(json.optJSONObject("info")!=null)
-                parseContentDetails(json).also {repository.saveArtwork(key,encodeContentDetails(it).toString())}
-            } catch(e: CancellationException) {throw e} catch(_: Exception) {
-                cached ?: return@withContext Synopsis(failed=true)
+
+    suspend fun load(source: String, channel: Channel? = null,
+        series: SeriesEntry? = null, force: Boolean = false): Synopsis = withContext(Dispatchers.IO) {
+        val movie = channel?.kind == MediaKind.MOVIES
+        if (!movie && channel?.kind != MediaKind.SERIES && series == null)
+            return@withContext Synopsis()
+        val title = if (movie) channel!!.name else
+            series?.title ?: channel?.let { seriesIdentity(it).title }.orEmpty()
+        val kind = if (movie) MediaKind.MOVIES else MediaKind.SERIES
+
+        // Fetch official playlist-provider details first. A missing provider API
+        // or an unresolved stream ID must NOT prevent the public fallback.
+        val official = try {
+            providerDetails(source,channel,series,movie,title,force)
+        } catch (e: CancellationException) { throw e }
+          catch (_: Exception) { null }
+        var details = official ?: ContentDetails()
+        if (details.plot.isBlank() && title.isNotBlank() &&
+            channel?.adult != true && series?.adult != true) {
+            // A separate cache also covers providers that return blank descriptions.
+            val key = "public-synopsis:" + PlaylistRepository.digest(source) +
+                ":" + kind.name + ":" + normalized(title)
+            val cached = if (!force) repository.cachedArtwork(key)?.let {
+                runCatching {JSONObject(it)}.getOrNull()
+            } else null
+            val extra = when {
+                cached?.optBoolean("noMatch") == true -> null
+                cached != null -> runCatching {decodeContentDetails(cached)}.getOrNull()
+                else -> try {
+                    publicLookup.find(title,kind,details.year)
+                } catch(e: CancellationException) {throw e}
+                  catch (_: Exception) {null}
             }
-            Synopsis(
-                plot = details.plot,
-                episode = if (!movie && channel != null) selectEpisodeSynopsis(details,channel) else null,
-                backdropUrl = details.backdropUrl,
-                cast = details.cast,
-                year = details.year,
-                duration = details.duration,
-                genre = details.genre,
-                rating = details.rating,
-                director = details.director
-            )
-        } catch(e: CancellationException) {throw e} catch(_: Exception) {Synopsis(failed=true)}
+            if (cached == null) {
+                if(extra != null) repository.saveArtwork(key,encodeContentDetails(extra).toString(),7L*86400000)
+                else repository.saveArtwork(key,JSONObject().put("noMatch",true).toString(),6L*3600000)
+            }
+            if(extra != null && extra.plot.isNotBlank()) {
+                details = details.copy(
+                    plot = extra.plot,
+                    backdropUrl = details.backdropUrl.ifBlank {extra.backdropUrl},
+                    cast = details.cast.ifEmpty {extra.cast},
+                    year = details.year.ifBlank {extra.year},
+                    duration = details.duration.ifBlank {extra.duration},
+                    genre = details.genre.ifBlank {extra.genre},
+                    rating = details.rating.ifBlank {extra.rating},
+                    director = details.director.ifBlank {extra.director},
+                    metadataSource = extra.metadataSource,
+                    metadataUrl = extra.metadataUrl
+                )
+            }
+        }
+        Synopsis(
+            plot=details.plot,
+            episode=if(!movie && channel != null) selectEpisodeSynopsis(details,channel) else null,
+            failed = official == null && details.plot.isBlank(),
+            backdropUrl=details.backdropUrl,cast=details.cast,
+            year=details.year,duration=details.duration,
+            genre=details.genre,rating=details.rating,director=details.director,
+            metadataSource=details.metadataSource,metadataUrl=details.metadataUrl
+        )
     }
+
+    private suspend fun providerDetails(
+        source: String, channel: Channel?, series: SeriesEntry?,
+        movie: Boolean, title: String, force: Boolean
+    ): ContentDetails? {
+        val action = if(movie) "get_vod_info" else "get_series_info"
+        val endpoint = ProviderApi.endpoint(source,action) ?: return null
+        val id = if(movie) {
+            playbackContentId(channel!!.url)
+                ?: repository.synopsisMovieId(source,channel.name)
+                ?: indexLock.withLock {
+                    repository.refreshVodIds(source)
+                    repository.synopsisMovieId(source,channel.name)
+                }
+        } else channel?.seriesId?.takeIf { it.matches(Regex("[0-9]+")) }
+            ?: series?.id?.removePrefix("id:")?.takeIf {it.matches(Regex("[0-9]+"))}
+            ?: repository.synopsisSeriesId(source,title)
+            ?: cachedSeriesId(source,title)
+        if (id == null) return null
+        val key = synopsisCacheKey(source,movie,id)
+        val cache = repository.cachedArtwork(key,0)?.let {
+            runCatching {decodeContentDetails(JSONObject(it))}.getOrNull()
+        }
+        if (!force && cache != null && repository.cachedArtwork(key)!=null) return cache
+        return try {
+            val addr = endpoint + "&" + (if(movie)"vod_id" else "series_id") + "=" + id
+            val json=readJson(addr)
+            coroutineContext.ensureActive()
+            check(json.optJSONObject("info")!=null || json.optJSONObject("movie_data")!=null)
+            parseContentDetails(json).also {
+                repository.saveArtwork(key,encodeContentDetails(it).toString())
+            }
+        } catch(e: CancellationException) {throw e}
+          catch(_: Exception) {cache}
+    }
+
     private suspend fun cachedSeriesId(source: String, title: String): String? {
         val key="synopsis-series-id:"+PlaylistRepository.digest(source)+":"+normalized(title)
-        repository.cachedArtwork(key)?.let {return JSONObject(it).optString("id").takeIf(String::isNotBlank)}
+        repository.cachedArtwork(key)?.let {
+            return JSONObject(it).optString("id").takeIf(String::isNotBlank)
+        }
         val id=ProviderApi.findSeriesId(source,title)
-        repository.saveArtwork(key,JSONObject().put("id",id.orEmpty()).toString(),if(id==null)3600000L else 30*86400000L)
+        repository.saveArtwork(key,JSONObject().put("id",id.orEmpty()).toString(),
+            if(id==null)3600000L else 30*86400000L)
         return id
     }
 }
@@ -148,7 +214,7 @@ fun parseContentDetails(json: JSONObject): ContentDetails {
             ?: movieData.optString(key).takeIf { it.isNotBlank() && it != "null" }
     }.orEmpty()
     return ContentDetails(
-        plot=synopsisText(info),
+        plot=synopsisText(info).ifBlank {synopsisText(movieData)}.ifBlank {synopsisText(json)},
         episodes=rows,
         backdropUrl=providerBackdrop(info).ifBlank {providerBackdrop(movieData)},
         cast=providerCast(info).ifEmpty {providerCast(movieData)},
@@ -173,6 +239,8 @@ fun encodeContentDetails(details: ContentDetails): JSONObject = JSONObject()
     .put("genre",details.genre)
     .put("rating",details.rating)
     .put("director",details.director)
+    .put("metadataSource",details.metadataSource)
+    .put("metadataUrl",details.metadataUrl)
 
 fun decodeContentDetails(json: JSONObject): ContentDetails {
     val episodes=json.optJSONArray("episodes") ?: JSONArray()
@@ -193,7 +261,9 @@ fun decodeContentDetails(json: JSONObject): ContentDetails {
         duration=json.optString("duration"),
         genre=json.optString("genre"),
         rating=json.optString("rating"),
-        director=json.optString("director")
+        director=json.optString("director"),
+        metadataSource=json.optString("metadataSource"),
+        metadataUrl=json.optString("metadataUrl")
     )
 }
 private fun readSynopsisJson(address: String): JSONObject {
@@ -205,7 +275,10 @@ private fun readSynopsisJson(address: String): JSONObject {
         return connection.inputStream.use {input->
             val result=java.io.ByteArrayOutputStream();val buffer=ByteArray(8192)
             while(true) {val count=input.read(buffer);if(count<0)break;check(result.size()+count<=8*1024*1024);result.write(buffer,0,count)}
-            JSONObject(result.toString("UTF-8"))
+            result.toString("UTF-8").trimStart().let {json ->
+                if (json.startsWith("[")) JSONObject().put("items",JSONArray(json))
+                else JSONObject(json)
+            }
         }
     } finally {connection.disconnect()}
 }
