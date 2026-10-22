@@ -16,7 +16,7 @@ import java.net.URLEncoder
  * Cinemeta is a best-effort public Stremio catalog, not an IPTV provider.
  * Exact title and year matching prevents plausible but incorrect descriptions.
  */
-internal class PublicSynopsisFallback(
+class PublicSynopsisFallback(
     private val cache: PlaylistRepository,
     private val fetchJson: (String) -> JSONObject = ::readPublicSynopsisJson
 ) {
