@@ -43,10 +43,10 @@ private fun wikiFilmBase(value: String): Pair<String, String?> {
 internal class ExternalSynopsisLookup(private val fetch: (String) -> String = ::readExternalSynopsis) {
     fun lookup(rawTitle: String, movie: Boolean): ContentDetails? {
         val title = synopsisSearchTitle(rawTitle) ?: return null
-        return if (movie) movie(title) else series(title)
+        return if (movie) findMovie(title) else findSeries(title)
     }
 
-    private fun series(title: SynopsisSearchTitle): ContentDetails? {
+    private fun findSeries(title: SynopsisSearchTitle): ContentDetails? {
         val results = JSONArray(fetch("https://api.tvmaze.com/search/shows?q=" + urlEncode(title.title)))
         val matching = (0 until minOf(results.length(), 15)).mapNotNull { i ->
             results.optJSONObject(i)?.optJSONObject("show")
@@ -89,7 +89,7 @@ internal class ExternalSynopsisLookup(private val fetch: (String) -> String = ::
         ).takeIf { it.plot.isNotBlank() || it.cast.isNotEmpty() }
     }
 
-    private fun movie(title: SynopsisSearchTitle): ContentDetails? {
+    private fun findMovie(title: SynopsisSearchTitle): ContentDetails? {
         for ((language, descriptor) in listOf("pt" to "filme", "en" to "film")) {
             val query = "\"" + title.title + "\" " + descriptor + (title.year?.let { " $it" } ?: "")
             val endpoint = "https://$language.wikipedia.org/w/api.php" +
