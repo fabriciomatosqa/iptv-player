@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -269,6 +270,7 @@ import kotlinx.coroutines.flow.collectLatest
     }
     val fallback = movie?.imageUrl ?: series?.imageUrl.orEmpty()
     val backdrop = synopsis?.backdropUrl?.takeIf(String::isNotBlank) ?: fallback
+    val uriHandler = LocalUriHandler.current
     val mainText=Color(0xFFF5F8FF)
     Box(Modifier.fillMaxSize().background(Color(0xFF070D17))
         .testTag("landscape_title_details")) {
@@ -309,6 +311,15 @@ import kotlinx.coroutines.flow.collectLatest
             }, color=Color(0xFFE1E8F1),fontSize=14.sp,lineHeight=20.sp,
                 maxLines=5,overflow=TextOverflow.Ellipsis,
                 modifier=Modifier.fillMaxWidth(0.72f).testTag("landscape_details_synopsis"))
+            synopsis?.sourceName?.takeIf(String::isNotBlank)?.let { name ->
+                Text("Fonte da sinopse: $name",
+                    modifier=Modifier.padding(top=7.dp).then(
+                        if(synopsis!!.sourceUrl.startsWith("https://"))
+                            Modifier.clickable { uriHandler.openUri(synopsis!!.sourceUrl) }
+                        else Modifier
+                    ).testTag("landscape_synopsis_source"),
+                    color=Color(0xFF70DCCA),fontSize=11.sp)
+            }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp),
                 verticalAlignment=Alignment.CenterVertically) {
