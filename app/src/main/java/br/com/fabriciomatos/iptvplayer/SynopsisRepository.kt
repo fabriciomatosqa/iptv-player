@@ -16,8 +16,8 @@ import kotlin.coroutines.coroutineContext
 /** On-demand details from the playlist's own provider. No account data goes to another service. */
 class SynopsisRepository(
     private val repository: PlaylistRepository,
-    private val readJson: (String)->JSONObject = ::readSynopsisJson,
-    private val publicLookup: PublicSynopsisLookup = PublicSynopsisLookup()
+    private val publicLookup: PublicSynopsisLookup = PublicSynopsisLookup(),
+    private val readJson: (String)->JSONObject = ::readSynopsisJson
 ) {
     private val indexLock=Mutex()
 
