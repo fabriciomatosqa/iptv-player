@@ -1,5 +1,7 @@
 package br.com.fabriciomatos.iptvplayer
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -309,6 +312,20 @@ import kotlinx.coroutines.flow.collectLatest
             }, color=Color(0xFFE1E8F1),fontSize=14.sp,lineHeight=20.sp,
                 maxLines=5,overflow=TextOverflow.Ellipsis,
                 modifier=Modifier.fillMaxWidth(0.72f).testTag("landscape_details_synopsis"))
+            // External summaries carry attribution and a link back to the licensed source.
+            synopsis?.takeIf { it.sourceName.isNotBlank() && it.sourceUrl.startsWith("https://") }
+                ?.let { details ->
+                    val context = LocalContext.current
+                    Text("Fonte: " + details.sourceName,
+                        color=Color(0xFF79DCC7),fontSize=11.sp,
+                        modifier=Modifier.padding(top=7.dp)
+                            .clickable {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW,
+                                        Uri.parse(details.sourceUrl)))
+                                }
+                            }.testTag("landscape_synopsis_source"))
+                }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp),
                 verticalAlignment=Alignment.CenterVertically) {
