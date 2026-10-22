@@ -266,7 +266,7 @@ fun decodeContentDetails(json: JSONObject): ContentDetails {
         metadataUrl=json.optString("metadataUrl")
     )
 }
-private fun readSynopsisJson(address: String): JSONObject {
+internal fun readSynopsisJson(address: String): JSONObject {
     val connection=(URL(address).openConnection() as HttpURLConnection).apply {
         connectTimeout=10000;readTimeout=15000;setRequestProperty("User-Agent","AuroraIPTV/1.8 Android");setRequestProperty("Accept","application/json")
     }
