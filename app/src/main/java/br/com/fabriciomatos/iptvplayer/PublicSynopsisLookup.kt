@@ -16,7 +16,7 @@ import kotlin.coroutines.coroutineContext
  * credentials, content stream address or account identifiers to third parties.
  * Only the cleaned title and optional release year are searched, on demand.
  */
-internal class PublicSynopsisLookup(
+class PublicSynopsisLookup(
     private val request: (String) -> JSONObject = ::readSynopsisJson
 ) {
     suspend fun find(title: String, kind: MediaKind, suppliedYear: String = ""): ContentDetails? =
