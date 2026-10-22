@@ -130,6 +130,69 @@ class SynopsisTest {
         assertEquals("", providerImageUrl("javascript:alert(1)"))
     }
 
+    @Test fun missingProviderSynopsisUsesPublicSourceOnceAndCachesIt() = runBlocking {
+        resetCatalog(context)
+        val repository = PlaylistRepository(context)
+        val source = "https://example.test/library.m3u"
+        val movie = Channel("Filme de Teste (2024)", "https://example.test/movie/999.mp4", "Filmes")
+        val movieStory = "Uma aventura cinematográfica sobre uma equipe que atravessa o oceano e enfrenta novos desafios."
+        var searchCalls=0
+        val lookup = SynopsisRepository(repository) {address ->
+            assertFalse("Never forward playlist credentials",address.contains("password="))
+            when {
+                address.contains("/search/page") -> {
+                    searchCalls++
+                    JSONObject("""{"pages":[{"title":"Filme de Teste (filme de 2024)",
+                        "description":"filme de aventura de 2024"}]}""")
+                }
+                address.contains("/w/api.php") -> JSONObject().put("query",
+                    JSONObject().put("pages", JSONObject().put("123",
+                        JSONObject().put("extract",movieStory))))
+                else -> error("Unexpected API: $address")
+            }
+        }
+        val first=lookup.load(source,movie)
+        assertEquals(movieStory,first.plot)
+        assertEquals("Wikipédia",first.sourceName)
+        assertTrue(first.sourceUrl.contains("wikipedia.org"))
+        assertEquals(movieStory,lookup.load(source,movie).plot)
+        assertEquals("External synopsis must be cached",1,searchCalls)
+        repository.close()
+    }
+
+    @Test fun providerInfoPlotAndMovieDataHavePriorityOverPublicLookup() = runBlocking {
+        val json=JSONObject("""{"info":{"plot":""},
+            "movie_data":{"description":"Sinopse na própria playlist."}}""")
+        assertEquals("Sinopse na própria playlist.",parseContentDetails(json).plot)
+        val series=SeriesEntry("title:aurora","Aurora","",emptySet(),emptyList())
+        val repo=PlaylistRepository(context)
+        val source="https://example.test/series.m3u"
+        val api=SynopsisRepository(repo) {url ->
+            assertTrue(url.startsWith("https://api.tvmaze.com/"))
+            JSONObject("""{"name":"Aurora","premiered":"2020-01-02",
+                "summary":"<p>Uma tripulação investiga fenômenos inexplicáveis durante uma jornada longa pelo universo.</p>",
+                "url":"https://www.tvmaze.com/shows/1/aurora",
+                "image":{"original":"https://static.tvmaze.com/a.jpg"}}""")
+        }
+        val result=api.load(source,series=series)
+        assertTrue(result.plot.contains("tripulação"))
+        assertEquals("TVmaze",result.sourceName)
+        assertTrue(result.backdropUrl.startsWith("https://"))
+        repo.close()
+    }
+
+    @Test fun internetMatchingAvoidsWrongYearAndUnrelatedTitles() {
+        assertTrue(wikipediaMatches("Odisseia (2026)","2026",false,
+            "Odisseia (filme de 2026)","Filme de fantasia de 2026"))
+        assertFalse(wikipediaMatches("Odisseia (2026)","2026",false,
+            "Odisseia (filme de 2013)","Filme de fantasia de 2013"))
+        assertFalse(wikipediaMatches("Odisseia (2026)","2026",false,
+            "Outra Odisseia (filme de 2026)","Filme de 2026"))
+        assertFalse(wikipediaMatches("Odisseia (2026)","2026",false,
+            "Odisseia (livro)","Romance de aventura"))
+        assertEquals("Odisseia",cleanSynopsisTitle("Odisseia [4K] (2026)"))
+    }
+
     private fun awaitSynopsis(text: String) {
         compose.onNodeWithTag("synopsis_dialog",useUnmergedTree=true).assertExists()
         compose.waitUntil(30000) {
