@@ -16,8 +16,8 @@ import kotlin.coroutines.coroutineContext
 /** On-demand: playlist provider first, public title lookup only for missing descriptions. */
 class SynopsisRepository(
     private val repository: PlaylistRepository,
-    private val readJson: (String)->JSONObject = ::readSynopsisJson,
-    private val publicFallback: PublicSynopsisFallback = PublicSynopsisFallback(repository)
+    private val publicFallback: PublicSynopsisFallback = PublicSynopsisFallback(repository),
+    private val readJson: (String)->JSONObject = ::readSynopsisJson
 ) {
     private val indexLock=Mutex()
 
