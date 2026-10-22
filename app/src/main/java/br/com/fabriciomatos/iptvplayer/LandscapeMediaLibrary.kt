@@ -147,9 +147,13 @@ import kotlinx.coroutines.flow.collectLatest
                     model.current?.let { playing ->
                         // Keep an accessible playback preview when rotating from portrait
                         // or returning from fullscreen; existing player remains attached.
-                        VideoPane(model,Modifier.fillMaxWidth()
-                            .height(if(small) 142.dp else 200.dp)
-                            .testTag("landscape_video_preview"))
+                        // VideoPane owns the video_surface semantics tag. Do not attach
+                        // another testTag to its own Modifier: Compose may shadow the
+                        // inner tag, breaking remote/player controls after rotation.
+                        Box(Modifier.fillMaxWidth().height(if(small) 142.dp else 200.dp)
+                            .testTag("landscape_video_preview")) {
+                            VideoPane(model, Modifier.fillMaxSize())
+                        }
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                             Text(playing.name,Modifier.weight(1f).padding(start=8.dp),
                                 maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp)
