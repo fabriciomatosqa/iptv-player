@@ -179,7 +179,8 @@ class SynopsisTest {
             assertEquals("Sinopse original",details.plot)
             assertEquals("https://provider.test/a.jpg",details.backdropUrl)
             assertEquals("Atriz B",details.cast.single().name)
-            assertTrue(details.sourceName.isBlank())
+            // Provider synopsis remains authoritative while supplementary cast is attributed.
+            assertEquals("TVmaze",details.sourceName)
         } finally { repo.close() }
     }
 
