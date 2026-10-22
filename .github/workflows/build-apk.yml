@@ -12,7 +12,7 @@ permissions:
 # Keep one release build per ref, but never make a main release wait for PR emulation.
 # All builds restore the same existing signing key; no replacement keys are generated.
 concurrency:
-  group: aurora-iptv-apk-build-${{ github.ref }}
+  group: aurora-iptv-apk-build-mediafix-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -130,8 +130,13 @@ jobs:
 
       - name: Install media fixture tools
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ffmpeg
+          # Most hosted runners already include ffmpeg. Avoid lengthy apt update
+          # when the command is available and keep media playback tests enabled.
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            timeout 180s sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=25 update
+            timeout 180s sudo apt-get -o Acquire::Retries=2 install --no-install-recommends -y ffmpeg
+          fi
+          ffmpeg -hide_banner -version
 
       - name: Check navigation, persistence and actual video playback
         uses: reactivecircus/android-emulator-runner@v2
