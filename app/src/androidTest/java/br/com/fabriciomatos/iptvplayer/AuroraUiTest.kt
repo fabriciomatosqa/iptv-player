@@ -139,9 +139,16 @@ class AuroraUiTest {
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
             // Configuration reports landscape before Compose finishes its new layout pass.
             // Await the actual player surface instead of tapping during the transition.
-            compose.waitUntil(15000) {
-                model.current?.name == "TV Aurora" &&
-                    compose.onAllNodesWithTag("video_surface").fetchSemanticsNodes().isNotEmpty()
+            compose.waitForIdle()
+            val landscapeVideoPresent = compose.onAllNodesWithTag("video_surface")
+                .fetchSemanticsNodes().isNotEmpty()
+            if (!landscapeVideoPresent) {
+                val details = "page=${model.page}, current=${model.current?.name}, " +
+                    "kind=${model.selectedKind}, fullscreen=${model.fullscreen}, " +
+                    "orientation=${context.resources.configuration.orientation}, " +
+                    "cinema=${compose.onAllNodesWithTag("landscape_cinema_library").fetchSemanticsNodes().size}, " +
+                    "preview=${compose.onAllNodesWithTag("landscape_video_preview").fetchSemanticsNodes().size}"
+                throw AssertionError("Landscape player missing after rotation: $details")
             }
             screenshot("landscape-player")
             revealVideoControls()
