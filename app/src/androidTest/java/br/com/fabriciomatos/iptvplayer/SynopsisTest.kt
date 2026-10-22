@@ -130,6 +130,108 @@ class SynopsisTest {
         assertEquals("", providerImageUrl("javascript:alert(1)"))
     }
 
+    @Test fun localPlaylistUsesSafeTitleOnlyFallbackAndWorksOfflineFromCache() = runBlocking {
+        resetCatalog(context)
+        val source = "https://provider.example.test/private/list.m3u?username=secret&password=secret"
+        val movie = Channel("A Odisseia (2026)","https://provider.example.test/movie/505.mkv",
+            "Filmes",typeHint="movie")
+        val repo = PlaylistRepository(context)
+        var calls = 0
+        val synopsis = SynopsisRepository(repo, externalLookup = {title, isMovie ->
+            calls++
+            assertEquals("A Odisseia (2026)",title)
+            assertTrue(isMovie)
+            assertFalse(title.contains("password"))
+            ContentDetails(plot="Sinopse obtida de fonte pública.",
+                sourceName="Wikipedia (CC BY-SA)",sourceUrl="https://pt.wikipedia.org/?curid=123")
+        })
+        try {
+            val first = synopsis.load(source,movie)
+            assertEquals("Sinopse obtida de fonte pública.",first.plot)
+            assertEquals("Wikipedia (CC BY-SA)",first.sourceName)
+            assertEquals("https://pt.wikipedia.org/?curid=123",first.sourceUrl)
+            assertEquals("Sinopse obtida de fonte pública.",synopsis.load(source,movie).plot)
+            assertEquals("O cache evita refazer buscas",1,calls)
+            val offline = SynopsisRepository(repo, externalLookup = {_,_-> error("Não deve consultar a internet")})
+            assertEquals("Sinopse obtida de fonte pública.",offline.load(source,movie).plot)
+        } finally { repo.close() }
+    }
+
+    @Test fun providerRootAndMovieDataPlotsTakePriorityOverInternet() = runBlocking {
+        resetCatalog(context)
+        val source = "https://provider.example.test/get.php?username=test&password=test&type=m3u_plus"
+        val movie = Channel("Filme Aurora","https://provider.example.test/movie/test/test/905.mkv",
+            "Filmes",typeHint="movie")
+        val repo = PlaylistRepository(context)
+        try {
+            val loader = SynopsisRepository(repo,
+                readJson={ JSONObject("""{"movie_data":{"plot":"Sinopse do provedor."},
+                    "info":{"backdrop":"https://provider.example.test/background.jpg"}}""") },
+                externalLookup={_,_-> error("Não substituir metadados existentes")})
+            val result = loader.load(source,movie)
+            assertEquals("Sinopse do provedor.",result.plot)
+            assertEquals("https://provider.example.test/background.jpg",result.backdropUrl)
+            assertTrue(result.sourceUrl.isEmpty())
+            val details = mergeSynopsisDetails(
+                ContentDetails(plot="Sinopse original",backdropUrl="https://provider.test/a.jpg"),
+                ContentDetails(plot="Outra sinopse",backdropUrl="https://external.test/b.jpg",
+                    cast=listOf(CastMember("Atriz B")),sourceName="TVmaze"))
+            assertEquals("Sinopse original",details.plot)
+            assertEquals("https://provider.test/a.jpg",details.backdropUrl)
+            assertEquals("Atriz B",details.cast.single().name)
+            assertTrue(details.sourceName.isBlank())
+        } finally { repo.close() }
+    }
+
+    @Test fun publicSeriesLookupRequiresExactTitleAndYearAndCreditsActors() {
+        val requested = mutableListOf<String>()
+        val lookup = ExternalSynopsisLookup { url ->
+            requested.add(url)
+            if(url.contains("/search/shows")) """
+              [{"show":{"id":19,"name":"Série Aurora","premiered":"2024-05-01",
+              "summary":"<p>História verificada da série.</p>",
+              "genres":["Drama"],"image":{"original":"https://static.tvmaze.com/poster.jpg"},
+              "rating":{"average":8.1}}}]
+            """.trimIndent() else """
+              {"_embedded":{"cast":[{"person":{"name":"Atriz Aurora",
+              "image":{"medium":"https://static.tvmaze.com/actor.jpg"}}}]}}
+            """.trimIndent()
+        }
+        val details = lookup.lookup("Série Aurora (2024)",movie=false)!!
+        assertEquals("História verificada da série.",details.plot)
+        assertEquals("Atriz Aurora",details.cast.single().name)
+        assertEquals("Drama",details.genre)
+        assertTrue(details.sourceUrl.startsWith("https://www.tvmaze.com/"))
+        assertEquals(2,requested.size)
+        assertTrue(requested.all { it.startsWith("https://api.tvmaze.com/") })
+        val mismatch = ExternalSynopsisLookup {
+            """[{"show":{"id":21,"name":"Série Aurora","premiered":"2020-01-01",
+              "summary":"Não é a mesma série"}}]"""
+        }.lookup("Série Aurora (2024)",movie=false)
+        assertNull(mismatch)
+        val ambiguous = ExternalSynopsisLookup {
+            """[{"show":{"id":1,"name":"Série Aurora","premiered":"2024-01-01"}},
+                 {"show":{"id":2,"name":"Série Aurora","premiered":"2024-01-01"}}]"""
+        }.lookup("Série Aurora (2024)",movie=false)
+        assertNull(ambiguous)
+    }
+
+    @Test fun wikipediaMovieFallbackRejectsWrongFilmAndKeepsAttribution() {
+        val movie = ExternalSynopsisLookup { url ->
+            assertTrue(url.startsWith("https://pt.wikipedia.org/w/api.php"))
+            """{"query":{"pages":[
+             {"pageid":875,"title":"A Odisseia (filme de 2026)",
+              "extract":"A Odisseia é um filme de aventura e fantasia de 2026 baseado na história épica."},
+             {"pageid":876,"title":"A Odisseia (filme de 1997)",
+              "extract":"A Odisseia é um filme muito antigo de outra época e não é o título correto."}
+            ]}}"""
+        }.lookup("A Odisseia (2026)",movie=true)!!
+        assertEquals("Wikipedia (CC BY-SA)",movie.sourceName)
+        assertEquals("https://pt.wikipedia.org/?curid=875",movie.sourceUrl)
+        assertTrue(movie.plot.contains("aventura"))
+        assertEquals("A Odisseia",synopsisSearchTitle("A Odisseia (2026) [4K]")?.title)
+    }
+
     private fun awaitSynopsis(text: String) {
         compose.onNodeWithTag("synopsis_dialog",useUnmergedTree=true).assertExists()
         compose.waitUntil(30000) {
