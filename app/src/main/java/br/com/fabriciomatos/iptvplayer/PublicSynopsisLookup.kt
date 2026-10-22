@@ -25,14 +25,14 @@ internal class PublicSynopsisLookup(
             if (name.length < 3 || name.length > 130 || kind == MediaKind.LIVE || kind == MediaKind.OTHER)
                 return@withContext null
             val year = yearInTitle(title) ?: suppliedYear.take(4).toIntOrNull()
-            try {
-                findWikipedia(name, kind, year)?.let { return@withContext it }
-                if (kind == MediaKind.SERIES) findTvMaze(name, year) else null
-            } catch(e: CancellationException) {
-                throw e
-            } catch(_: Exception) {
-                null
-            }
+            val wikipedia = try { findWikipedia(name, kind, year) }
+                catch(e: CancellationException) { throw e }
+                catch(_: Exception) { null }
+            if(wikipedia != null) return@withContext wikipedia
+            if(kind != MediaKind.SERIES) return@withContext null
+            try { findTvMaze(name,year) }
+            catch(e: CancellationException) { throw e }
+            catch(_: Exception) { null }
         }
 
     private fun findWikipedia(name: String, kind: MediaKind, year: Int?): ContentDetails? {
