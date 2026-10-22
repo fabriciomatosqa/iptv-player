@@ -137,6 +137,12 @@ class AuroraUiTest {
             compose.waitUntil(5000) { model.favorites.isNotEmpty() }
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+            // Configuration reports landscape before Compose finishes its new layout pass.
+            // Await the actual player surface instead of tapping during the transition.
+            compose.waitUntil(15000) {
+                model.current?.name == "TV Aurora" &&
+                    compose.onAllNodesWithTag("video_surface").fetchSemanticsNodes().isNotEmpty()
+            }
             screenshot("landscape-player")
             revealVideoControls()
             compose.onNodeWithContentDescription("Tela cheia").performClick()
