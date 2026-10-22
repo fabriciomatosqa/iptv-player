@@ -13,7 +13,7 @@ permissions:
 # All builds restore the same existing signing key; no replacement keys are generated.
 concurrency:
   group: aurora-iptv-apk-build-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -87,7 +87,8 @@ jobs:
   # Every verification gates publication, including manual workflow dispatch.
   verify:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -130,8 +131,19 @@ jobs:
 
       - name: Install media fixture tools
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ffmpeg
+          # Avoid apt update hangs on transient runner mirror outages. Keep full
+          # actual-video test coverage with a pinned FFmpeg binary when needed.
+          if command -v ffmpeg >/dev/null 2>&1; then
+            ffmpeg -version | head -n 1
+          else
+            python3 -m venv "$RUNNER_TEMP/aurora-ffmpeg-env"
+            "$RUNNER_TEMP/aurora-ffmpeg-env/bin/pip" install --no-cache-dir imageio-ffmpeg==0.6.0
+            ffmpeg_exe=$("$RUNNER_TEMP/aurora-ffmpeg-env/bin/python" -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')
+            mkdir -p "$RUNNER_TEMP/aurora-bin"
+            ln -s "$ffmpeg_exe" "$RUNNER_TEMP/aurora-bin/ffmpeg"
+            echo "$RUNNER_TEMP/aurora-bin" >> "$GITHUB_PATH"
+            "$RUNNER_TEMP/aurora-bin/ffmpeg" -version | head -n 1
+          fi
 
       - name: Check navigation, persistence and actual video playback
         uses: reactivecircus/android-emulator-runner@v2
