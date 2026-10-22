@@ -19,7 +19,7 @@ internal class ExternalSynopsis(private val readJson: (String) -> JSONObject) {
         if(series) try {
             tvMaze(clean,released)?.let {return@withContext it}
         } catch(e: CancellationException) {throw e} catch(_: Exception) { }
-        // Wikidata's editorial article summaries are a public, key-free fallback
+        // Wikipedia's editorial article summaries are a public, key-free fallback
         // for films, and for shows not found in TVmaze.
         for(lang in listOf("pt","en")) {
             try { wikipedia(clean,released,series,lang)?.let {return@withContext it} }
@@ -34,7 +34,7 @@ internal class ExternalSynopsis(private val readJson: (String) -> JSONObject) {
         val found=show.optString("name")
         if(normalized(found)!=normalized(title))return null
         val premiered=show.optString("premiered").take(4)
-        if(year!=null && premiered.isNotBlank() && year!=premiered)return null
+        if(year!=null && year!=premiered)return null
         val plot=plainSynopsis(show.optString("summary"))
         if(plot.length<50)return null
         val image=show.optJSONObject("image")?.optString("original").orEmpty()
@@ -105,7 +105,7 @@ internal fun wikipediaMatches(target: String, year: String?, series: Boolean,
     if(year!=null) {
         val mentioned=Regex("""\b(?:19|20)\d{2}\b""")
             .findAll(article+" "+description).map{it.value}.toSet()
-        if(mentioned.isNotEmpty() && year !in mentioned)return false
+        if(year !in mentioned)return false
     }
     return true
 }
