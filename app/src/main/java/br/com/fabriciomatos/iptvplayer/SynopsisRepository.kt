@@ -150,7 +150,11 @@ class SynopsisRepository(
 /** Prefer IPTV fields and fill missing fields without replacing verified provider metadata. */
 internal fun mergeSynopsisDetails(provider: ContentDetails, online: ContentDetails?): ContentDetails {
     if (online == null) return provider
-    val fills = provider.plot.isBlank() && online.plot.isNotBlank()
+    val fills = provider.plot.isBlank() && online.plot.isNotBlank() ||
+        provider.cast.isEmpty() && online.cast.isNotEmpty() ||
+        provider.backdropUrl.isBlank() && online.backdropUrl.isNotBlank() ||
+        provider.year.isBlank() && online.year.isNotBlank() ||
+        provider.genre.isBlank() && online.genre.isNotBlank()
     return provider.copy(
         plot = provider.plot.ifBlank { online.plot },
         backdropUrl = provider.backdropUrl.ifBlank { online.backdropUrl },
