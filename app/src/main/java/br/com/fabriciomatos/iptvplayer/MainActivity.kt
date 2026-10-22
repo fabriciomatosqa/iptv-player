@@ -399,78 +399,9 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
     val series = model.openedSeries
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     if (wide) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val landscapeHeight = maxHeight
-            val compactLandscape = maxWidth < 920.dp || landscapeHeight < 520.dp
-            // Reserve readable widths for remote navigation and long category names.
-            // The content pane takes whatever space remains, instead of competing
-            // for the last pixels through multiple weights.
-            val textMeasurer = rememberTextMeasurer()
-            val density = LocalDensity.current
-            // Measure localized menu labels rather than guessing a fixed width.
-            // The icon, gap and horizontal padding are included in the rail size.
-            val railLabels = listOf(
-                tr(R.string.home), tr(R.string.search), tr(R.string.live),
-                tr(R.string.movies), tr(R.string.series),
-                tr(R.string.favorites), tr(R.string.settings)
-            )
-            val widestLabel = railLabels.maxOf { label ->
-                textMeasurer.measure(label, style = TextStyle(fontSize = 12.sp),
-                    maxLines = 1, softWrap = false).size.width
-            }
-            val navigationWidth = with(density) { widestLabel.toDp() } + 18.dp + 8.dp + 20.dp + 12.dp
-            // Protect the content pane on unusually narrow landscape screens.
-            val safeNavigationWidth = navigationWidth.coerceAtMost(maxWidth * 0.36f)
-            val categoryWidth = (maxWidth * 0.27f).coerceIn(170.dp, 224.dp)
-            Row(Modifier.fillMaxSize()) {
-                NavigationRail(model, Modifier.width(safeNavigationWidth).fillMaxHeight()
-                    .testTag("landscape_navigation_rail"))
-                VerticalDivider(color = Elevated)
-                GroupPanel(model, Modifier.width(categoryWidth).fillMaxHeight()
-                    .testTag("landscape_group_panel"))
-                VerticalDivider(color = Elevated)
-                Column(Modifier.weight(1f).fillMaxHeight()
-                    .padding(horizontal = if (compactLandscape) 8.dp else 12.dp)) {
-                    LibraryToolbar(model, compact = true)
-                    if (model.current != null) {
-                        if (compactLandscape) {
-                            // Horizontal layouts with limited height keep the catalog usable
-                            // instead of squeezing playback, guide and list into tiny rows.
-                            VideoPane(model, Modifier.fillMaxWidth()
-                                .height((landscapeHeight * 0.35f).coerceIn(110.dp, 230.dp)))
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text(model.current!!.name, Modifier.weight(1f),
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
-                                IconButton(onClick = model::closeVideo, modifier = Modifier.size(44.dp)) {
-                                    Icon(Icons.Default.Close, tr(R.string.close_video))
-                                }
-                            }
-                        } else {
-                            Row(Modifier.fillMaxWidth().heightIn(min = 100.dp).weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                VideoPane(model, Modifier.weight(1.7f).fillMaxHeight())
-                                CurrentProgramme(model, Modifier.weight(1f).fillMaxHeight())
-                            }
-                        }
-                        Spacer(Modifier.height(if (compactLandscape) 4.dp else 8.dp))
-                        if (live && !compactLandscape) GuideHeading()
-                        else if (series != null) SeasonChips(model, series)
-                        if(model.favoritesOnly && model.selectedKind==null)
-                            FavoritesList(model, Modifier.weight(1.15f).fillMaxWidth())
-                        else ChannelList(model, Modifier.weight(1.15f).fillMaxWidth(),
-                            guideMode = live && !compactLandscape)
-                    } else {
-                        if (series != null) SeriesHeader(model,series)
-                        SearchBox(model)
-                        if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Mint)
-                        if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth())
-                        else if(model.favoritesOnly && model.selectedKind==null)
-                            FavoritesList(model, Modifier.weight(1f).fillMaxWidth())
-                        else ChannelList(model, Modifier.weight(1f).fillMaxWidth(), guideMode = live)
-                    }
-                }
-            }
-        }
+        // Projector layout: categories + cinematic posters + title detail.
+        // Portrait retains the original three-column-free layout below.
+        LandscapeMediaLibrary(model)
     } else {
         Column(Modifier.fillMaxSize()) {
             LibraryToolbar(model)
@@ -512,7 +443,8 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
 }
 
 @Composable
-private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
+internal fun SeriesGrid(model: AuroraViewModel, modifier: Modifier,
+    onSelect: (SeriesEntry) -> Unit = model::showSeries) {
     val entries = model.seriesPages.collectAsLazyPagingItems()
     val key=model.catalogPositionKey()
     val anchor=remember(key) {model.catalogAnchor(key)}
@@ -561,7 +493,7 @@ private fun SeriesGrid(model: AuroraViewModel, modifier: Modifier) {
             items(entries.itemCount, key = entries.itemKey { it.id }) { index ->
                 val series = entries[index] ?: return@items
                 if(series.adult && !model.adultUnlocked)return@items
-                Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { model.showSeries(series) }) {
+                Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Panel).clickable { onSelect(series) }) {
                     Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.linearGradient(listOf(Elevated, LocalAuroraColors.current.sky))),
                         contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -597,7 +529,7 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
     }
 }
 
-@Composable private fun SeriesFavoriteButton(model: AuroraViewModel,series: SeriesEntry,modifier: Modifier = Modifier) {
+@Composable internal fun SeriesFavoriteButton(model: AuroraViewModel,series: SeriesEntry,modifier: Modifier = Modifier) {
     val selected=series.id in model.seriesFavorites
     IconButton(onClick={model.toggleSeriesFavorite(series)},modifier=modifier.size(48.dp).testTag("series_favorite_${series.id}")) {
         Icon(if(selected)Icons.Default.Star else Icons.Default.StarBorder,
@@ -605,7 +537,7 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
     }
 }
 
-@Composable private fun FavoritesList(model: AuroraViewModel,modifier: Modifier) {
+@Composable internal fun FavoritesList(model: AuroraViewModel,modifier: Modifier) {
     val channels=model.channelPages.collectAsLazyPagingItems()
     val shows=model.seriesPages.collectAsLazyPagingItems()
     val scroll=remember(model.catalogPositionKey()) {LazyListState()}
@@ -804,7 +736,7 @@ private fun GuideHeading() {
 }
 
 @Composable
-private fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
+internal fun ChannelList(model: AuroraViewModel, modifier: Modifier, guideMode: Boolean) {
     val now = guideClock()
     val entries = model.channelPages.collectAsLazyPagingItems()
     val key=model.catalogPositionKey()
@@ -945,7 +877,7 @@ private fun seasonCount(value: Int) = if (value == 1) tr(R.string.one_season) el
 @Composable
 private fun episodeCount(value: Int) = if (value == 1) tr(R.string.one_episode) else tr(R.string.episode_count,formatCount(value))
 @Composable
-private fun formatCount(value: Int) = java.text.NumberFormat.getIntegerInstance(LocalContext.current.resources.configuration.locales[0]).format(value)
+internal fun formatCount(value: Int) = java.text.NumberFormat.getIntegerInstance(LocalContext.current.resources.configuration.locales[0]).format(value)
 
 @Composable
 private fun guideClock(): Long {

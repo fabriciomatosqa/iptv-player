@@ -137,6 +137,21 @@ class AuroraUiTest {
             compose.waitUntil(5000) { model.favorites.isNotEmpty() }
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+            // Configuration reports landscape before Compose finishes its new layout pass.
+            // Await the actual player surface instead of tapping during the transition.
+            try {
+                compose.waitUntil(15000) {
+                    model.current?.name == "TV Aurora" &&
+                        compose.onAllNodesWithTag("video_surface").fetchSemanticsNodes().isNotEmpty()
+                }
+            } catch (failure: Throwable) {
+                throw AssertionError("Landscape player missing: " +
+                    "page=${model.page}, current=${model.current?.name}, " +
+                    "kind=${model.selectedKind}, fullscreen=${model.fullscreen}, " +
+                    "orientation=${context.resources.configuration.orientation}, " +
+                    "cinema=${compose.onAllNodesWithTag("landscape_cinema_library").fetchSemanticsNodes().size}, " +
+                    "preview=${compose.onAllNodesWithTag("landscape_video_preview").fetchSemanticsNodes().size}", failure)
+            }
             screenshot("landscape-player")
             revealVideoControls()
             compose.onNodeWithContentDescription("Tela cheia").performClick()
@@ -186,7 +201,11 @@ class AuroraUiTest {
             screenshot("landscape-series")
             waitForText("Rick e Morty")
             compose.onNodeWithText("Rick e Morty").performClick()
-            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
+            compose.onNodeWithTag("landscape_title_details").assertIsDisplayed()
+            assertNull("Choosing a poster must not auto-play",model.current)
+            screenshot("landscape-series-details")
+            compose.onNodeWithTag("landscape_details_play").performClick()
+            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering && model.openedSeries != null }
             screenshot("landscape-episodes")
             scenario.recreate()
             scenario.close()

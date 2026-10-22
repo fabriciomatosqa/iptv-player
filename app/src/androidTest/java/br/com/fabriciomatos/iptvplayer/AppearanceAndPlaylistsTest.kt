@@ -166,7 +166,7 @@ class AppearanceAndPlaylistsTest {
         } finally {platformNight(originalNightMode)}
     }
 
-    @Test fun landscapeSidebarKeepsBrandFixedAndLeavesRoomForCategoryNames() {
+    @Test fun landscapeLibraryUsesCategoryPaneInsteadOfPermanentMediaSwitching() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             lateinit var model: AuroraViewModel
             scenario.onActivity { activity ->
@@ -175,25 +175,23 @@ class AppearanceAndPlaylistsTest {
             }
             compose.waitUntil(15000) {
                 var landscape = false
-                scenario.onActivity { landscape = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+                scenario.onActivity {
+                    landscape = it.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                }
                 model.initialized && landscape
             }
-            scenario.onActivity { model.browse(MediaKind.SERIES) }
+            scenario.onActivity { model.browse(MediaKind.MOVIES) }
             compose.waitUntil(10000) {
                 model.page == Page.LIBRARY &&
-                    compose.onAllNodesWithTag("landscape_rail_logo").fetchSemanticsNodes().isNotEmpty()
+                    compose.onAllNodesWithTag("landscape_cinema_library").fetchSemanticsNodes().isNotEmpty()
             }
-            val logo = compose.onNodeWithTag("landscape_rail_logo").fetchSemanticsNode().boundsInRoot
-            val rail = compose.onNodeWithTag("landscape_navigation_rail").fetchSemanticsNode().boundsInRoot
-            val groups = compose.onNodeWithTag("landscape_group_panel").fetchSemanticsNode().boundsInRoot
-            val density = context.resources.displayMetrics.density
-            assertTrue("Remote navigation needs readable labels", rail.width >= 108f * density)
-            assertTrue("Categories need room for multi-line names", groups.width >= 166f * density)
-            compose.onNodeWithTag("landscape_rail_items").performScrollToIndex(6)
-            compose.waitForIdle()
-            assertEquals("The brand must not scroll with the remote navigation", logo,
-                compose.onNodeWithTag("landscape_rail_logo").fetchSemanticsNode().boundsInRoot)
-            compose.onNodeWithTag("landscape_categories_list").assertExists()
+            compose.onNodeWithTag("landscape_cinema_categories").assertExists()
+            compose.onNodeWithTag("landscape_cinema_search").assertExists()
+            // No permanent rail to jump from Movies to Live/Series: return to Home.
+            compose.onNodeWithTag("landscape_navigation_rail").assertDoesNotExist()
+            compose.onNodeWithTag("landscape_back_home").assertIsDisplayed().performClick()
+            compose.waitUntil(10000) { model.page == Page.HOME }
+            compose.onNodeWithTag("home_movies").assertExists()
         }
     }
 

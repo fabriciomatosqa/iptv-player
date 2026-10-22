@@ -3,8 +3,32 @@ package br.com.fabriciomatos.iptvplayer
 import java.net.URI
 
 data class EpisodeSynopsis(val id: String, val season: Int, val number: Int, val title: String, val plot: String)
-data class ContentDetails(val plot: String = "", val episodes: List<EpisodeSynopsis> = emptyList())
-data class Synopsis(val plot: String = "", val episode: EpisodeSynopsis? = null, val failed: Boolean = false)
+data class CastMember(val name: String, val imageUrl: String = "")
+
+/** Optional provider metadata. Old cached JSON remains readable with empty defaults. */
+data class ContentDetails(
+    val plot: String = "",
+    val episodes: List<EpisodeSynopsis> = emptyList(),
+    val backdropUrl: String = "",
+    val cast: List<CastMember> = emptyList(),
+    val year: String = "",
+    val duration: String = "",
+    val genre: String = "",
+    val rating: String = "",
+    val director: String = ""
+)
+data class Synopsis(
+    val plot: String = "",
+    val episode: EpisodeSynopsis? = null,
+    val failed: Boolean = false,
+    val backdropUrl: String = "",
+    val cast: List<CastMember> = emptyList(),
+    val year: String = "",
+    val duration: String = "",
+    val genre: String = "",
+    val rating: String = "",
+    val director: String = ""
+)
 
 fun playbackContentId(address: String): String? = runCatching {
     URI(address).path.substringAfterLast('/').substringBefore('.').takeIf {it.matches(Regex("[0-9]+"))}

@@ -103,6 +103,33 @@ class SynopsisTest {
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
         }
     }
+    @Test fun providerCinemaMetadataAndActorImagesSurviveCacheAndOlderJson() {
+        val provider = JSONObject(
+            """{"info":{"plot":"Uma aventura.","backdrop_path":["/cinema-backdrop.jpg"],
+              "actors":[{"name":"Atriz A","profile_path":"/cast-a.jpg"},
+                        {"name":"Ator B"}],
+              "rating":"7.8","releasedate":"2026-06-01",
+              "duration":"02:03:00","genre":"Aventura","director":"Diretora A"}}"""
+        )
+        val details = parseContentDetails(provider)
+        assertEquals("Uma aventura.", details.plot)
+        assertEquals("https://image.tmdb.org/t/p/w1280/cinema-backdrop.jpg", details.backdropUrl)
+        assertEquals("https://image.tmdb.org/t/p/w185/cast-a.jpg", details.cast.first().imageUrl)
+        assertEquals("Ator B", details.cast.last().name)
+        assertEquals("7.8", details.rating)
+        assertEquals("2026-06-01", details.year)
+        assertEquals("02:03:00", details.duration)
+        assertEquals(details, decodeContentDetails(encodeContentDetails(details)))
+
+        // Existing 1.12.x cache rows must remain readable without a database migration.
+        val old = JSONObject("""{"plot":"Sinopse anterior","episodes":[]}""")
+        val restored = decodeContentDetails(old)
+        assertEquals("Sinopse anterior", restored.plot)
+        assertTrue(restored.cast.isEmpty())
+        assertTrue(restored.backdropUrl.isBlank())
+        assertEquals("", providerImageUrl("javascript:alert(1)"))
+    }
+
     private fun awaitSynopsis(text: String) {
         compose.onNodeWithTag("synopsis_dialog",useUnmergedTree=true).assertExists()
         compose.waitUntil(30000) {

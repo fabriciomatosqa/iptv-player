@@ -42,7 +42,17 @@ class SynopsisRepository(private val repository: PlaylistRepository, private val
             } catch(e: CancellationException) {throw e} catch(_: Exception) {
                 cached ?: return@withContext Synopsis(failed=true)
             }
-            Synopsis(details.plot,if(!movie && channel!=null)selectEpisodeSynopsis(details,channel)else null)
+            Synopsis(
+                plot = details.plot,
+                episode = if (!movie && channel != null) selectEpisodeSynopsis(details,channel) else null,
+                backdropUrl = details.backdropUrl,
+                cast = details.cast,
+                year = details.year,
+                duration = details.duration,
+                genre = details.genre,
+                rating = details.rating,
+                director = details.director
+            )
         } catch(e: CancellationException) {throw e} catch(_: Exception) {Synopsis(failed=true)}
     }
     private suspend fun cachedSeriesId(source: String, title: String): String? {
@@ -64,6 +74,61 @@ private fun synopsisText(info: JSONObject?): String {
     }
     return ""
 }
+/** Read only imagery announced by the user's own provider; no metadata credentials leave it. */
+internal fun providerImageUrl(value: String, size: String = "w1280"): String {
+    val raw = value.trim().trim('"')
+    return when {
+        raw.startsWith("https://", ignoreCase = true) || raw.startsWith("http://", ignoreCase = true) -> raw
+        raw.startsWith("/") && !raw.startsWith("//") && raw.length > 2 ->
+            "https://image.tmdb.org/t/p/$size$raw"
+        else -> ""
+    }
+}
+
+private fun providerBackdrop(info: JSONObject): String {
+    val possible = listOf("backdrop_path", "backdrop", "backdrop_url", "background", "fanart")
+    for (field in possible) {
+        val raw = info.opt(field)
+        val first = when(raw) {
+            is JSONArray -> (0 until raw.length()).firstNotNullOfOrNull { raw.optString(it).takeIf(String::isNotBlank) }
+            is String -> {
+                if (raw.trim().startsWith("[")) runCatching {
+                    val arr = JSONArray(raw)
+                    (0 until arr.length()).firstNotNullOfOrNull { arr.optString(it).takeIf(String::isNotBlank) }
+                }.getOrNull() else raw
+            }
+            else -> null
+        }
+        first?.let { providerImageUrl(it).takeIf(String::isNotBlank)?.let { url -> return url } }
+    }
+    return ""
+}
+
+private fun providerCast(info: JSONObject): List<CastMember> {
+    val raw = info.opt("actors") ?: info.opt("cast") ?: return emptyList()
+    val array = when(raw) {
+        is JSONArray -> raw
+        is String -> if(raw.trim().startsWith("[")) runCatching { JSONArray(raw) }.getOrNull() else null
+        else -> null
+    }
+    if (array != null) return (0 until minOf(array.length(), 24)).mapNotNull { i ->
+        when(val item = array.opt(i)) {
+            is JSONObject -> {
+                val name = item.optString("name").ifBlank {item.optString("actor_name")}.trim()
+                val img = listOf("profile_path","image","photo","profile","thumbnail")
+                    .firstNotNullOfOrNull { key -> item.optString(key).takeIf(String::isNotBlank) }
+                    .orEmpty()
+                if(name.isBlank()) null else CastMember(name, providerImageUrl(img,"w185"))
+            }
+            is String -> item.trim().takeIf(String::isNotBlank)?.let {CastMember(it)}
+            else -> null
+        }
+    }.distinctBy { normalized(it.name) }
+    val text = (raw as? String).orEmpty()
+    return text.split(',', ';', '|').map(String::trim).filter(String::isNotBlank)
+        .distinctBy(::normalized).take(24).map(::CastMember)
+}
+
 fun parseContentDetails(json: JSONObject): ContentDetails {
     val episodes=json.optJSONObject("episodes")
     val rows=buildList {
@@ -76,16 +141,60 @@ fun parseContentDetails(json: JSONObject): ContentDetails {
             }
         }
     }
-    return ContentDetails(synopsisText(json.optJSONObject("info")),rows)
+    val info=json.optJSONObject("info") ?: JSONObject()
+    val movieData=json.optJSONObject("movie_data") ?: JSONObject()
+    fun field(vararg keys: String): String = keys.firstNotNullOfOrNull { key ->
+        info.optString(key).takeIf { it.isNotBlank() && it != "null" }
+            ?: movieData.optString(key).takeIf { it.isNotBlank() && it != "null" }
+    }.orEmpty()
+    return ContentDetails(
+        plot=synopsisText(info),
+        episodes=rows,
+        backdropUrl=providerBackdrop(info).ifBlank {providerBackdrop(movieData)},
+        cast=providerCast(info).ifEmpty {providerCast(movieData)},
+        year=field("releasedate","release_date","year").take(16),
+        duration=field("duration","runtime").take(40),
+        genre=field("genre","genres").take(160),
+        rating=field("rating_5based","rating","vote_average").take(16),
+        director=field("director").take(160)
+    )
 }
-fun encodeContentDetails(details: ContentDetails): JSONObject = JSONObject().put("plot",details.plot).put("episodes",JSONArray(details.episodes.map {
-    JSONObject().put("id",it.id).put("season",it.season).put("number",it.number).put("title",it.title).put("plot",it.plot)
-}))
+
+fun encodeContentDetails(details: ContentDetails): JSONObject = JSONObject()
+    .put("plot",details.plot)
+    .put("episodes",JSONArray(details.episodes.map {
+        JSONObject().put("id",it.id).put("season",it.season).put("number",it.number)
+            .put("title",it.title).put("plot",it.plot)
+    }))
+    .put("backdrop",details.backdropUrl)
+    .put("cast",JSONArray(details.cast.map { JSONObject().put("name",it.name).put("image",it.imageUrl) }))
+    .put("year",details.year)
+    .put("duration",details.duration)
+    .put("genre",details.genre)
+    .put("rating",details.rating)
+    .put("director",details.director)
+
 fun decodeContentDetails(json: JSONObject): ContentDetails {
-    val episodes=json.getJSONArray("episodes")
-    return ContentDetails(json.getString("plot"),(0 until episodes.length()).map {i->episodes.getJSONObject(i).let {
-        EpisodeSynopsis(it.getString("id"),it.getInt("season"),it.getInt("number"),it.getString("title"),it.getString("plot"))
-    }})
+    val episodes=json.optJSONArray("episodes") ?: JSONArray()
+    val cast=json.optJSONArray("cast") ?: JSONArray()
+    return ContentDetails(
+        plot=json.optString("plot"),
+        episodes=(0 until episodes.length()).mapNotNull { i ->
+            episodes.optJSONObject(i)?.let {
+                EpisodeSynopsis(it.optString("id"),it.optInt("season"),it.optInt("number"),
+                    it.optString("title"),it.optString("plot"))
+            }
+        },
+        backdropUrl=json.optString("backdrop"),
+        cast=(0 until cast.length()).mapNotNull { i ->
+            cast.optJSONObject(i)?.let {CastMember(it.optString("name"),it.optString("image"))}
+        },
+        year=json.optString("year"),
+        duration=json.optString("duration"),
+        genre=json.optString("genre"),
+        rating=json.optString("rating"),
+        director=json.optString("director")
+    )
 }
 private fun readSynopsisJson(address: String): JSONObject {
     val connection=(URL(address).openConnection() as HttpURLConnection).apply {
