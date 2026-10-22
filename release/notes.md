@@ -1,9 +1,8 @@
-AURORA IPTV Android 1.12.24 — Catálogo cinematográfico no modo horizontal.
+AURORA IPTV Android 1.12.25 — Sinopses e metadados mais completos.
 
-- Navegação horizontal simplificada: escolha Ao Vivo, Filmes ou Séries na tela inicial. Volte ao início para trocar de seção, sem menu de troca permanente dentro do catálogo.
-- Filmes em cartazes maiores, com categorias e busca lateral. Paginação mantida para playlists extensas.
-- Selecionar um filme abre uma página de detalhes antes de reproduzir: imagem de fundo, sinopse, gênero, ano, duração, nota e elenco quando o provedor fornece esses dados.
-- Fotos dos atores aparecem apenas quando o provedor disponibiliza links válidos; caso contrário, os nomes são apresentados sem imagens inventadas.
-- Séries recebem página de detalhes antes de escolher temporadas e episódios, preservando favoritos por série.
-- Reprodução de TV ao vivo continua acessível ao girar o aparelho; controles e área do player mantidos durante a mudança de orientação.
-- Sem mudanças na aparência vertical; sem alterações destrutivas de banco. Playlists, favoritos, progresso de reprodução, opções de acessibilidade, assinatura do APK e atualizador online preservados.
+- Prioridade para informações originais da playlist IPTV; leitura de descrições presentes em info, movie_data, series_data ou na resposta principal do provedor.
+- Quando a descrição estiver ausente, consulta pontual ao catálogo público de filmes/séries do Stremio (Cinemeta), sem chave e sem enviar URL, credenciais, identificadores de reprodução ou dados da playlist.
+- Correspondência conservadora de títulos e anos para evitar associar sinopses de filmes diferentes. Quando houver ambiguidade ou informação não confirmada, mantém-se a indicação de indisponibilidade.
+- Busca somente ao abrir os detalhes, sem sobrecarregar catálogos grandes; cache persistente de sucessos e falhas, com renovação automática.
+- Mantidas páginas cinematográficas horizontais, cartazes, elenco quando disponível e todos os fluxos anteriores.
+- Sem migrações destrutivas: assinatura original, banco, listas, favoritos, progresso, orientação vertical e atualizador preservados.
