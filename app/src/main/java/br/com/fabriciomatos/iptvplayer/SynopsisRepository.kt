@@ -20,8 +20,8 @@ import kotlin.coroutines.coroutineContext
  */
 class SynopsisRepository(
     private val repository: PlaylistRepository,
-    private val readJson: (String)->JSONObject = ::readSynopsisJson,
-    private val externalLookup: (String,Boolean)->ContentDetails? = ExternalSynopsisLookup()::lookup
+    private val externalLookup: (String,Boolean)->ContentDetails? = ExternalSynopsisLookup()::lookup,
+    private val readJson: (String)->JSONObject = ::readSynopsisJson
 ) {
     private val indexLock = Mutex()
     private val externalLock = Mutex()
