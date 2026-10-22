@@ -1,9 +1,10 @@
-AURORA IPTV Android 1.12.24 — Catálogo cinematográfico no modo horizontal.
+AURORA IPTV Android 1.12.25 — Sinopses mais completas no modo horizontal.
 
-- Navegação horizontal simplificada: escolha Ao Vivo, Filmes ou Séries na tela inicial. Volte ao início para trocar de seção, sem menu de troca permanente dentro do catálogo.
-- Filmes em cartazes maiores, com categorias e busca lateral. Paginação mantida para playlists extensas.
-- Selecionar um filme abre uma página de detalhes antes de reproduzir: imagem de fundo, sinopse, gênero, ano, duração, nota e elenco quando o provedor fornece esses dados.
-- Fotos dos atores aparecem apenas quando o provedor disponibiliza links válidos; caso contrário, os nomes são apresentados sem imagens inventadas.
-- Séries recebem página de detalhes antes de escolher temporadas e episódios, preservando favoritos por série.
-- Reprodução de TV ao vivo continua acessível ao girar o aparelho; controles e área do player mantidos durante a mudança de orientação.
-- Sem mudanças na aparência vertical; sem alterações destrutivas de banco. Playlists, favoritos, progresso de reprodução, opções de acessibilidade, assinatura do APK e atualizador online preservados.
+- Prioriza metadados do provedor IPTV e aceita sinopses de campos alternativos da API, incluindo movie_data e dados na raiz.
+- Para títulos sem sinopse do provedor (ou listas M3U sem API), pesquisa automaticamente fontes públicas sem chave de API: Wikipédia para filmes e TVmaze para séries.
+- Verifica nome e ano de lançamento para reduzir sinopses de títulos errados; em caso de dúvida mantém a informação indisponível.
+- Busca sob demanda apenas ao abrir detalhes, com cache persistente e prazo controlado para respostas positivas e negativas.
+- Preserva os dados do próprio provedor e complementa informações faltantes; mostra atribuição e link à fonte externa.
+- Não envia a terceiros URLs de playlists, credenciais, links de vídeo ou dados pessoais.
+- Mantém a interface vertical, o layout horizontal, playlists, favoritos, progresso, banco de dados, assinatura e atualizador online.
+- Fontes públicas podem não cobrir todos os conteúdos.
