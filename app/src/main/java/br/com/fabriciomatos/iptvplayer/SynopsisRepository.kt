@@ -207,7 +207,7 @@ fun parseContentDetails(json: JSONObject): ContentDetails {
         plot=sources.firstNotNullOfOrNull { synopsisText(it).takeIf(String::isNotBlank) }.orEmpty(),
         episodes=rows,
         backdropUrl=sources.firstNotNullOfOrNull { providerBackdrop(it).takeIf(String::isNotBlank) }.orEmpty(),
-        cast=sources.firstNotNullOfOrNull { providerCast(it).takeIf(List<CastMember>::isNotEmpty) }.orEmpty(),
+        cast=sources.firstNotNullOfOrNull { providerCast(it).takeIf { cast -> cast.isNotEmpty() } }.orEmpty(),
         year=field("releasedate","release_date","year").take(16),
         duration=field("duration","runtime").take(40),
         genre=field("genre","genres").take(160),
