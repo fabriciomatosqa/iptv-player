@@ -15,7 +15,9 @@ data class ContentDetails(
     val duration: String = "",
     val genre: String = "",
     val rating: String = "",
-    val director: String = ""
+    val director: String = "",
+    val sourceName: String = "",
+    val sourceUrl: String = ""
 )
 data class Synopsis(
     val plot: String = "",
@@ -27,7 +29,9 @@ data class Synopsis(
     val duration: String = "",
     val genre: String = "",
     val rating: String = "",
-    val director: String = ""
+    val director: String = "",
+    val sourceName: String = "",
+    val sourceUrl: String = ""
 )
 
 fun playbackContentId(address: String): String? = runCatching {
