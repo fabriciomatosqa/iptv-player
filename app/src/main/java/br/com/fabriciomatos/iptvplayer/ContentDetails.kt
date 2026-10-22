@@ -27,7 +27,10 @@ data class Synopsis(
     val duration: String = "",
     val genre: String = "",
     val rating: String = "",
-    val director: String = ""
+    val director: String = "",
+    /** Attribution for third-party descriptive metadata; empty for playlist information. */
+    val sourceName: String = "",
+    val sourceUrl: String = ""
 )
 
 fun playbackContentId(address: String): String? = runCatching {
