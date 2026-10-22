@@ -130,6 +130,89 @@ class SynopsisTest {
         assertEquals("", providerImageUrl("javascript:alert(1)"))
     }
 
+    @Test fun publicFallbackUsesExactTitleAndYearWithoutLeakingPlaylistAndPersistsAcrossReopen() = runBlocking {
+        resetCatalog(context)
+        val source = "local-m3u://a0a0a0a0-1111-4444-8888-000000000001"
+        val movie = Channel("A Odisseia (2026)", "https://example.test/opaque-video.mp4",
+            "Filmes", typeHint = "movie")
+        val repository = PlaylistRepository(context)
+        var requests = 0
+        val fetch: (String)->JSONObject = { address ->
+            requests++
+            assertFalse("No IPTV credentials in external search", address.contains("password"))
+            assertFalse("No stream URL in external search", address.contains("opaque-video"))
+            when {
+                address.contains("/catalog/movie/") ->
+                    JSONObject("""{"metas":[
+                        {"id":"tt1234567","name":"A Odisseia","releaseInfo":"2024"},
+                        {"id":"tt1234568","name":"A Odisseia","releaseInfo":"2026"}]}""")
+                address.contains("/meta/movie/tt1234568") ->
+                    JSONObject("""{"meta":{"id":"tt1234568","name":"A Odisseia",
+                      "releaseInfo":"2026","description":"A sinopse pública verificada.",
+                      "background":"https://example.test/backdrop.jpg",
+                      "genres":["Aventura"],"cast":["Pessoa A","Pessoa B"],"imdbRating":"7.4"}}""")
+                else -> error("Unexpected metadata request")
+            }
+        }
+        val fallback = PublicSynopsisFallback(repository, fetch)
+        val synopsis = SynopsisRepository(repository, publicFallback = fallback)
+            .load(source, movie)
+        assertEquals("A sinopse pública verificada.", synopsis.plot)
+        assertEquals("2026", synopsis.year)
+        assertEquals("Aventura", synopsis.genre)
+        assertEquals(2, synopsis.cast.size)
+        assertEquals(2, requests)
+        repository.close()
+
+        val reopened = PlaylistRepository(context)
+        // Fallback must survive restarting with no internet.
+        val offline = SynopsisRepository(reopened, publicFallback = PublicSynopsisFallback(reopened) {
+            error("Cache must prevent any additional external requests")
+        })
+        assertEquals("A sinopse pública verificada.", offline.load(source, movie).plot)
+        reopened.close()
+    }
+
+    @Test fun ambiguousRemakesDoNotAcquireAnUnrelatedSynopsis() = runBlocking {
+        resetCatalog(context)
+        val source = "local-m3u://a0a0a0a0-1111-4444-8888-000000000002"
+        val repository = PlaylistRepository(context)
+        var requests = 0
+        val fallback = PublicSynopsisFallback(repository) { address ->
+            requests++
+            assertTrue(address.contains("/catalog/movie/"))
+            JSONObject("""{"metas":[
+                {"id":"tt1234567","name":"A Odisseia","releaseInfo":"2024"},
+                {"id":"tt1234568","name":"A Odisseia","releaseInfo":"2026"}]}""")
+        }
+        val film = Channel("A Odisseia", "https://example.test/movie/opaque.mp4", typeHint = "movie")
+        assertEquals("", SynopsisRepository(repository, publicFallback = fallback).load(source, film).plot)
+        assertEquals("", SynopsisRepository(repository, publicFallback = fallback).load(source, film).plot)
+        assertEquals(1, requests) // Short-lived negative cache, no repeated requests
+        repository.close()
+    }
+
+    @Test fun providerMovieDataDescriptionIsPreferredOverPublicSearch() = runBlocking {
+        resetCatalog(context)
+        val source = "https://example.test/get.php?username=test&password=test&type=m3u_plus"
+        val movie = Channel("Filme bem descrito (2026)", "https://example.test/movie/test/test/347.mkv",
+            "Filmes", typeHint = "movie")
+        val repository = PlaylistRepository(context)
+        val loader = SynopsisRepository(
+            repository,
+            readJson = { address ->
+                assertTrue(address.contains("vod_id=347"))
+                JSONObject("""{"info":{},"movie_data":{"description":"Sinopse da própria playlist.",
+                    "releasedate":"2026","genre":"Drama"}}""")
+            },
+            publicFallback = PublicSynopsisFallback(repository) { error("Provider must have priority") }
+        )
+        val result = loader.load(source, movie)
+        assertEquals("Sinopse da própria playlist.", result.plot)
+        assertEquals("Drama", result.genre)
+        repository.close()
+    }
+
     private fun awaitSynopsis(text: String) {
         compose.onNodeWithTag("synopsis_dialog",useUnmergedTree=true).assertExists()
         compose.waitUntil(30000) {
