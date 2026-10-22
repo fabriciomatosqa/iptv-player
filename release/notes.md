@@ -1,9 +1,9 @@
-AURORA IPTV Android 1.12.24 — Catálogo cinematográfico no modo horizontal.
+AURORA IPTV Android 1.12.25 — Sinopses mais completas no modo horizontal.
 
-- Navegação horizontal simplificada: escolha Ao Vivo, Filmes ou Séries na tela inicial. Volte ao início para trocar de seção, sem menu de troca permanente dentro do catálogo.
-- Filmes em cartazes maiores, com categorias e busca lateral. Paginação mantida para playlists extensas.
-- Selecionar um filme abre uma página de detalhes antes de reproduzir: imagem de fundo, sinopse, gênero, ano, duração, nota e elenco quando o provedor fornece esses dados.
-- Fotos dos atores aparecem apenas quando o provedor disponibiliza links válidos; caso contrário, os nomes são apresentados sem imagens inventadas.
-- Séries recebem página de detalhes antes de escolher temporadas e episódios, preservando favoritos por série.
-- Reprodução de TV ao vivo continua acessível ao girar o aparelho; controles e área do player mantidos durante a mudança de orientação.
-- Sem mudanças na aparência vertical; sem alterações destrutivas de banco. Playlists, favoritos, progresso de reprodução, opções de acessibilidade, assinatura do APK e atualizador online preservados.
+- O app prioriza a sinopse e os demais metadados da própria playlist/provedor, incluindo descrições que aparecem em movie_data e campos alternativos.
+- Quando um filme ou série não possui sinopse fornecida pela lista, o Aurora tenta consultar fontes públicas de informações (Wikipédia e TVmaze) ao abrir seus detalhes.
+- Correspondência rigorosa de título e, quando disponível, ano, para evitar sinopses incorretas.
+- A tela horizontal identifica a fonte externa e permite abrir o artigo original.
+- Consultas limitadas por tempo e com cache persistente; não é realizada busca de milhares de títulos ao importar a playlist.
+- A busca pública envia somente o nome do título e o ano, nunca credenciais ou URL da playlist.
+- Dados, playlists, favoritos, configurações, assinatura e atualizador online são mantidos.
