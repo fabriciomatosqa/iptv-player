@@ -37,7 +37,7 @@ class SynopsisRepository(
         } catch (e: CancellationException) { throw e }
           catch (_: Exception) { null }
         var details = official ?: ContentDetails()
-        if (details.plot.isBlank() && title.isNotBlank() &&
+        if ((details.plot.isBlank() || (details.cast.isEmpty() && kind == MediaKind.SERIES)) && title.isNotBlank() &&
             channel?.adult != true && series?.adult != true) {
             // A separate cache also covers providers that return blank descriptions.
             val key = "public-synopsis:" + PlaylistRepository.digest(source) +
@@ -57,9 +57,9 @@ class SynopsisRepository(
                 if(extra != null) repository.saveArtwork(key,encodeContentDetails(extra).toString(),7L*86400000)
                 else repository.saveArtwork(key,JSONObject().put("noMatch",true).toString(),6L*3600000)
             }
-            if(extra != null && extra.plot.isNotBlank()) {
+            if(extra != null && (extra.plot.isNotBlank() || extra.cast.isNotEmpty())) {
                 details = details.copy(
-                    plot = extra.plot,
+                    plot = details.plot.ifBlank {extra.plot},
                     backdropUrl = details.backdropUrl.ifBlank {extra.backdropUrl},
                     cast = details.cast.ifEmpty {extra.cast},
                     year = details.year.ifBlank {extra.year},
