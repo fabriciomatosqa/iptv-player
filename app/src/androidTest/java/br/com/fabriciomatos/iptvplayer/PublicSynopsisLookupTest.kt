@@ -55,6 +55,35 @@ class PublicSynopsisLookupTest {
             "série de televisão",MediaKind.MOVIES,2026))
     }
 
+    @Test fun wikidataFilmCastUsesWikipediaIdentityAndActorPortraits() {
+        val requests=mutableListOf<String>()
+        val cast=wikidataFilmCast("Filme de teste (filme de 2026)") {url ->
+            requests.add(url)
+            when {
+                "sites=ptwiki" in url -> JSONObject(
+                    """{"entities":{"Q999":{"claims":{"P161":[
+                        {"mainsnak":{"datavalue":{"value":{"id":"Q123"}}}},
+                        {"mainsnak":{"datavalue":{"value":{"id":"Q456"}}}}
+                    ]}}}}"""
+                )
+                "ids=" in url -> JSONObject(
+                    """{"entities":{
+                        "Q123":{"labels":{"pt":{"value":"Leonardo DiCaprio"}},
+                            "claims":{"P18":[{"mainsnak":{"datavalue":{
+                                "value":"Portrait Test.jpg"}}}]}},
+                        "Q456":{"labels":{"en":{"value":"Jane Actress"}},"claims":{}}
+                    }}"""
+                )
+                else -> error("Unexpected URL")
+            }
+        }
+        assertEquals(listOf("Leonardo DiCaprio","Jane Actress"),cast.map { it.name })
+        assertTrue(cast.first().imageUrl.contains("commons.wikimedia.org"))
+        assertTrue(cast.last().imageUrl.isBlank())
+        assertEquals(2,requests.size)
+        assertTrue(requests.none { it.contains("password") || it.contains("get.php") })
+    }
+
     @Test fun tvmazeMatchedSeriesReturnsActorPhotosFromVerifiedShow() = runBlocking {
         val requests=mutableListOf<String>()
         val lookup=PublicSynopsisLookup { url ->
