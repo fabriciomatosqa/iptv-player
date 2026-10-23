@@ -60,6 +60,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         save={ key,json -> repository.saveArtwork(key,json,30L*86400000) }
     )
     private val synopses = SynopsisRepository(repository)
+    private val actorPhotos = ActorPhotoRepository(repository)
     private val scoreRefresh = Mutex()
     private val coverRequests = mutableMapOf<String,Deferred<String?>>()
     private val preferences = AppSettings(application)
@@ -436,9 +437,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     suspend fun footballArtwork(details: FootballDetails): FootballArtwork = viewModelScope.async {artwork.football(details)}.await()
     suspend fun sportsArtwork(event: SportsEvent): FootballArtwork =
         viewModelScope.async { artwork.teamSport(event) }.await()
-    suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false): Synopsis {
+    /** Reuses the same cached cast photo across titles and app restarts. */
+    suspend fun actorPhoto(actor: CastMember): String = actorPhotos.image(actor)
+
+    suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false, includeCast: Boolean = false): Synopsis {
         if(channel?.adult==true && !adultUnlocked || series?.adult==true && !adultUnlocked)return Synopsis()
-        return synopses.load(playlistUrl,channel,series,force)
+        return synopses.load(playlistUrl,channel,series,force,includeCast)
     }
     private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
     fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }

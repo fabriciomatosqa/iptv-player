@@ -55,6 +55,59 @@ class PublicSynopsisLookupTest {
             "série de televisão",MediaKind.MOVIES,2026))
     }
 
+    @Test fun wikidataFilmCastUsesWikipediaIdentityAndActorPortraits() {
+        val requests=mutableListOf<String>()
+        val cast=wikidataFilmCast("Filme de teste (filme de 2026)") {url ->
+            requests.add(url)
+            when {
+                "sites=ptwiki" in url -> JSONObject(
+                    """{"entities":{"Q999":{"claims":{"P161":[
+                        {"mainsnak":{"datavalue":{"value":{"id":"Q123"}}}},
+                        {"mainsnak":{"datavalue":{"value":{"id":"Q456"}}}}
+                    ]}}}}"""
+                )
+                "ids=" in url -> JSONObject(
+                    """{"entities":{
+                        "Q123":{"labels":{"pt":{"value":"Leonardo DiCaprio"}},
+                            "claims":{"P18":[{"mainsnak":{"datavalue":{
+                                "value":"Portrait Test.jpg"}}}]}},
+                        "Q456":{"labels":{"en":{"value":"Jane Actress"}},"claims":{}}
+                    }}"""
+                )
+                else -> error("Unexpected URL")
+            }
+        }
+        assertEquals(listOf("Leonardo DiCaprio","Jane Actress"),cast.map { it.name })
+        assertTrue(cast.first().imageUrl.contains("commons.wikimedia.org"))
+        assertTrue(cast.last().imageUrl.isBlank())
+        assertEquals(2,requests.size)
+        assertTrue(requests.none { it.contains("password") || it.contains("get.php") })
+    }
+
+    @Test fun tvmazeMatchedSeriesReturnsActorPhotosFromVerifiedShow() = runBlocking {
+        val requests=mutableListOf<String>()
+        val lookup=PublicSynopsisLookup { url ->
+            requests.add(url)
+            when {
+                "wikipedia.org" in url -> JSONObject("""{"pages":[]}""")
+                "search/shows" in url -> JSONObject(
+                    """{"items":[{"show":{"id":123,"name":"See","premiered":"2019-11-01",
+                    "summary":"<p>Em um mundo no qual todos perderam a visão, famílias lutam por sua sobrevivência.</p>",
+                    "url":"https://www.tvmaze.com/shows/123/see"}}]}"""
+                )
+                "shows/123?embed=cast" in url -> JSONObject(
+                    """{"_embedded":{"cast":[{"person":{"name":"Jason Momoa",
+                    "image":{"medium":"https://static.tvmaze.com/uploads/images/medium_portrait/test.jpg"}}}]}}"""
+                )
+                else -> error("Unexpected endpoint $url")
+            }
+        }
+        val info=lookup.find("See",MediaKind.SERIES)
+        assertEquals("Jason Momoa",info?.cast?.single()?.name)
+        assertTrue(info!!.cast.single().imageUrl.startsWith("https://static.tvmaze.com/"))
+        assertTrue(requests.none { "get.php" in it || "password=" in it })
+    }
+
     @Test fun tvmazeFallbackRequiresExactSeriesMatchAndCitesProvider() = runBlocking {
         val lookup=PublicSynopsisLookup {url ->
             when {

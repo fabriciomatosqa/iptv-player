@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 
 @Composable internal fun CatalogLoadingIndicator(model: AuroraViewModel) {
@@ -35,4 +36,22 @@ import coil.request.ImageRequest
         .setHeader("User-Agent","AuroraIPTV/1.7 Android").apply {
             if(image.startsWith("https://media.kitsu.app/") || image.startsWith("https://media.kitsu.io/"))setHeader("Referer","https://kitsu.io/")
         }.build()}
+}
+
+/**
+ * Identical actor identity uses one memory/disk entry across films and series.
+ * Coil persists the downloaded bytes on disk; SQLite remembers the resolved URL.
+ */
+@Composable internal fun actorImageRequest(image: String, name: String): ImageRequest {
+    val context=LocalContext.current
+    return remember(context,image,name) {
+        ImageRequest.Builder(context).data(image)
+            .diskCacheKey("aurora:person:" + normalized(name))
+            .memoryCacheKey("aurora:person:" + normalized(name))
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .networkCachePolicy(CachePolicy.ENABLED)
+            .setHeader("User-Agent","AuroraIPTV/1.8 Android")
+            .build()
+    }
 }
