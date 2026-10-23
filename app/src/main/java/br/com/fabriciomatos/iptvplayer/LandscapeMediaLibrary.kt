@@ -268,7 +268,7 @@ import kotlinx.coroutines.flow.collectLatest
         mutableStateOf<Synopsis?>(null)
     }
     LaunchedEffect(model.playlistUrl,movie?.url,series?.id) {
-        synopsis = model.synopsis(movie,series)
+        synopsis = model.synopsis(movie,series,includeCast=true)
     }
     val fallback = movie?.imageUrl ?: series?.imageUrl.orEmpty()
     val backdrop = synopsis?.backdropUrl?.takeIf(String::isNotBlank) ?: fallback
