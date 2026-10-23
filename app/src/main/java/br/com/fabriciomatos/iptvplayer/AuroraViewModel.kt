@@ -440,9 +440,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     /** Reuses the same cached cast photo across titles and app restarts. */
     suspend fun actorPhoto(actor: CastMember): String = actorPhotos.image(actor)
 
-    suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false): Synopsis {
+    suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false, includeCast: Boolean = false): Synopsis {
         if(channel?.adult==true && !adultUnlocked || series?.adult==true && !adultUnlocked)return Synopsis()
-        return synopses.load(playlistUrl,channel,series,force)
+        return synopses.load(playlistUrl,channel,series,force,includeCast)
     }
     private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
     fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
