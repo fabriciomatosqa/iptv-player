@@ -28,11 +28,15 @@ class PublicSynopsisLookup(
             val wikipedia = try { findWikipedia(name, kind, year) }
                 catch(e: CancellationException) { throw e }
                 catch(_: Exception) { null }
-            if(wikipedia != null) return@withContext wikipedia
-            if(kind != MediaKind.SERIES) return@withContext null
-            try { findTvMaze(name,year) }
-            catch(e: CancellationException) { throw e }
-            catch(_: Exception) { null }
+            if(kind != MediaKind.SERIES) return@withContext wikipedia
+            val tv = try { findTvMaze(name,year) }
+                catch(e: CancellationException) { throw e }
+                catch(_: Exception) { null }
+            if(wikipedia != null && tv != null) return@withContext wikipedia.copy(
+                cast = wikipedia.cast.ifEmpty { tv.cast },
+                genre = wikipedia.genre.ifBlank { tv.genre },
+                duration = wikipedia.duration.ifBlank { tv.duration })
+            wikipedia ?: tv
         }
 
     private fun findWikipedia(name: String, kind: MediaKind, year: Int?): ContentDetails? {
@@ -86,8 +90,23 @@ class PublicSynopsisLookup(
         if (plot.length < 45) return null
         val url = show.optString("url").takeIf {it.startsWith("https://www.tvmaze.com/")}
             .orEmpty()
+        val cast = show.optInt("id").takeIf { it > 0 }?.let { showId ->
+            val detail = runCatching {
+                request("https://api.tvmaze.com/shows/$showId?embed=cast")
+            }.getOrNull()
+            val people = detail?.optJSONObject("_embedded")?.optJSONArray("cast")
+            (0 until minOf(people?.length() ?: 0,24)).mapNotNull { i ->
+                val person = people?.optJSONObject(i)?.optJSONObject("person")
+                    ?: return@mapNotNull null
+                val personName = person.optString("name").trim()
+                val image = person.optJSONObject("image")?.optString("medium").orEmpty()
+                if(personName.isBlank()) null else CastMember(
+                    personName, image.takeIf { it.startsWith("https://static.tvmaze.com/") }.orEmpty())
+            }.distinctBy { normalized(it.name) }
+        }.orEmpty()
         return ContentDetails(
             plot = plot,
+            cast = cast,
             year = show.optString("premiered").take(4),
             genre = show.optJSONArray("genres")?.let { g ->
                 (0 until g.length()).joinToString(", ") {g.optString(it)}
