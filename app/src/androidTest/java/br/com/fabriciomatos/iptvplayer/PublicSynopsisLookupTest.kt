@@ -55,6 +55,30 @@ class PublicSynopsisLookupTest {
             "série de televisão",MediaKind.MOVIES,2026))
     }
 
+    @Test fun tvmazeMatchedSeriesReturnsActorPhotosFromVerifiedShow() = runBlocking {
+        val requests=mutableListOf<String>()
+        val lookup=PublicSynopsisLookup { url ->
+            requests.add(url)
+            when {
+                "wikipedia.org" in url -> JSONObject("""{"pages":[]}""")
+                "search/shows" in url -> JSONObject(
+                    """{"items":[{"show":{"id":123,"name":"See","premiered":"2019-11-01",
+                    "summary":"<p>Em um mundo no qual todos perderam a visão, famílias lutam por sua sobrevivência.</p>",
+                    "url":"https://www.tvmaze.com/shows/123/see"}}]}"""
+                )
+                "shows/123?embed=cast" in url -> JSONObject(
+                    """{"_embedded":{"cast":[{"person":{"name":"Jason Momoa",
+                    "image":{"medium":"https://static.tvmaze.com/uploads/images/medium_portrait/test.jpg"}}}]}}"""
+                )
+                else -> error("Unexpected endpoint $url")
+            }
+        }
+        val info=lookup.find("See",MediaKind.SERIES)
+        assertEquals("Jason Momoa",info?.cast?.single()?.name)
+        assertTrue(info!!.cast.single().imageUrl.startsWith("https://static.tvmaze.com/"))
+        assertTrue(requests.none { "get.php" in it || "password=" in it })
+    }
+
     @Test fun tvmazeFallbackRequiresExactSeriesMatchAndCitesProvider() = runBlocking {
         val lookup=PublicSynopsisLookup {url ->
             when {
