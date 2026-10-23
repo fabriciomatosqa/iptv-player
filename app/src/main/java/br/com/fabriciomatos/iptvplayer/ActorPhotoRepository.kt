@@ -63,7 +63,9 @@ internal fun trustedActorImageUrl(value: String): Boolean {
 internal fun wikipediaPhoto(name: String, readJson:(String)->JSONObject): String {
     val encoded=URLEncoder.encode(name.replace(' ','_'),"UTF-8")
     for (language in listOf("pt","en")) {
-        val json=readJson("https://$language.wikipedia.org/api/rest_v1/page/summary/$encoded")
+        val json=try { readJson("https://$language.wikipedia.org/api/rest_v1/page/summary/$encoded") }
+            catch(e: CancellationException) {throw e}
+            catch(_:Exception) {continue}
         if (json.optString("type")=="disambiguation") continue
         if(normalized(json.optString("title")) != normalized(name))continue
         val occupation = normalized(json.optString("description") + " " +
