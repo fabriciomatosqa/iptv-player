@@ -60,8 +60,12 @@ class PublicSynopsisLookup(
             return null
         val extract = summary.optString("extract").trim()
         if (extract.length < 45) return null
+        val cast = if(kind == MediaKind.MOVIES) runCatching {
+            wikidataFilmCast(title,request)
+        }.getOrDefault(emptyList()) else emptyList()
         return ContentDetails(
             plot = extract.take(1800),
+            cast = cast,
             year = year?.toString().orEmpty(),
             backdropUrl = summary.optJSONObject("originalimage")?.optString("source")
                 ?.takeIf(::isPublicImageUrl).orEmpty(),
