@@ -23,17 +23,19 @@ class ActorPhotoCacheTest {
                  "description":"American actor and film producer",
                  "thumbnail":{"source":"$wiki"}}""")
         }
-        PlaylistRepository(context).use { db ->
+        val db=PlaylistRepository(context)
+        try {
             val photos=ActorPhotoRepository(db,reader)
             val first=photos.image(CastMember("Leonardo DiCaprio"))
             assertEquals(wiki,first)
             assertEquals(first,photos.image(CastMember("Leonardo DiCaprio")))
             assertEquals(1,calls.get())
-        }
-        PlaylistRepository(context).use { reopened ->
+        } finally { db.close() }
+        val reopened=PlaylistRepository(context)
+        try {
             val noNetwork=ActorPhotoRepository(reopened){ error("Photo should be cached") }
             assertEquals(wiki,noNetwork.image(CastMember("Leonardo DiCaprio")))
-        }
+        } finally { reopened.close() }
     }
 
     @Test fun rejectsAmbiguousAndUnrelatedWikipediaIdentity() {
