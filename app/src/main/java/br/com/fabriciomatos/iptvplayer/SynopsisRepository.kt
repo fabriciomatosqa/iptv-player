@@ -45,16 +45,26 @@ class SynopsisRepository(
             val cached = if (!force) repository.cachedArtwork(key)?.let {
                 runCatching {JSONObject(it)}.getOrNull()
             } else null
+            // Cached descriptions from older versions can lack cast. Enrich once,
+            // retain the old plot if the internet is unavailable, and mark the entry
+            // so reopening the same title does not repeat the public request.
+            val enrichOldCache = cached != null && !cached.optBoolean("noMatch") &&
+                !cached.optBoolean("castLookupV1") && details.cast.isEmpty() &&
+                (cached.optJSONArray("cast")?.length() ?: 0) == 0
+            val oldDetails = cached?.let {
+                runCatching {decodeContentDetails(it)}.getOrNull()
+            }
             val extra = when {
                 cached?.optBoolean("noMatch") == true -> null
-                cached != null -> runCatching {decodeContentDetails(cached)}.getOrNull()
+                cached != null && !enrichOldCache -> oldDetails
                 else -> try {
-                    publicLookup.find(title,kind,details.year)
+                    publicLookup.find(title,kind,details.year) ?: oldDetails
                 } catch(e: CancellationException) {throw e}
-                  catch (_: Exception) {null}
+                  catch (_: Exception) {oldDetails}
             }
-            if (cached == null) {
-                if(extra != null) repository.saveArtwork(key,encodeContentDetails(extra).toString(),7L*86400000)
+            if (cached == null || enrichOldCache) {
+                if(extra != null) repository.saveArtwork(key,
+                    encodeContentDetails(extra).put("castLookupV1",true).toString(),7L*86400000)
                 else repository.saveArtwork(key,JSONObject().put("noMatch",true).toString(),6L*3600000)
             }
             if(extra != null && (extra.plot.isNotBlank() || extra.cast.isNotEmpty())) {
