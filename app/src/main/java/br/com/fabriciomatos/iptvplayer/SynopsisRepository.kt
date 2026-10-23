@@ -37,7 +37,7 @@ class SynopsisRepository(
         } catch (e: CancellationException) { throw e }
           catch (_: Exception) { null }
         var details = official ?: ContentDetails()
-        if ((details.plot.isBlank() || (details.cast.isEmpty() && kind == MediaKind.SERIES)) && title.isNotBlank() &&
+        if ((details.plot.isBlank() || details.cast.isEmpty()) && title.isNotBlank() &&
             channel?.adult != true && series?.adult != true) {
             // A separate cache also covers providers that return blank descriptions.
             val key = "public-synopsis:" + PlaylistRepository.digest(source) +
