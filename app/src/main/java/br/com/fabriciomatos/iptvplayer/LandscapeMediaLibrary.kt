@@ -366,14 +366,18 @@ import kotlinx.coroutines.flow.collectLatest
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(12.dp),
                     modifier=Modifier.fillMaxWidth().testTag("landscape_details_cast")) {
                     items(actors,key={it.name}) {actor ->
+                        var portrait by remember(actor.name,actor.imageUrl) { mutableStateOf(actor.imageUrl) }
+                        LaunchedEffect(actor.name,actor.imageUrl) {
+                            portrait = model.actorPhoto(actor)
+                        }
                         Column(Modifier.width(105.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                             Box(Modifier.width(105.dp).height(116.dp)
                                 .clip(RoundedCornerShape(11.dp))
                                 .background(Color(0xFF293A4F)),contentAlignment=Alignment.Center) {
                                 Icon(Icons.Default.Person,null,tint=Color(0xFFA8BDD3),
                                     modifier=Modifier.size(43.dp))
-                                if(actor.imageUrl.isNotBlank())
-                                    AsyncImage(catalogImage(actor.imageUrl),null,
+                                if(portrait.isNotBlank())
+                                    AsyncImage(actorImageRequest(portrait,actor.name),null,
                                         Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
                             }
                             Text(actor.name,Modifier.padding(top=5.dp),color=mainText,
