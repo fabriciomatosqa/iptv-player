@@ -22,7 +22,7 @@ class SynopsisRepository(
     private val indexLock=Mutex()
 
     suspend fun load(source: String, channel: Channel? = null,
-        series: SeriesEntry? = null, force: Boolean = false): Synopsis = withContext(Dispatchers.IO) {
+        series: SeriesEntry? = null, force: Boolean = false, includeCast: Boolean = false): Synopsis = withContext(Dispatchers.IO) {
         val movie = channel?.kind == MediaKind.MOVIES
         if (!movie && channel?.kind != MediaKind.SERIES && series == null)
             return@withContext Synopsis()
@@ -37,7 +37,7 @@ class SynopsisRepository(
         } catch (e: CancellationException) { throw e }
           catch (_: Exception) { null }
         var details = official ?: ContentDetails()
-        if ((details.plot.isBlank() || details.cast.isEmpty()) && title.isNotBlank() &&
+        if ((details.plot.isBlank() || (includeCast && details.cast.isEmpty())) && title.isNotBlank() &&
             channel?.adult != true && series?.adult != true) {
             // A separate cache also covers providers that return blank descriptions.
             val key = "public-synopsis:" + PlaylistRepository.digest(source) +
