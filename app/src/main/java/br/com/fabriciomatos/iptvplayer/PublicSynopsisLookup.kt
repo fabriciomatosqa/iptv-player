@@ -111,6 +111,7 @@ class PublicSynopsisLookup(
 internal fun cleanSynopsisTitle(value: String): String {
     return value.replace(Regex("""(?i)\b(?:4K|UHD|FHD|HD|SD|1080p|720p|2160p|DUBLADO|LEGENDADO|DUAL AUDIO)\b""")," ")
         .replace(Regex("""\s*[\[(](?:19|20)\d{2}[\])]\s*""")," ")
+        .replace(Regex("""\[\s*\]|\(\s*\)""")," ")
         .replace(Regex("""(?iu)^\s*(?:filmes?|cinema|lançamentos?)\s*[|:–-]\s*"""),"")
         .replace(Regex("""\s+""")," ").trim(' ','-','|',':','.')
 }

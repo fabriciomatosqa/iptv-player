@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Đã kết thúc phát sóng</string>
     <string name="broadcast_scheduled">Lịch phát sóng</string>
     <string name="broadcast_unconfirmed">Chưa xác nhận phát trực tiếp</string>
+    <string name="play_content">Phát</string>
+    <string name="episodes">Các tập</string>
+    <string name="cast">Diễn viên</string>
+    <string name="cast_unavailable">Nhà cung cấp chưa có thông tin diễn viên</string>
+    <string name="synopsis_source">Nguồn tóm tắt: %1$s</string>
+    <string name="episode_completed">Đã xem xong</string>
+    <string name="episode_unfinished">Chưa xem xong</string>
+    <string name="episode_progress">Đã xem %1$d%% tập phim</string>
+    <string name="episode_scene">Cảnh trong tập %1$d</string>
+    <string name="episode_minutes">%1$d phút</string>
+    <string name="resume_playback_title">Tiếp tục từ chỗ đã dừng?</string>
+    <string name="resume_playback_message">%1$s\nBạn đã dừng ở %2$s.</string>
+    <string name="resume_playback_continue">Tiếp tục</string>
+    <string name="resume_playback_start">Từ đầu</string>
 </resources>

@@ -2,7 +2,11 @@ package br.com.fabriciomatos.iptvplayer
 
 import java.net.URI
 
-data class EpisodeSynopsis(val id: String, val season: Int, val number: Int, val title: String, val plot: String)
+data class EpisodeSynopsis(
+    val id: String, val season: Int, val number: Int, val title: String, val plot: String,
+    val imageUrl: String = "", val durationMs: Long = 0,
+    val imageSource: String = "", val imageSourceUrl: String = ""
+)
 data class CastMember(val name: String, val imageUrl: String = "")
 
 /** Optional provider metadata. Old cached JSON remains readable with empty defaults. */
@@ -31,7 +35,8 @@ data class Synopsis(
     val rating: String = "",
     val director: String = "",
     val metadataSource: String = "",
-    val metadataUrl: String = ""
+    val metadataUrl: String = "",
+    val episodes: List<EpisodeSynopsis> = emptyList()
 )
 
 fun playbackContentId(address: String): String? = runCatching {
@@ -45,6 +50,6 @@ fun selectEpisodeSynopsis(details: ContentDetails, channel: Channel): EpisodeSyn
     if(episode.number<=0)return null
     val matches=details.episodes.filter {it.season==episode.season && it.number==episode.number}
     // Multiple versions can share a synopsis; disagreeing records must not attach the wrong plot.
-    if(matches.map {it.plot}.distinct().size!=1)return null
+    if(matches.map {it.plot}.distinct().size!=1 || matches.map {it.imageUrl}.filter(String::isNotBlank).distinct().size>1)return null
     return matches.firstOrNull()
 }

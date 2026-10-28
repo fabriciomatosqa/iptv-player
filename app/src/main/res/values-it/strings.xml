@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Trasmissione terminata</string>
     <string name="broadcast_scheduled">Trasmissione programmata</string>
     <string name="broadcast_unconfirmed">Diretta non confermata</string>
+    <string name="play_content">Riproduci</string>
+    <string name="episodes">Episodi</string>
+    <string name="cast">Cast</string>
+    <string name="cast_unavailable">Il fornitore non ha indicato il cast</string>
+    <string name="synopsis_source">Fonte della sinossi: %1$s</string>
+    <string name="episode_completed">Completato</string>
+    <string name="episode_unfinished">Non completato</string>
+    <string name="episode_progress">%1$d%% dell’episodio guardato</string>
+    <string name="episode_scene">Scena dell’episodio %1$d</string>
+    <string name="episode_minutes">%1$d min</string>
+    <string name="resume_playback_title">Riprendere da dove eri rimasto?</string>
+    <string name="resume_playback_message">%1$s\nTi sei fermato a %2$s.</string>
+    <string name="resume_playback_continue">Continua</string>
+    <string name="resume_playback_start">Dall’inizio</string>
 </resources>

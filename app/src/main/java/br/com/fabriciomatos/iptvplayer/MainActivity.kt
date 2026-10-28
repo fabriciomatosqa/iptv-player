@@ -149,8 +149,9 @@ internal fun AuroraApp(model: AuroraViewModel) {
             }
             if (model.settingsOpen) SettingsPanel(model)
             if(model.parentalDialog)key(model.parentalRequestId){ParentalDialog(model)}
+            ResumePlaybackDialog(model)
             // Do not interrupt fullscreen playback, parental confirmation or other settings.
-            if (!model.settingsOpen && !model.parentalDialog && !model.fullscreen && model.current == null) {
+            if (!model.settingsOpen && !model.parentalDialog && !model.fullscreen && model.current == null && model.pendingPlayback==null) {
                 StartupAppUpdateDialog(model.onlineUpdate) { model.openSettings(6) }
             }
         }
@@ -353,7 +354,7 @@ private fun RecentCard(model: AuroraViewModel, modifier: Modifier) {
         return
     }
     Box(modifier.clip(Shape).background(Panel).landscapeRemoteClickable {
-        when { channel != null -> model.play(channel); saved -> model.refresh(); else -> model.openSettings() }
+        when { channel != null -> model.requestPlay(channel); saved -> model.refresh(); else -> model.openSettings() }
     }) {
         val cover = channel?.let { if(it.kind==MediaKind.SERIES)it.seriesImageUrl.ifBlank {it.imageUrl}else it.imageUrl }
         if (!cover.isNullOrBlank()) AsyncImage(catalogImage(cover), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -398,6 +399,15 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
     val live = model.selectedKind == MediaKind.LIVE
     val series = model.openedSeries
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
+    val details=model.seriesDetails.forSource(model.playlistUrl)
+    if(!wide && details!=null) {
+        BackHandler {
+            if(model.seriesDetails.episodesVisible)model.seriesDetails.episodesVisible=false else model.closeSeriesDetails()
+        }
+        LandscapeContentDetails(model,null,details,onBack={model.closeSeriesDetails()},
+            onEpisodes={model.seriesDetails.episodesVisible=true})
+        return
+    }
     if (wide) {
         // Projector layout: categories + cinematic posters + title detail.
         // Portrait retains the original three-column-free layout below.
@@ -435,8 +445,8 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
                 }
             }
             if (model.loading) CatalogLoadingIndicator(model)
-            if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp))
-            else if(model.favoritesOnly && model.selectedKind==null && series==null)FavoritesList(model,Modifier.weight(1f).fillMaxWidth().padding(horizontal=16.dp))
+            if (seriesRoot) SeriesGrid(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp)) {model.seriesDetails.open(it,model.playlistUrl)}
+            else if(model.favoritesOnly && model.selectedKind==null && series==null)FavoritesList(model,Modifier.weight(1f).fillMaxWidth().padding(horizontal=16.dp)) {model.seriesDetails.open(it,model.playlistUrl)}
             else ChannelList(model, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp), guideMode = live && model.current != null)
         }
     }
@@ -537,7 +547,7 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
     }
 }
 
-@Composable internal fun FavoritesList(model: AuroraViewModel,modifier: Modifier) {
+@Composable internal fun FavoritesList(model: AuroraViewModel,modifier: Modifier,onSelectSeries: (SeriesEntry)->Unit=model::showSeries) {
     val channels=model.channelPages.collectAsLazyPagingItems()
     val shows=model.seriesPages.collectAsLazyPagingItems()
     val scroll=remember(model.catalogPositionKey()) {LazyListState()}
@@ -554,7 +564,7 @@ private fun SeriesHeader(model: AuroraViewModel, series: SeriesEntry, modifier: 
     LazyColumn(modifier.testTag("favorites_list"),state=scroll,contentPadding=PaddingValues(vertical=8.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
         items(shows.itemCount,key=shows.itemKey {"series:${it.id}"},contentType={"series"}) {index->
             shows[index]?.takeIf {!it.adult || model.adultUnlocked}?.let {series->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Panel).clickable {model.showSeries(series)}.padding(start=8.dp,top=6.dp,bottom=6.dp),verticalAlignment=Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Panel).clickable {onSelectSeries(series)}.padding(start=8.dp,top=6.dp,bottom=6.dp),verticalAlignment=Alignment.CenterVertically) {
                     Box(Modifier.size(52.dp,68.dp).clip(RoundedCornerShape(8.dp)).background(Elevated),contentAlignment=Alignment.Center) {
                         Icon(Icons.Default.VideoLibrary,null,tint=Cyan)
                         AnimePoster(model,series,Modifier.fillMaxSize())
@@ -801,7 +811,7 @@ private fun CatalogStatus(model: AuroraViewModel, state: LoadState, retry: () ->
 private fun ChannelRow(channel: Channel, model: AuroraViewModel, guideMode: Boolean, now: Long) {
     val selected = channel.url == model.current?.url
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) Mint.copy(alpha = 0.12f) else Panel)
-        .landscapeRemoteClickable { model.play(channel) }.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        .landscapeRemoteClickable { model.requestPlay(channel) }.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         val isLive = channel.kind == MediaKind.LIVE
         Box(Modifier.size(if (guideMode || isLive) 38.dp else 52.dp, if (guideMode || isLive) 38.dp else 68.dp)
             .clip(RoundedCornerShape(8.dp)).background(Elevated), contentAlignment = Alignment.Center) {

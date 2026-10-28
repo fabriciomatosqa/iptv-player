@@ -199,4 +199,18 @@
     <string name="broadcast_ended">转播已结束</string>
     <string name="broadcast_scheduled">预定转播</string>
     <string name="broadcast_unconfirmed">直播尚未确认</string>
+    <string name="play_content">播放</string>
+    <string name="episodes">分集</string>
+    <string name="cast">演员</string>
+    <string name="cast_unavailable">提供商未提供演员信息</string>
+    <string name="synopsis_source">简介来源：%1$s</string>
+    <string name="episode_completed">已看完</string>
+    <string name="episode_unfinished">未看完</string>
+    <string name="episode_progress">已观看本集的 %1$d%%</string>
+    <string name="episode_scene">第 %1$d 集的场景</string>
+    <string name="episode_minutes">%1$d 分钟</string>
+    <string name="resume_playback_title">从上次的位置继续播放？</string>
+    <string name="resume_playback_message">%1$s\n您上次播放到 %2$s。</string>
+    <string name="resume_playback_continue">继续</string>
+    <string name="resume_playback_start">从头开始</string>
 </resources>

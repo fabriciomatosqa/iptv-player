@@ -174,19 +174,34 @@ class AuroraUiTest {
             screenshot("portrait-series")
             waitForText("Rick e Morty")
             compose.onNodeWithText("Rick e Morty").performClick()
-            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering }
-            waitForText("Rick e Morty S01E01")
-            compose.onNodeWithText("Rick e Morty S01E01").assertExists()
-            compose.onNodeWithText("Rick e Morty S01E02").assertExists()
-            compose.onNodeWithText("Rick e Morty S02E01").assertDoesNotExist()
+            compose.waitUntil(15000) {model.seriesDetails.series?.title=="Rick e Morty" &&
+                compose.onAllNodesWithTag("landscape_title_details").fetchSemanticsNodes().isNotEmpty()}
+            assertNull("Choosing a series must show its synopsis before playback",model.current)
+            compose.onNodeWithTag("episode_row_1").assertDoesNotExist()
+            compose.onNodeWithTag("landscape_details_play").performClick()
+            compose.waitUntil(15000) {model.seriesDetails.episodesVisible &&
+                compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(2)
+            compose.onNodeWithTag("episode_card_1_1").assertExists()
+            compose.onNodeWithTag("episode_card_1_2").assertExists()
+            compose.onNodeWithText("Outra Série S01E01").assertDoesNotExist()
             screenshot("portrait-episodes")
-            compose.onNodeWithText("Temporada 2").performClick()
-            compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }
-            compose.onNodeWithText("Rick e Morty S01E01").assertDoesNotExist()
-            waitForText("Rick e Morty S02E01")
-            compose.onNodeWithText("Rick e Morty S02E01").performClick()
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(1)
+            compose.onNodeWithTag("episode_season_jump_2").performClick()
+            compose.waitUntil(15000) {compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("episode_card_2_1").assertIsDisplayed().performClick()
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "Rick e Morty S02E01" }
-            compose.onNodeWithContentDescription("Voltar às séries").performClick()
+            UiDevice.getInstance(instrumentation).pressBack()
+            compose.waitUntil(10000) {!model.fullscreen &&
+                compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}
+            assertTrue(model.seriesDetails.episodesVisible)
+            assertEquals("Rick e Morty",model.seriesDetails.series?.title)
+            scenario.onActivity {model.stop()}
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(0)
+            compose.onNodeWithTag("landscape_details_back").performClick()
+            assertFalse(model.seriesDetails.episodesVisible)
+            compose.onNodeWithTag("landscape_details_back").performClick()
+            compose.waitUntil(10000) {model.seriesDetails.series==null}
             compose.onNodeWithContentDescription("Voltar ao início").performClick()
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(10000) { context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
@@ -205,9 +220,15 @@ class AuroraUiTest {
             assertNull("Choosing a poster must not auto-play",model.current)
             screenshot("landscape-series-details")
             compose.onNodeWithTag("landscape_details_play").performClick()
-            compose.waitUntil(15000) { model.visibleCount == 2 && !model.filtering && model.openedSeries != null }
+            compose.waitUntil(15000) {model.seriesDetails.episodesVisible &&
+                compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(2)
+            compose.onNodeWithTag("episode_card_1_1").assertIsDisplayed()
             screenshot("landscape-episodes")
             scenario.recreate()
+            compose.waitUntil(10000) {model.seriesDetails.episodesVisible &&
+                compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
+            assertEquals("Rick e Morty",model.seriesDetails.series?.title)
             scenario.close()
 
             // Same-day reopening uses local rows and must not request the M3U again.

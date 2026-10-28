@@ -9,6 +9,10 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class PublicSynopsisLookupTest {
+    @Test fun qualityTagsDoNotLeaveEmptyBracketsInExactTitleSearch() {
+        assertEquals("See",cleanSynopsisTitle("See (2019) [HD]"))
+        assertEquals("A Odisseia",cleanSynopsisTitle("A Odisseia (2026) [4K]"))
+    }
     @Test fun providerMetadataFieldsFallbackFromMovieDataAndRoot() {
         val nested = parseContentDetails(JSONObject(
             """{"info":{},"movie_data":{"description":"Uma aventura registrada pelo provedor.","year":"2026"}}"""

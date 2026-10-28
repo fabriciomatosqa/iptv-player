@@ -199,4 +199,18 @@
     <string name="broadcast_ended">انتهى البث</string>
     <string name="broadcast_scheduled">بث مجدول</string>
     <string name="broadcast_unconfirmed">البث المباشر غير مؤكد</string>
+    <string name="play_content">تشغيل</string>
+    <string name="episodes">الحلقات</string>
+    <string name="cast">طاقم التمثيل</string>
+    <string name="cast_unavailable">لم يحدد المزود طاقم التمثيل</string>
+    <string name="synopsis_source">مصدر الملخص: %1$s</string>
+    <string name="episode_completed">مكتمل</string>
+    <string name="episode_unfinished">غير مكتمل</string>
+    <string name="episode_progress">تمت مشاهدة %1$d%% من الحلقة</string>
+    <string name="episode_scene">مشهد من الحلقة %1$d</string>
+    <string name="episode_minutes">%1$d دقيقة</string>
+    <string name="resume_playback_title">المتابعة من حيث توقفت؟</string>
+    <string name="resume_playback_message">%1$s\nتوقفت عند %2$s.</string>
+    <string name="resume_playback_continue">متابعة</string>
+    <string name="resume_playback_start">من البداية</string>
 </resources>

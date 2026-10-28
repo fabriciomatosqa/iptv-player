@@ -199,4 +199,18 @@
     <string name="broadcast_ended">प्रसारण समाप्त</string>
     <string name="broadcast_scheduled">निर्धारित प्रसारण</string>
     <string name="broadcast_unconfirmed">लाइव प्रसारण की पुष्टि नहीं हुई</string>
+    <string name="play_content">चलाएँ</string>
+    <string name="episodes">एपिसोड</string>
+    <string name="cast">कलाकार</string>
+    <string name="cast_unavailable">प्रदाता ने कलाकारों की जानकारी नहीं दी है</string>
+    <string name="synopsis_source">सार का स्रोत: %1$s</string>
+    <string name="episode_completed">पूरा हुआ</string>
+    <string name="episode_unfinished">अधूरा</string>
+    <string name="episode_progress">एपिसोड का %1$d%% देखा गया</string>
+    <string name="episode_scene">एपिसोड %1$d का दृश्य</string>
+    <string name="episode_minutes">%1$d मिनट</string>
+    <string name="resume_playback_title">जहाँ छोड़ा था वहाँ से जारी रखें?</string>
+    <string name="resume_playback_message">%1$s\nआप %2$s पर रुके थे।</string>
+    <string name="resume_playback_continue">जारी रखें</string>
+    <string name="resume_playback_start">शुरू से</string>
 </resources>

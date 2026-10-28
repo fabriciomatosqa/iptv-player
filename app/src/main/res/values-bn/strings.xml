@@ -199,4 +199,18 @@
     <string name="broadcast_ended">সম্প্রচার শেষ</string>
     <string name="broadcast_scheduled">নির্ধারিত সম্প্রচার</string>
     <string name="broadcast_unconfirmed">সরাসরি সম্প্রচার নিশ্চিত নয়</string>
+    <string name="play_content">চালান</string>
+    <string name="episodes">পর্বসমূহ</string>
+    <string name="cast">অভিনয়শিল্পী</string>
+    <string name="cast_unavailable">সরবরাহকারী অভিনয়শিল্পীদের তথ্য দেয়নি</string>
+    <string name="synopsis_source">সারসংক্ষেপের উৎস: %1$s</string>
+    <string name="episode_completed">সম্পূর্ণ</string>
+    <string name="episode_unfinished">অসম্পূর্ণ</string>
+    <string name="episode_progress">পর্বের %1$d%% দেখা হয়েছে</string>
+    <string name="episode_scene">পর্ব %1$d-এর দৃশ্য</string>
+    <string name="episode_minutes">%1$d মিনিট</string>
+    <string name="resume_playback_title">যেখানে থেমেছিলেন সেখান থেকে চালাবেন?</string>
+    <string name="resume_playback_message">%1$s\nআপনি %2$s-এ থেমেছিলেন।</string>
+    <string name="resume_playback_continue">চালিয়ে যান</string>
+    <string name="resume_playback_start">শুরু থেকে</string>
 </resources>

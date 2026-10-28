@@ -164,8 +164,10 @@ for lang,row in rows.items():
             name=node.get('name','')
             if name.startswith('playback_') and name.endswith('_failure') or name in (
                 'playback_http_not_found','playback_http_unavailable','football_match_details',
-                'football_hide_details','football_incidents_unavailable','football_incidents_empty'
-            ) or name.startswith('sports_'):
+                'football_hide_details','football_incidents_unavailable','football_incidents_empty',
+                'play_content','episodes','cast','cast_unavailable','synopsis_source',
+                'episode_completed','episode_unfinished','episode_progress','episode_scene','episode_minutes'
+            ) or name.startswith(('sports_','resume_playback_')):
                 data[name]=(node.text or '').replace("\\'","'")
     xml='<resources>\n'+''.join('    <string name="'+k+'">'+escape(v).replace("'","\\'")+'</string>\n' for k,v in data.items())+'</resources>\n'
     (folder/'strings.xml').write_text(xml)

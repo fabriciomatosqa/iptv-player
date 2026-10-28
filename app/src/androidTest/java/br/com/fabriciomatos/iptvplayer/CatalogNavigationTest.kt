@@ -69,9 +69,15 @@ class CatalogNavigationTest {
             compose.waitUntil(10000) {compose.onAllNodesWithText(selected.title,useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText(selected.title,useUnmergedTree=true).performClick()
             val episode=repository.channels(shows.copy(seriesId=selected.id,group=null,search="",season=1)).single()
+            compose.onNodeWithTag("landscape_details_play").performScrollTo().performClick()
             waitForText(episode.name)
             compose.onNodeWithText(episode.name).performClick()
             compose.waitUntil(15000) {model.isPlaying && model.current?.url==episode.url}
+            UiDevice.getInstance(instrumentation).pressBack()
+            compose.waitUntil(10000) {!model.fullscreen && model.seriesDetails.episodesVisible}
+            compose.onNodeWithTag("episode_card_1_1").assertExists()
+            UiDevice.getInstance(instrumentation).pressBack()
+            compose.waitUntil(10000) {!model.seriesDetails.episodesVisible}
             UiDevice.getInstance(instrumentation).pressBack()
             compose.waitUntil(10000) {model.openedSeriesId==null && model.current==null && !model.filtering}
             assertEquals(Page.LIBRARY,model.page);assertEquals("Suspense",model.group);assertEquals("suspense",model.search)

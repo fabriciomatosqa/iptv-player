@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Yayın sona erdi</string>
     <string name="broadcast_scheduled">Planlanan yayın</string>
     <string name="broadcast_unconfirmed">Canlı yayın doğrulanmadı</string>
+    <string name="play_content">Oynat</string>
+    <string name="episodes">Bölümler</string>
+    <string name="cast">Oyuncular</string>
+    <string name="cast_unavailable">Sağlayıcı oyuncu bilgilerini vermedi</string>
+    <string name="synopsis_source">Özet kaynağı: %1$s</string>
+    <string name="episode_completed">Tamamlandı</string>
+    <string name="episode_unfinished">Tamamlanmadı</string>
+    <string name="episode_progress">Bölümün %1$d%% kadarı izlendi</string>
+    <string name="episode_scene">%1$d. bölümden sahne</string>
+    <string name="episode_minutes">%1$d dk</string>
+    <string name="resume_playback_title">Kaldığınız yerden devam edilsin mi?</string>
+    <string name="resume_playback_message">%1$s\n%2$s konumunda durdunuz.</string>
+    <string name="resume_playback_continue">Devam et</string>
+    <string name="resume_playback_start">Baştan</string>
 </resources>

@@ -48,9 +48,15 @@ import kotlinx.coroutines.withContext
 
 enum class Page { HOME, LIBRARY, FOOTBALL }
 
+internal data class PlaybackResumeRequest(
+    val source: String, val channel: Channel, val progress: PlaybackProgress,
+    val fullscreen: Boolean = false
+)
+
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AuroraViewModel(application: Application) : AndroidViewModel(application) {
+    internal val seriesDetails = SeriesDetailsNavigation()
     internal val onlineUpdate = AppUpdateController(AppUpdateRepository(application), viewModelScope)
     private val repository = PlaylistRepository(application)
     private val artwork = ArtworkResolver(repository)
@@ -122,7 +128,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var selectedSeason by mutableStateOf<Int?>(null); private set
     var settingsOpen by mutableStateOf(false)
     var settingsSection by mutableStateOf(0)
-    fun openSettings(section: Int = 0) {settingsSection=section;settingsOpen=true}
+    fun openSettings(section: Int = 0) {dismissPlaybackResume();settingsSection=section;settingsOpen=true}
     var fullscreen by mutableStateOf(false)
     private var refreshJob: Job? = null
     private var filterJob: Job? = null
@@ -136,6 +142,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     private var playerInstance: ExoPlayer? = null
     private var playerSource = ""
     private var playJob: Job? = null
+    private var playbackRequestJob: Job? = null
+    private var playbackRequestNumber = 0
+    internal var pendingPlayback by mutableStateOf<PlaybackResumeRequest?>(null); private set
+    var playbackProgressRevision by mutableStateOf(0); private set
     private val playbackPositions = LinkedHashMap<Pair<String,String>,PlaybackProgress>()
     private val playbackWrites = WriteQueue<PlaybackCheckpoint>(WriteQueue.UNLIMITED)
     private val playbackPersistence = CoroutineScope(SupervisorJob()+Dispatchers.IO)
@@ -252,6 +262,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 if(changed) {
                     // Save the old playback position before changing the active source.
                     stop();guideJob?.cancelAndJoin();filterJob?.cancelAndJoin()
+                    seriesDetails.close()
                     openedSeries=null;openedSeriesId=null;selectedSeason=null;group=null;search=""
                     selectedKind=MediaKind.LIVE;favoritesOnly=false;adultUnlocked=false;dismissParental()
                     catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
@@ -355,6 +366,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
     fun browse(kind: MediaKind?, favorites: Boolean = false) {
+        dismissPlaybackResume()
+        seriesDetails.close()
         if(!favorites && kind==selectedKind && openedSeriesId!=null) {closeSeries();return}
         if(!favorites && kind==selectedKind && current?.kind==MediaKind.MOVIES) {closeVideo();return}
         seriesOrigin=null;playbackOrigin=null;fromFootball=false
@@ -364,6 +377,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         updateFilter()
     }
     fun showSeries(series: SeriesEntry) {
+        dismissPlaybackResume()
         if(series.adult && !adultUnlocked) { requireParental { showSeries(series) }; return }
         if(openedSeriesId==null)seriesOrigin=catalogLocation()
         if(current!=null)stop()
@@ -372,6 +386,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         updateFilter()
     }
     fun closeSeries() {
+        seriesDetails.close()
         val origin=seriesOrigin;seriesOrigin=null
         stop();openedSeriesId=null;openedSeries=null;selectedSeason=null;search=""
         restoreLocation(origin)
@@ -384,6 +399,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if(football)page=Page.FOOTBALL else if(movie)restoreLocation(origin)
     }
     fun backFromLibrary() {
+        if(pendingPlayback!=null) {dismissPlaybackResume();return}
+        dismissPlaybackResume()
+        seriesDetails.close()
         when {fromFootball->{stop();page=Page.FOOTBALL};openedSeriesId!=null->closeSeries();current?.kind==MediaKind.MOVIES->closeVideo();else->page=Page.HOME}
     }
     fun selectSeason(season: Int) { selectedSeason = season; updateFilter() }
@@ -440,6 +458,24 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if(channel?.adult==true && !adultUnlocked || series?.adult==true && !adultUnlocked)return Synopsis()
         return synopses.load(playlistUrl,channel,series,force)
     }
+    suspend fun episodeDetails(series: SeriesEntry): List<EpisodeSynopsis> {
+        val source=playlistUrl
+        if(series.adult && !adultUnlocked)return emptyList()
+        val details=synopses.episodeDetails(source,series)
+        return if(source==playlistUrl && (!series.adult || adultUnlocked))details else emptyList()
+    }
+    suspend fun cachedCastPhotos(cast: List<CastMember>): List<CastMember> = withContext(Dispatchers.IO) {
+        repository.cachedCastPhotos(cast.map {it.name})
+    }
+    /** Independent episode pages keep the cinematic browser from changing catalog filters/anchors. */
+    fun episodeBrowserPages(series: SeriesEntry, season: Int): Flow<PagingData<Channel>> {
+        val source=playlistUrl
+        val query=BrowseQuery(source,MediaKind.SERIES,seriesId=series.id,season=season,includeAdult=adultUnlocked)
+        return seriesDetails.pages(season,viewModelScope) {Pager(PagingConfig(pageSize=60,initialLoadSize=60,maxSize=240,enablePlaceholders=false)) {
+            if(source!=playlistUrl || series.adult && !adultUnlocked)CatalogPage<Channel> {_,_->emptyList()}
+            else repository.channelPages(query.copy(includeAdult=query.includeAdult && adultUnlocked))
+        }.flow}
+    }
     private fun requireParental(action: () -> Unit) { parentalRequestId++;protectedAction=action;changePassword=false;parentalError=null;parentalDialog=true }
     fun editParental() { parentalRequestId++;protectedAction=null;changePassword=true;parentalError=null;parentalDialog=true }
     fun dismissParental() { parentalRequestId++;parentalDialog=false;protectedAction=null;parentalError=null }
@@ -483,6 +519,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
     fun showFootball() {
+        dismissPlaybackResume()
         page=Page.FOOTBALL
         // One migration refresh per session also reclassifies EPG entries saved by older APKs.
         val migration = !sportsGuideBootstrapped
@@ -576,7 +613,81 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Human playback entry point. Loading a bookmark never starts a stream before a choice. */
+    fun requestPlay(channel: Channel, fullscreen: Boolean = false) {
+        dismissPlaybackResume()
+        if(channel.adult && !adultUnlocked) {
+            requireParental {requestPlay(channel,fullscreen)}
+            return
+        }
+        if(channel.kind==MediaKind.LIVE || current?.url==channel.url && playbackError==null &&
+            playerInstance?.playbackState in listOf(Player.STATE_READY,Player.STATE_BUFFERING)) {
+            startPlayback(channel)
+            if(fullscreen)this.fullscreen=true
+            return
+        }
+        val source=playlistUrl
+        val request=playbackRequestNumber
+        checkpointPlayback()
+        playbackRequestJob=viewModelScope.launch {
+            try {
+                val saved=rememberedPlaybackProgress(source,channel.url)
+                    ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
+                ensureActive()
+                if(request!=playbackRequestNumber || source!=playlistUrl || channel.adult && !adultUnlocked)return@launch
+                if(saved?.shouldOfferResume==true) {
+                    pendingPlayback=PlaybackResumeRequest(source,channel,saved,fullscreen)
+                } else {
+                    startPlayback(channel,0L)
+                    if(fullscreen)this@AuroraViewModel.fullscreen=true
+                }
+            } catch(e: CancellationException) {throw e}
+            catch(_: Exception) {message=preferences.text(R.string.load_failed)}
+        }
+    }
+
+    fun confirmPlaybackResume(fromBeginning: Boolean) {
+        val request=pendingPlayback ?: return
+        dismissPlaybackResume()
+        if(request.source!=playlistUrl)return
+        if(request.channel.adult && !adultUnlocked) {
+            requireParental {requestPlay(request.channel,request.fullscreen)}
+            return
+        }
+        startPlayback(request.channel,if(fromBeginning)0L else request.progress.resumePositionMs)
+        if(request.fullscreen)fullscreen=true
+    }
+
+    fun dismissPlaybackResume() {
+        playbackRequestNumber++
+        playbackRequestJob?.cancel()
+        playbackRequestJob=null
+        pendingPlayback=null
+    }
+
+    private fun rememberedPlaybackProgress(source: String, url: String): PlaybackProgress? =
+        playbackPositions[source to url] ?: playbackPositions.entries.lastOrNull {
+            it.key.first==source && catalogContentKey(it.key.second)==catalogContentKey(url)
+        }?.value
+
+    /** Read one visible batch, then overlay checkpoints that have not reached SQLite yet. */
+    suspend fun playbackProgress(channels: List<Channel>): Map<String,PlaybackProgress> = withContext(Dispatchers.Main.immediate) {
+        val source=playlistUrl
+        val urls=channels.filter {it.kind!=MediaKind.LIVE}.map {it.url}.distinct()
+        val stored=withContext(Dispatchers.IO) {repository.playbackProgresses(source,urls)}
+        if(source!=playlistUrl)return@withContext emptyMap()
+        stored.toMutableMap().apply {
+            urls.forEach {url->rememberedPlaybackProgress(source,url)?.let {put(url,it)}}
+        }
+    }
+
+    /** Internal/retry entry point; the user-facing requestPlay performs the resume question. */
     fun play(channel: Channel) {
+        dismissPlaybackResume()
+        startPlayback(channel)
+    }
+
+    private fun startPlayback(channel: Channel, requestedPositionMs: Long? = null) {
         if(channel.adult && !adultUnlocked) { requireParental { play(channel) };return }
         if(channel.kind!=MediaKind.LIVE)fromFootball=false
         if(channel.kind==MediaKind.MOVIES && (current?.kind!=MediaKind.MOVIES || playbackOrigin==null))playbackOrigin=catalogLocation()
@@ -608,8 +719,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val instance=try {playerInstance ?: createPlayer().also {playerInstance=it}}
             catch(_: Exception) {buffering=false;playbackError=preferences.text(R.string.playback_generic_failure);playbackErrorDetails=playbackDiagnosticText(-1);return}
         playJob=viewModelScope.launch { try {
-            val saved=if(channel.kind==MediaKind.LIVE)null else playbackPositions[source to channel.url]
-                ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
+            val saved=if(channel.kind==MediaKind.LIVE || requestedPositionMs!=null)null else
+                rememberedPlaybackProgress(source,channel.url)
+                    ?: withContext(Dispatchers.IO) {repository.playbackProgress(source,channel.url)}
             ensureActive()
             if(current?.url!=channel.url || playlistUrl!=source)return@launch
             val http = DefaultHttpDataSource.Factory().setUserAgent(channel.userAgent.ifBlank { "AuroraIPTV/1.7 Android" })
@@ -627,7 +739,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             playerSource=source
             val mediaSource=factory.createMediaSource(item.build())
             if(channel.kind==MediaKind.LIVE)instance.setMediaSource(mediaSource)
-            else instance.setMediaSource(mediaSource,saved?.resumePositionMs ?: 0L)
+            else instance.setMediaSource(mediaSource,requestedPositionMs ?: saved?.resumePositionMs ?: 0L)
             instance.prepare(); instance.playWhenReady = true
         } catch(e: CancellationException) {throw e}
         catch (_: Exception) { buffering = false; playbackError = preferences.text(R.string.playback_generic_failure);playbackErrorDetails=playbackDiagnosticText(-1) } }
@@ -641,7 +753,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val key=playerSource to channel.url
         val progress=PlaybackProgress(instance.contentPosition.coerceAtLeast(0),instance.contentDuration.coerceAtLeast(0),instance.playbackState==Player.STATE_ENDED)
         if(playbackPositions[key]==progress)return
+        val identity=catalogContentKey(channel.url)
+        playbackPositions.keys.removeAll {it.first==playerSource && it.second!=channel.url && catalogContentKey(it.second)==identity}
         playbackPositions[key]=progress
+        playbackProgressRevision++
         while(playbackPositions.size>1000)playbackPositions.remove(playbackPositions.keys.first())
         playbackWrites.trySend(PlaybackCheckpoint(playerSource,channel.url,progress))
     }
@@ -667,7 +782,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
     fun retry() { current?.let(::play) }
-    fun stop() { checkpointPlayback();playJob?.cancel();playerSource="";playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; playbackErrorDetails = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
+    fun stop() { dismissPlaybackResume();checkpointPlayback();playJob?.cancel();playerSource="";playerInstance?.release(); playerInstance = null; current = null; fullscreen = false; playbackError = null; playbackErrorDetails = null; buffering = false; isPlaying = false; resumePlayback = false;playbackOrigin=null;fromFootball=false }
     fun foreground(active: Boolean) {
         val enteredForeground = active && !foreground
         foreground = active
@@ -675,11 +790,13 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if (!active) onlineUpdate.onBackground()
         if (active && initialized && playlistUrl.isNotBlank()) refreshDaily()
         if (!active) {
+            dismissPlaybackResume()
             checkpointPlayback()
             catalogAnchors.keys.removeAll {it.group==ADULT_GROUP}
             if(seriesOrigin?.group==ADULT_GROUP)seriesOrigin=null
             if(playbackOrigin?.group==ADULT_GROUP)playbackOrigin=null
             adultUnlocked=false;dismissParental()
+            if(seriesDetails.series?.adult==true)seriesDetails.close()
             if(current?.adult==true)stop()
             if(recent?.adult==true)recent=null
             if(group==ADULT_GROUP || openedSeries?.adult==true) {group=null;openedSeries=null;openedSeriesId=null;selectedSeason=null}

@@ -1,3 +1,10 @@
+## Versão 1.12.26
+
+- **Séries:** Episódios substitui o elenco por temporadas na vertical e carrosséis de cenas na horizontal, em retrato e paisagem.
+- **Histórico:** flags amarelas/verdes, barras de progresso e escolha entre continuar de onde parou ou iniciar novamente.
+- **Imagens:** cenas do provedor com complemento TVmaze verificado; fotos do elenco reutilizadas entre obras e buscadas por nome exato quando necessário.
+- **Armazenamento:** cache compartilhado de imagens limitado a 64 MiB; playlists, favoritos, controle parental, assinatura e atualização online preservados. Detalhes em [docs/series-episodes.md](docs/series-episodes.md).
+
 ## Versão 1.12.18
 
 - **Futebol e EPG:** horários originais preservados; placar ao vivo não antecipa transmissões futuras.
