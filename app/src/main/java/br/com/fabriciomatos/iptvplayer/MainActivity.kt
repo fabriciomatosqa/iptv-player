@@ -118,6 +118,7 @@ internal fun AuroraApp(model: AuroraViewModel) {
     BackHandler(enabled = model.settingsOpen || model.fullscreen || model.page != Page.HOME || model.current != null) {
         when { model.settingsOpen -> if(model.settingsSection!=0)model.settingsSection=0 else model.settingsOpen = false
             model.fullscreen -> model.fullscreen = false
+            model.page == Page.LIBRARY && model.seriesDetails.forSource(model.playlistUrl) != null -> model.backFromSeriesDetails()
             model.page == Page.LIBRARY -> model.backFromLibrary()
             model.page != Page.HOME -> model.page = Page.HOME
             else -> model.stop() }
@@ -401,9 +402,6 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
     val seriesRoot = model.selectedKind == MediaKind.SERIES && series == null
     val details=model.seriesDetails.forSource(model.playlistUrl)
     if(!wide && details!=null) {
-        BackHandler {
-            if(model.seriesDetails.episodesVisible)model.showSeriesCast() else model.closeSeriesDetails()
-        }
         LandscapeContentDetails(model,null,details,onBack={model.closeSeriesDetails()},
             onEpisodes={model.seriesDetails.episodesVisible=true})
         return

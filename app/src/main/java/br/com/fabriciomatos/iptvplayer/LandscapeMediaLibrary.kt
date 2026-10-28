@@ -49,8 +49,10 @@ import kotlinx.coroutines.flow.collectLatest
     val kind = model.selectedKind
     var chosenMovie by remember(model.playlistUrl,kind) { mutableStateOf<Channel?>(null) }
     val chosenSeries = model.seriesDetails.forSource(model.playlistUrl)
-    BackHandler(enabled = chosenMovie != null || chosenSeries != null) {
-        if(chosenSeries!=null && model.seriesDetails.episodesVisible)model.showSeriesCast()
+    // Series Back is owned by AuroraApp, including the fullscreen transition.
+    // Only the movie selection is local to this composition.
+    BackHandler(enabled = chosenMovie != null) {
+        if(model.fullscreen)model.fullscreen=false
         else {chosenMovie = null; model.closeSeriesDetails()}
     }
     if (chosenMovie != null || chosenSeries != null) {

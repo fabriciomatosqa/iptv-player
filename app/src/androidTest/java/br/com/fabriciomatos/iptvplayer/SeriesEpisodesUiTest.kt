@@ -35,6 +35,7 @@ class SeriesEpisodesUiTest {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         val context=instrumentation.targetContext
         resetCatalog(context)
+        val strings=AppSettings(context)
         val video=File(context.cacheDir,"series-scenes.mp4")
         instrumentation.context.assets.open("tracks.mp4").use {input->video.outputStream().use {input.copyTo(it)}}
         val requests=ConcurrentHashMap.newKeySet<String>()
@@ -103,20 +104,34 @@ class SeriesEpisodesUiTest {
                 compose.onNodeWithTag("landscape_details_play").performClick()
                 compose.waitUntil(10000) {model.seriesDetails.episodesVisible && compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
                 compose.onNodeWithTag("landscape_details_cast").assertDoesNotExist()
+                // Reproduce Back arriving after playback changes fullscreen but before
+                // Compose disposes the details screen. It must not consume the episode section.
+                fun backDuringFullscreenTransition() {
+                    scenario.onActivity {activity ->
+                        val scroll=model.seriesDetails.scroll
+                        model.fullscreen=true
+                        activity.onBackPressedDispatcher.onBackPressed()
+                        assertFalse(model.fullscreen)
+                        assertTrue(model.seriesDetails.episodesVisible)
+                        assertEquals("id:555",model.seriesDetails.series?.id)
+                        assertSame(scroll,model.seriesDetails.scroll)
+                    }
+                }
+                backDuringFullscreenTransition()
                 compose.onNodeWithTag("title_details_scroll").performScrollToIndex(2)
                 compose.onNodeWithTag("episode_row_1").performScrollToIndex(0)
                 awaitProgress(1,1,0f)
-                assertFlag(1,1,context.getString(R.string.episode_unfinished),Color(0xFFFFCF58))
-                scene(1,1,context.getString(R.string.episode_scene,1)).assertExists()
+                assertFlag(1,1,strings.text(R.string.episode_unfinished),Color(0xFFFFCF58))
+                scene(1,1,strings.text(R.string.episode_scene,1)).assertExists()
                 compose.waitUntil(10000) {requests.contains("/scene-1-1.png")}
                 compose.onNodeWithTag("episode_row_1").performScrollToIndex(1)
                 awaitProgress(1,2,.5f)
-                assertFlag(1,2,context.getString(R.string.episode_unfinished),Color(0xFFFFCF58))
-                scene(1,2,context.getString(R.string.episode_scene,2)).assertExists()
+                assertFlag(1,2,strings.text(R.string.episode_unfinished),Color(0xFFFFCF58))
+                scene(1,2,strings.text(R.string.episode_scene,2)).assertExists()
                 compose.waitUntil(10000) {requests.contains("/scene-1-2.png")}
                 compose.onNodeWithTag("episode_row_1").performScrollToIndex(2)
                 awaitProgress(1,3,1f)
-                assertFlag(1,3,context.getString(R.string.episode_completed),Color(0xFF62E8A7))
+                assertFlag(1,3,strings.text(R.string.episode_completed),Color(0xFF62E8A7))
                 snapshot("portrait-episode-progress")
 
                 compose.onNodeWithTag("title_details_scroll").performScrollToIndex(1)
@@ -136,6 +151,7 @@ class SeriesEpisodesUiTest {
                 }
                 scenario.onActivity {model.player!!.pause();model.player!!.seekTo(12000)}
                 compose.waitUntil(10000) {var reached=false;scenario.onActivity {reached=model.player!!.contentPosition in 11500L..12500L};reached}
+                compose.awaitFullscreenPlayer()
                 UiDevice.getInstance(instrumentation).pressBack()
                 compose.waitUntil(10000) {!model.fullscreen && compose.onAllNodesWithTag("episode_card_3_5").fetchSemanticsNodes().isNotEmpty()}
                 assertTrue(model.seriesDetails.episodesVisible)
@@ -150,6 +166,7 @@ class SeriesEpisodesUiTest {
                 assertEquals(4,model.seriesDetails.row(3).firstVisibleItemIndex)
                 awaitProgress(3,5,.4f)
                 snapshot("landscape-season-carousels")
+                backDuringFullscreenTransition()
                 scenario.recreate()
                 compose.waitUntil(10000) {compose.onAllNodesWithTag("episode_card_3_5").fetchSemanticsNodes().isNotEmpty()}
                 assertEquals("id:555",model.seriesDetails.series?.id)

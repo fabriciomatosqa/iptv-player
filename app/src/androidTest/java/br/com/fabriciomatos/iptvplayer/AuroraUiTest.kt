@@ -191,6 +191,7 @@ class AuroraUiTest {
             compose.waitUntil(15000) {compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("episode_card_2_1").assertIsDisplayed().performClick()
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "Rick e Morty S02E01" }
+            compose.awaitFullscreenPlayer()
             UiDevice.getInstance(instrumentation).pressBack()
             compose.waitUntil(10000) {!model.fullscreen &&
                 compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}

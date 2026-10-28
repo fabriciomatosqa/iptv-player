@@ -51,3 +51,12 @@ internal fun AuroraViewModel.showSeriesCast() {
     dismissPlaybackResume()
     seriesDetails.episodesVisible=false
 }
+
+/** One Back step at a time: player -> episodes -> cast -> original catalog. */
+internal fun AuroraViewModel.backFromSeriesDetails() {
+    when {
+        fullscreen -> fullscreen=false
+        seriesDetails.episodesVisible -> showSeriesCast()
+        else -> closeSeriesDetails()
+    }
+}

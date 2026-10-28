@@ -2,7 +2,6 @@ package br.com.fabriciomatos.iptvplayer
 
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,7 +52,6 @@ private val DetailAccent=Color(0xFF55D9BB)
     if(restricted)return
     val navigation=model.seriesDetails
     val episodesVisible=series!=null && navigation.episodesVisible
-    BackHandler(enabled=episodesVisible) {model.showSeriesCast()}
     var synopsis by remember(source,movie?.url,series?.id) {mutableStateOf<Synopsis?>(null)}
     var episodeDetails by remember(source,series?.id) {mutableStateOf(emptyList<EpisodeSynopsis>())}
     LaunchedEffect(source,movie?.url,series?.id) {synopsis=model.synopsis(movie,series)}
