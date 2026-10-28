@@ -48,18 +48,18 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable internal fun LandscapeMediaLibrary(model: AuroraViewModel) {
     val kind = model.selectedKind
     var chosenMovie by remember(model.playlistUrl,kind) { mutableStateOf<Channel?>(null) }
-    var chosenSeries by remember(model.playlistUrl,kind) { mutableStateOf<SeriesEntry?>(null) }
-    BackHandler(enabled = chosenMovie != null || chosenSeries != null) {
-        chosenMovie = null; chosenSeries = null
+    val chosenSeries = model.seriesDetails.forSource(model.playlistUrl)
+    // Series Back is owned by AuroraApp, including the fullscreen transition.
+    // Only the movie selection is local to this composition.
+    BackHandler(enabled = chosenMovie != null) {
+        if(model.fullscreen)model.fullscreen=false
+        else {chosenMovie = null; model.closeSeriesDetails()}
     }
     if (chosenMovie != null || chosenSeries != null) {
         LandscapeContentDetails(
             model = model, movie = chosenMovie, series = chosenSeries,
-            onBack = {chosenMovie = null; chosenSeries = null},
-            onEpisodes = { entry ->
-                chosenSeries = null
-                model.showSeries(entry)
-            }
+            onBack = {chosenMovie = null; model.closeSeriesDetails()},
+            onEpisodes = {model.seriesDetails.episodesVisible=true}
         )
         return
     }
@@ -169,9 +169,9 @@ import kotlinx.coroutines.flow.collectLatest
                         kind==MediaKind.MOVIES && model.openedSeries==null ->
                             LandscapeMovieGrid(model,Modifier.weight(1f).fillMaxWidth()) {chosenMovie=it}
                         kind==MediaKind.SERIES && model.openedSeries==null ->
-                            SeriesGrid(model,Modifier.weight(1f).fillMaxWidth()) {chosenSeries=it}
+                            SeriesGrid(model,Modifier.weight(1f).fillMaxWidth()) {model.seriesDetails.open(it,model.playlistUrl)}
                         model.favoritesOnly && kind==null ->
-                            FavoritesList(model,Modifier.weight(1f).fillMaxWidth())
+                            FavoritesList(model,Modifier.weight(1f).fillMaxWidth()) {model.seriesDetails.open(it,model.playlistUrl)}
                         else -> ChannelList(model,Modifier.weight(1f).fillMaxWidth(),
                             guideMode=kind==MediaKind.LIVE && model.current!=null)
                     }
@@ -254,137 +254,6 @@ import kotlinx.coroutines.flow.collectLatest
         }
         if(entries.loadState.append is LoadState.Loading) item {
             CircularProgressIndicator(Modifier.padding(20.dp))
-        }
-    }
-}
-
-/** Backdrop, synopsis, optional cast and playback controls without starting video on selection. */
-@Composable internal fun LandscapeContentDetails(
-    model: AuroraViewModel, movie: Channel?, series: SeriesEntry?,
-    onBack: ()->Unit, onEpisodes: (SeriesEntry)->Unit
-) {
-    val title = movie?.name ?: series?.title.orEmpty()
-    var synopsis by remember(model.playlistUrl,movie?.url,series?.id) {
-        mutableStateOf<Synopsis?>(null)
-    }
-    LaunchedEffect(model.playlistUrl,movie?.url,series?.id) {
-        synopsis = model.synopsis(movie,series)
-    }
-    val fallback = movie?.imageUrl ?: series?.imageUrl.orEmpty()
-    val backdrop = synopsis?.backdropUrl?.takeIf(String::isNotBlank) ?: fallback
-    val mainText=Color(0xFFF5F8FF)
-    Box(Modifier.fillMaxSize().background(Color(0xFF070D17))
-        .testTag("landscape_title_details")) {
-        if(backdrop.isNotBlank()) {
-            AsyncImage(catalogImage(backdrop),null,Modifier.fillMaxWidth().fillMaxHeight(0.9f)
-                .align(Alignment.TopCenter),contentScale=ContentScale.Crop)
-        }
-        Box(Modifier.fillMaxSize().background(
-            Brush.horizontalGradient(listOf(Color(0xF2080D17),Color(0xDD080D17),
-                Color(0x77080D17),Color(0x22080D17)))))
-        Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0x22080D17),Color.Transparent,Color(0xF5080D17)))))
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal=30.dp,vertical=12.dp)) {
-            IconButton(onClick=onBack,modifier=Modifier.testTag("landscape_details_back")) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack,tr(R.string.back),tint=mainText)
-            }
-            Spacer(Modifier.height(9.dp))
-            Text(title,color=mainText,fontSize=32.sp,fontWeight=FontWeight.Bold,
-                maxLines=2,overflow=TextOverflow.Ellipsis)
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement=Arrangement.spacedBy(14.dp),verticalAlignment=Alignment.CenterVertically) {
-                if(!synopsis?.rating.isNullOrBlank()) {
-                    Icon(Icons.Default.Star,null,tint=Color(0xFFFFCD60),modifier=Modifier.size(18.dp))
-                    Text(synopsis!!.rating,color=mainText,fontSize=13.sp)
-                }
-                listOf(synopsis?.year,synopsis?.duration,synopsis?.genre)
-                    .filterNotNull().filter(String::isNotBlank).forEach {
-                        Text(it,color=Color(0xFFD9E4F2),fontSize=13.sp,
-                            maxLines=1,overflow=TextOverflow.Ellipsis)
-                    }
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(when {
-                synopsis==null -> tr(R.string.loading)
-                synopsis!!.plot.isNotBlank() -> synopsis!!.plot
-                else -> tr(R.string.synopsis_unavailable)
-            }, color=Color(0xFFE1E8F1),fontSize=14.sp,lineHeight=20.sp,
-                maxLines=5,overflow=TextOverflow.Ellipsis,
-                modifier=Modifier.fillMaxWidth(0.72f).testTag("landscape_details_synopsis"))
-            if (!synopsis?.metadataSource.isNullOrBlank()) {
-                val context = LocalContext.current
-                val sourceName = synopsis!!.metadataSource
-                val sourceUrl = synopsis!!.metadataUrl
-                Text("Fonte da sinopse: $sourceName",
-                    color=Color(0xFF80DCCF),fontSize=11.sp,
-                    modifier=Modifier.padding(top=8.dp)
-                        .clickable(enabled=sourceUrl.startsWith("https://")) {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(sourceUrl)))
-                            }
-                        })
-            }
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement=Arrangement.spacedBy(12.dp),
-                verticalAlignment=Alignment.CenterVertically) {
-                Button(onClick={
-                    if(movie!=null) {
-                        model.play(movie)
-                        model.fullscreen=true
-                    } else if(series!=null) onEpisodes(series)
-                },modifier=Modifier.defaultMinSize(minWidth=156.dp).testTag("landscape_details_play"),
-                    colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF55D9BB),
-                        contentColor=Color(0xFF0B1922))) {
-                    Icon(if(movie!=null) Icons.Default.PlayArrow else Icons.Default.List,null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(if(movie!=null) "Reproduzir" else "Episódios",fontWeight=FontWeight.Bold)
-                }
-                if(movie!=null) {
-                    OutlinedButton(onClick={model.toggleFavorite(movie)},
-                        modifier=Modifier.testTag("landscape_details_favorite")) {
-                        Icon(if(model.isFavorite(movie)) Icons.Default.Star else Icons.Default.StarBorder,
-                            null,tint=Color(0xFFFFD05C))
-                        Spacer(Modifier.width(6.dp))
-                        Text(tr(R.string.favorites),color=mainText)
-                    }
-                } else if(series!=null) {
-                    OutlinedButton(onClick={model.toggleSeriesFavorite(series)},
-                        modifier=Modifier.testTag("landscape_details_favorite")) {
-                        Icon(if(series.id in model.seriesFavorites) Icons.Default.Star else Icons.Default.StarBorder,
-                            null,tint=Color(0xFFFFD05C))
-                        Spacer(Modifier.width(6.dp))
-                        Text(tr(R.string.favorites),color=mainText)
-                    }
-                }
-            }
-            val actors=synopsis?.cast.orEmpty()
-            Spacer(Modifier.height(22.dp))
-            if(actors.isNotEmpty()) {
-                Text("Elenco",color=mainText,fontSize=19.sp,fontWeight=FontWeight.Bold)
-                Spacer(Modifier.height(10.dp))
-                LazyRow(horizontalArrangement=Arrangement.spacedBy(12.dp),
-                    modifier=Modifier.fillMaxWidth().testTag("landscape_details_cast")) {
-                    items(actors,key={it.name}) {actor ->
-                        Column(Modifier.width(105.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-                            Box(Modifier.width(105.dp).height(116.dp)
-                                .clip(RoundedCornerShape(11.dp))
-                                .background(Color(0xFF293A4F)),contentAlignment=Alignment.Center) {
-                                Icon(Icons.Default.Person,null,tint=Color(0xFFA8BDD3),
-                                    modifier=Modifier.size(43.dp))
-                                if(actor.imageUrl.isNotBlank())
-                                    AsyncImage(catalogImage(actor.imageUrl),null,
-                                        Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-                            }
-                            Text(actor.name,Modifier.padding(top=5.dp),color=mainText,
-                                fontSize=11.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-            } else if(synopsis!=null) {
-                Text("Elenco não informado pelo provedor",color=Color(0xFF93A5B8),fontSize=12.sp)
-            }
-            Spacer(Modifier.height(20.dp))
         }
     }
 }

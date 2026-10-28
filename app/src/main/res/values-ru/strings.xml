@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Трансляция завершена</string>
     <string name="broadcast_scheduled">Запланированная трансляция</string>
     <string name="broadcast_unconfirmed">Прямой эфир не подтверждён</string>
+    <string name="play_content">Воспроизвести</string>
+    <string name="episodes">Эпизоды</string>
+    <string name="cast">Актёры</string>
+    <string name="cast_unavailable">Поставщик не указал актёрский состав</string>
+    <string name="synopsis_source">Источник описания: %1$s</string>
+    <string name="episode_completed">Завершено</string>
+    <string name="episode_unfinished">Не завершено</string>
+    <string name="episode_progress">Просмотрено %1$d%% эпизода</string>
+    <string name="episode_scene">Сцена из эпизода %1$d</string>
+    <string name="episode_minutes">%1$d мин</string>
+    <string name="resume_playback_title">Продолжить с места остановки?</string>
+    <string name="resume_playback_message">%1$s\nВы остановились на %2$s.</string>
+    <string name="resume_playback_continue">Продолжить</string>
+    <string name="resume_playback_start">С начала</string>
 </resources>

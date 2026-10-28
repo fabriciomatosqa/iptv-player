@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Übertragung beendet</string>
     <string name="broadcast_scheduled">Geplante Übertragung</string>
     <string name="broadcast_unconfirmed">Live-Übertragung unbestätigt</string>
+    <string name="play_content">Abspielen</string>
+    <string name="episodes">Folgen</string>
+    <string name="cast">Besetzung</string>
+    <string name="cast_unavailable">Der Anbieter hat keine Besetzung angegeben</string>
+    <string name="synopsis_source">Quelle der Inhaltsangabe: %1$s</string>
+    <string name="episode_completed">Abgeschlossen</string>
+    <string name="episode_unfinished">Nicht abgeschlossen</string>
+    <string name="episode_progress">%1$d%% der Folge angesehen</string>
+    <string name="episode_scene">Szene aus Folge %1$d</string>
+    <string name="episode_minutes">%1$d Min.</string>
+    <string name="resume_playback_title">An letzter Stelle fortsetzen?</string>
+    <string name="resume_playback_message">%1$s\nSie haben bei %2$s aufgehört.</string>
+    <string name="resume_playback_continue">Fortsetzen</string>
+    <string name="resume_playback_start">Von Anfang an</string>
 </resources>

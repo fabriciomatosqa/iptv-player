@@ -17,6 +17,7 @@ import kotlin.coroutines.coroutineContext
 class SynopsisRepository(
     private val repository: PlaylistRepository,
     private val publicLookup: PublicSynopsisLookup = PublicSynopsisLookup(),
+    private val episodeLookup: EpisodeImageLookup = EpisodeImageLookup(),
     private val readJson: (String)->JSONObject = ::readSynopsisJson
 ) {
     private val indexLock=Mutex()
@@ -79,9 +80,37 @@ class SynopsisRepository(
             backdropUrl=details.backdropUrl,cast=details.cast,
             year=details.year,duration=details.duration,
             genre=details.genre,rating=details.rating,director=details.director,
-            metadataSource=details.metadataSource,metadataUrl=details.metadataUrl
+            metadataSource=details.metadataSource,metadataUrl=details.metadataUrl,
+            episodes=details.episodes
         )
     }
+
+    /** Loaded only when the user opens Episodes, never during catalog import. */
+    suspend fun episodeDetails(source: String, series: SeriesEntry, force: Boolean = false): List<EpisodeSynopsis> =
+        withContext(Dispatchers.IO) {
+            val synopsis = load(source,series=series,force=force)
+            val provider = synopsis.episodes
+            if(series.adult || provider.isNotEmpty() && provider.all {it.imageUrl.isNotBlank()} &&
+                (series.episodeCount <= 0 || provider.size >= series.episodeCount)) return@withContext provider
+            val title = cleanSynopsisTitle(series.title)
+            val year = yearInTitle(series.title)?.toString() ?: synopsis.year.take(4)
+            val prefix = "public-episodes:v1:"
+            val key = prefix + PlaylistRepository.digest(normalized(title) + ":" + year)
+            fun cached(value: String?): List<EpisodeSynopsis>? = value?.let {
+                runCatching {decodeContentDetails(JSONObject(it)).episodes}.getOrNull()
+            }
+            val fresh = if(force)null else cached(repository.cachedArtwork(key))
+            val extra = fresh ?: run {
+                val previous = cached(repository.cachedArtwork(key,0)).orEmpty()
+                val found = episodeLookup.find(series.title,synopsis.year)
+                val result = found.ifEmpty {previous}
+                repository.saveArtwork(key,encodeContentDetails(ContentDetails(episodes=result)).toString(),
+                    if(found.isEmpty())6L*3600000 else 7L*86400000)
+                repository.pruneArtwork(prefix,100)
+                result
+            }
+            mergeEpisodeImages(provider,extra)
+        }
 
     private suspend fun providerDetails(
         source: String, channel: Channel?, series: SeriesEntry?,
@@ -102,10 +131,11 @@ class SynopsisRepository(
             ?: cachedSeriesId(source,title)
         if (id == null) return null
         val key = synopsisCacheKey(source,movie,id)
-        val cache = repository.cachedArtwork(key,0)?.let {
-            runCatching {decodeContentDetails(JSONObject(it))}.getOrNull()
-        }
-        if (!force && cache != null && repository.cachedArtwork(key)!=null) return cache
+        val cachedJson = repository.cachedArtwork(key,0)?.let {runCatching {JSONObject(it)}.getOrNull()}
+        val cache = cachedJson?.let {runCatching {decodeContentDetails(it)}.getOrNull()}
+        // Older caches contain plots but no scene metadata. Refresh them once without losing the fallback.
+        if (!force && cache != null && repository.cachedArtwork(key)!=null &&
+            (movie || (cachedJson?.optInt("episodeMetadataVersion") ?: 0) >= 1)) return cache
         return try {
             val addr = endpoint + "&" + (if(movie)"vod_id" else "series_id") + "=" + id
             val json=readJson(addr)
@@ -195,15 +225,58 @@ private fun providerCast(info: JSONObject): List<CastMember> {
         .distinctBy(::normalized).take(24).map(::CastMember)
 }
 
+private fun providerEpisodeImage(info: JSONObject): String {
+    for(field in listOf("still_path","movie_image","screenshot","screenshot_url","image","image_url","thumbnail")) {
+        val raw=info.opt(field)
+        val image=when(raw) {
+            is JSONObject -> raw.optString("medium").ifBlank {raw.optString("original")}
+            is String -> raw
+            else -> ""
+        }
+        val url=providerImageUrl(image,"w500")
+        if(url.isNotBlank())return url
+    }
+    return ""
+}
+
+private fun episodeImageIdentity(url: String): String =
+    url.replace(Regex("""(?i)^(https?://image\.tmdb\.org/t/p/)[^/]+/"""),"$1")
+
+internal fun providerEpisodeDuration(info: JSONObject): Long {
+    for(field in listOf("duration_secs","duration_seconds")) {
+        info.optLong(field).takeIf {it in 1..172800}?.let {return it*1000}
+    }
+    val parts=info.optString("duration").split(':')
+    if(parts.size in 2..3 && parts.all {it.toLongOrNull()!=null}) {
+        val values=parts.map {it.toLong()}
+        if(values.all {it>=0} && values.first()<=2880 && values.drop(1).all {it<60}) {
+            val seconds=values.fold(0L) {sum,n->sum*60+n}
+            if(seconds in 1..172800)return seconds*1000
+        }
+    }
+    return info.optLong("runtime").takeIf {it in 1..2880}?.times(60000) ?: 0
+}
+
 fun parseContentDetails(json: JSONObject): ContentDetails {
     val episodes=json.optJSONObject("episodes")
+    val seriesInfo=json.optJSONObject("info")
+    val generalImages=(listOf("cover","cover_big","movie_image","poster","poster_path")
+        .map {providerImageUrl(seriesInfo?.optString(it).orEmpty(),"w500")} +
+        seriesInfo?.let(::providerBackdrop).orEmpty()).filter(String::isNotBlank).map(::episodeImageIdentity).toSet()
     val rows=buildList {
         episodes?.keys()?.forEach {season->
             val list=episodes.optJSONArray(season) ?: return@forEach
             for(i in 0 until list.length()) {
                 val row=list.optJSONObject(i) ?: continue
                 val number=row.optInt("episode_num");val s=row.optInt("season",season.toIntOrNull() ?: 0)
-                if(number>0 && s>=0)add(EpisodeSynopsis(row.optString("id"),s,number,row.optString("title"),synopsisText(row.optJSONObject("info")).ifBlank {synopsisText(row)}))
+                if(number>0 && s>=0 && size<2000) {
+                    val info=row.optJSONObject("info") ?: JSONObject()
+                    val scene=providerEpisodeImage(info).ifBlank {providerEpisodeImage(row)}
+                    add(EpisodeSynopsis(row.optString("id").take(100),s,number,
+                        HtmlCompat.fromHtml(row.optString("title").takeUnless {it=="null"}.orEmpty().take(2000),HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim().take(500),
+                        synopsisText(info).ifBlank {synopsisText(row)},scene.takeUnless {episodeImageIdentity(it) in generalImages}.orEmpty(),
+                        providerEpisodeDuration(info).takeIf {it>0} ?: providerEpisodeDuration(row)))
+                }
             }
         }
     }
@@ -227,10 +300,12 @@ fun parseContentDetails(json: JSONObject): ContentDetails {
 }
 
 fun encodeContentDetails(details: ContentDetails): JSONObject = JSONObject()
+    .put("episodeMetadataVersion",1)
     .put("plot",details.plot)
     .put("episodes",JSONArray(details.episodes.map {
         JSONObject().put("id",it.id).put("season",it.season).put("number",it.number)
-            .put("title",it.title).put("plot",it.plot)
+            .put("title",it.title).put("plot",it.plot).put("image",it.imageUrl).put("durationMs",it.durationMs)
+            .put("imageSource",it.imageSource).put("imageSourceUrl",it.imageSourceUrl)
     }))
     .put("backdrop",details.backdropUrl)
     .put("cast",JSONArray(details.cast.map { JSONObject().put("name",it.name).put("image",it.imageUrl) }))
@@ -250,7 +325,8 @@ fun decodeContentDetails(json: JSONObject): ContentDetails {
         episodes=(0 until episodes.length()).mapNotNull { i ->
             episodes.optJSONObject(i)?.let {
                 EpisodeSynopsis(it.optString("id"),it.optInt("season"),it.optInt("number"),
-                    it.optString("title"),it.optString("plot"))
+                    it.optString("title"),it.optString("plot"),it.optString("image"),it.optLong("durationMs").coerceAtLeast(0),
+                    it.optString("imageSource"),it.optString("imageSourceUrl"))
             }
         },
         backdropUrl=json.optString("backdrop"),

@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Uitzending afgelopen</string>
     <string name="broadcast_scheduled">Geplande uitzending</string>
     <string name="broadcast_unconfirmed">Live-uitzending niet bevestigd</string>
+    <string name="play_content">Afspelen</string>
+    <string name="episodes">Afleveringen</string>
+    <string name="cast">Cast</string>
+    <string name="cast_unavailable">De aanbieder heeft geen cast opgegeven</string>
+    <string name="synopsis_source">Bron van de samenvatting: %1$s</string>
+    <string name="episode_completed">Voltooid</string>
+    <string name="episode_unfinished">Niet voltooid</string>
+    <string name="episode_progress">Aflevering voor %1$d%% bekeken</string>
+    <string name="episode_scene">Scène uit aflevering %1$d</string>
+    <string name="episode_minutes">%1$d min</string>
+    <string name="resume_playback_title">Verdergaan waar je was gebleven?</string>
+    <string name="resume_playback_message">%1$s\nJe bent gestopt op %2$s.</string>
+    <string name="resume_playback_continue">Doorgaan</string>
+    <string name="resume_playback_start">Vanaf het begin</string>
 </resources>

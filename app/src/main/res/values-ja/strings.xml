@@ -199,4 +199,18 @@
     <string name="broadcast_ended">放送終了</string>
     <string name="broadcast_scheduled">放送予定</string>
     <string name="broadcast_unconfirmed">生中継未確認</string>
+    <string name="play_content">再生</string>
+    <string name="episodes">エピソード</string>
+    <string name="cast">キャスト</string>
+    <string name="cast_unavailable">配信元がキャスト情報を提供していません</string>
+    <string name="synopsis_source">あらすじの出典：%1$s</string>
+    <string name="episode_completed">視聴完了</string>
+    <string name="episode_unfinished">未完了</string>
+    <string name="episode_progress">エピソードの %1$d%% を視聴済み</string>
+    <string name="episode_scene">エピソード %1$d のシーン</string>
+    <string name="episode_minutes">%1$d 分</string>
+    <string name="resume_playback_title">前回の続きから再生しますか？</string>
+    <string name="resume_playback_message">%1$s\n%2$s で停止しました。</string>
+    <string name="resume_playback_continue">続きから</string>
+    <string name="resume_playback_start">最初から</string>
 </resources>

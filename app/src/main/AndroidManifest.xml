@@ -2,6 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
+        android:name=".AuroraApplication"
         android:allowBackup="true"
         android:label="AURORA IPTV"
         android:icon="@mipmap/ic_launcher"

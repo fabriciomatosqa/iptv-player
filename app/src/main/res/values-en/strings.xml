@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Broadcast ended</string>
     <string name="broadcast_scheduled">Scheduled broadcast</string>
     <string name="broadcast_unconfirmed">Live broadcast unconfirmed</string>
+    <string name="play_content">Play</string>
+    <string name="episodes">Episodes</string>
+    <string name="cast">Cast</string>
+    <string name="cast_unavailable">Cast not provided by the provider</string>
+    <string name="synopsis_source">Synopsis source: %1$s</string>
+    <string name="episode_completed">Completed</string>
+    <string name="episode_unfinished">Not completed</string>
+    <string name="episode_progress">%1$d%% of episode watched</string>
+    <string name="episode_scene">Scene from episode %1$d</string>
+    <string name="episode_minutes">%1$d min</string>
+    <string name="resume_playback_title">Continue where you left off?</string>
+    <string name="resume_playback_message">%1$s\nYou stopped at %2$s.</string>
+    <string name="resume_playback_continue">Continue</string>
+    <string name="resume_playback_start">From the beginning</string>
 </resources>

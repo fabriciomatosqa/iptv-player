@@ -107,6 +107,20 @@ class PlaylistRepository(context: Context) {
         "SELECT position_ms,duration_ms,completed FROM playback_progress WHERE source_key=? AND url=?",arrayOf(digest(source),currentUrl(source,url))).use {
         if(it.moveToFirst())PlaybackProgress(it.getLong(0),it.getLong(1),it.getInt(2)!=0) else null
     }
+    /** Read only the visible episode page; catalogs can contain hundreds of thousands of rows. */
+    fun playbackProgresses(source: String, urls: List<String>): Map<String, PlaybackProgress> {
+        if(source.isBlank() || urls.isEmpty())return emptyMap()
+        val resolved=urls.distinct().associateWith {currentUrl(source,it)}
+        val saved=mutableMapOf<String,PlaybackProgress>()
+        val db=helper.readableDatabase
+        resolved.values.distinct().chunked(400).forEach {batch ->
+            db.rawQuery("SELECT url,position_ms,duration_ms,completed FROM playback_progress WHERE source_key=? AND url IN ("+
+                batch.joinToString(","){"?"}+")", arrayOf(digest(source),*batch.toTypedArray())).use {rows ->
+                while(rows.moveToNext())saved[rows.getString(0)]=PlaybackProgress(rows.getLong(1),rows.getLong(2),rows.getInt(3)!=0)
+            }
+        }
+        return buildMap {resolved.forEach {(original,current)->saved[current]?.let {put(original,it)}}}
+    }
     @Synchronized fun savePlaybackProgress(source: String, url: String, progress: PlaybackProgress) {
         helper.writableDatabase.insertWithOnConflict("playback_progress",null,ContentValues().apply {
             put("source_key",digest(source));put("url",currentUrl(source,url));put("position_ms",progress.positionMs.coerceAtLeast(0))
@@ -647,8 +661,55 @@ class PlaylistRepository(context: Context) {
     }
     fun cachedArtwork(key: String, now: Long = System.currentTimeMillis()): String? = helper.readableDatabase.rawQuery(
         "SELECT json,expires FROM artwork_cache WHERE cache_key=?",arrayOf(key)).use { if(it.moveToFirst() && it.getLong(1)>now)it.getString(0)else null }
+    /** Reuse portraits from details saved before the shared actor index existed. Read on IO. */
+    fun cachedCastPhotos(names: List<String>): List<CastMember> {
+        val requested=names.take(100).filter(::searchableCastName).map(::normalized).toSet()
+        if(requested.isEmpty())return emptyList()
+        // ASCII fragments are only a coarse SQL prefilter. The parsed cast name
+        // is always checked below, including accents, case and JSON escapes.
+        val fragments=names.take(100).filter(::searchableCastName).map {name->
+            Regex("[a-z]{3,}").findAll(name.lowercase(java.util.Locale.ROOT))
+                .map {it.value}.maxByOrNull(String::length)
+        }
+        val useFilter=fragments.all {it!=null}
+        val tokens=fragments.filterNotNull().distinct()
+        val candidates=if(useFilter) " AND ("+tokens.joinToString(" OR ") {"instr(lower(json),?)>0"}+
+            " OR instr(json,?)>0)" else ""
+        val arguments=if(useFilter)(tokens+"\\u").toTypedArray() else emptyArray()
+        val results=LinkedHashMap<Pair<String,String>,CastMember>()
+        helper.readableDatabase.rawQuery(
+            "SELECT json FROM artwork_cache WHERE (cache_key GLOB 'synopsis:*' OR cache_key GLOB 'public-synopsis:*')"+
+                " AND length(CAST(json AS BLOB))<=524288"+candidates+" ORDER BY expires DESC,cache_key LIMIT 200",
+            arguments).use {cursor->
+            while(cursor.moveToNext()) {
+                val cast=runCatching {JSONObject(cursor.getString(0)).optJSONArray("cast")}.getOrNull() ?: continue
+                for(i in 0 until minOf(cast.length(),100)) {
+                    val member=cast.optJSONObject(i) ?: continue
+                    val name=member.optString("name")
+                    if(!searchableCastName(name))continue
+                    val key=normalized(name)
+                    if(key !in requested)continue
+                    val image=member.optString("image").takeIf {
+                        it.length in 10..2048 && (it.startsWith("https://") || it.startsWith("http://")) &&
+                            it.none(Char::isISOControl)
+                    } ?: continue
+                    // Keep distinct photos for one name so the shared index can
+                    // conservatively reject reuse when records may be namesakes.
+                    results[key to image]=CastMember(name,image)
+                }
+            }
+        }
+        return results.values.toList()
+    }
     fun saveArtwork(key: String, json: String, lifetime: Long = 30L*86400000) {
         helper.writableDatabase.execSQL("INSERT OR REPLACE INTO artwork_cache VALUES(?,?,?)",arrayOf(key,json,System.currentTimeMillis()+lifetime))
+    }
+    fun pruneArtwork(prefix: String, maximumEntries: Int) {
+        require(prefix.isNotBlank() && maximumEntries>0)
+        // substr treats provider IDs literally; LIKE would interpret '_' and '%' in keys.
+        helper.writableDatabase.execSQL("DELETE FROM artwork_cache WHERE substr(cache_key,1,?)=? AND cache_key NOT IN ("+
+            "SELECT cache_key FROM artwork_cache WHERE substr(cache_key,1,?)=? ORDER BY expires DESC,cache_key LIMIT ?)",
+            arrayOf(prefix.length,prefix,prefix.length,prefix,maximumEntries))
     }
     fun savedGuide(source: String): Guide {
         val db=helper.readableDatabase;val key=digest(source)

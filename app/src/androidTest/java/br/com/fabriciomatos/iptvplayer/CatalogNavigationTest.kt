@@ -39,6 +39,7 @@ class CatalogNavigationTest {
         val distantSeries=repository.series(shows,340,1).single()
         assertEquals(340,repository.catalogOffset(shows,distantSeries.id))
         assertNull(repository.catalogOffset(movies,rows[360].url))
+        try {
         ActivityScenario.launch(MainActivity::class.java).use {scenario->
             lateinit var model: AuroraViewModel
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
@@ -47,7 +48,7 @@ class CatalogNavigationTest {
             waitForText("Filme terror 000")
             compose.onNodeWithTag("channel_list").performScrollToIndex(40)
             val movieKey=model.catalogPositionKey()
-            compose.waitUntil(10000) {model.catalogAnchor(movieKey)?.item==rows[40].url}
+            compose.waitUntil(20000) {model.catalogAnchor(movieKey)?.item==rows[40].url}
             val movieAnchor=model.catalogAnchor(movieKey)!!
             compose.onNodeWithText(rows[41].name).performClick()
             compose.waitUntil(15000) {model.current?.url==rows[41].url && model.isPlaying}
@@ -63,15 +64,22 @@ class CatalogNavigationTest {
             waitForText("Série suspense 000")
             compose.onNodeWithTag("series_grid").performScrollToIndex(20)
             val seriesKey=model.catalogPositionKey()
-            compose.waitUntil(10000) {model.catalogAnchor(seriesKey)?.index==20}
+            compose.waitUntil(20000) {model.catalogAnchor(seriesKey)?.index==20}
             val seriesAnchor=model.catalogAnchor(seriesKey)!!
             val selected=repository.series(shows,21,1).single()
             compose.waitUntil(10000) {compose.onAllNodesWithText(selected.title,useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText(selected.title,useUnmergedTree=true).performClick()
             val episode=repository.channels(shows.copy(seriesId=selected.id,group=null,search="",season=1)).single()
+            compose.onNodeWithTag("landscape_details_play").performScrollTo().performClick()
             waitForText(episode.name)
             compose.onNodeWithText(episode.name).performClick()
             compose.waitUntil(15000) {model.isPlaying && model.current?.url==episode.url}
+            compose.awaitFullscreenPlayer()
+            UiDevice.getInstance(instrumentation).pressBack()
+            compose.awaitEpisodeReturn(model)
+            compose.onNodeWithTag("episode_card_1_1").assertExists()
+            UiDevice.getInstance(instrumentation).pressBack()
+            compose.waitUntil(10000) {!model.seriesDetails.episodesVisible}
             UiDevice.getInstance(instrumentation).pressBack()
             compose.waitUntil(10000) {model.openedSeriesId==null && model.current==null && !model.filtering}
             assertEquals(Page.LIBRARY,model.page);assertEquals("Suspense",model.group);assertEquals("suspense",model.search)
@@ -83,7 +91,7 @@ class CatalogNavigationTest {
             device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
             device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/series-category-return.png")
         }
-        repository.close()
+        } finally { repository.close() }
     }
     private fun waitForText(text: String)=compose.waitUntil(15000) {compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()}
 }

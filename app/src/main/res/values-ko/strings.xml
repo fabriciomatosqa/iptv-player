@@ -199,4 +199,18 @@
     <string name="broadcast_ended">중계 종료</string>
     <string name="broadcast_scheduled">중계 예정</string>
     <string name="broadcast_unconfirmed">생중계 미확인</string>
+    <string name="play_content">재생</string>
+    <string name="episodes">에피소드</string>
+    <string name="cast">출연진</string>
+    <string name="cast_unavailable">제공자가 출연진 정보를 제공하지 않았습니다</string>
+    <string name="synopsis_source">줄거리 출처: %1$s</string>
+    <string name="episode_completed">시청 완료</string>
+    <string name="episode_unfinished">미완료</string>
+    <string name="episode_progress">에피소드의 %1$d%% 시청함</string>
+    <string name="episode_scene">에피소드 %1$d의 장면</string>
+    <string name="episode_minutes">%1$d분</string>
+    <string name="resume_playback_title">이어서 재생할까요?</string>
+    <string name="resume_playback_message">%1$s\n%2$s에서 멈췄습니다.</string>
+    <string name="resume_playback_continue">계속 재생</string>
+    <string name="resume_playback_start">처음부터</string>
 </resources>

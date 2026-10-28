@@ -78,16 +78,23 @@ class SeriesFavoritesTest {
             compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE}
             compose.onNodeWithText("Série favorita").assertExists();screenshot("series-favorites-landscape")
             compose.onNodeWithText("Série favorita").performClick()
-            compose.waitUntil(10000) {model.openedSeriesId==id && model.visibleCount==1 && !model.filtering}
+            compose.waitUntil(10000) {model.seriesDetails.series?.id==id}
+            compose.onNodeWithTag("landscape_details_play").performScrollTo().performClick()
+            compose.waitUntil(10000) {compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText(episodes[0].name).assertExists()
             compose.onAllNodesWithContentDescription("Adicionar favorito").assertCountEquals(0)
-            scenario.onActivity {model.selectSeason(2)}
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(1)
+            compose.onNodeWithTag("episode_season_jump_2").performScrollTo().performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText(episodes[1].name).fetchSemanticsNodes().isNotEmpty()}
-            compose.onNodeWithTag("series_favorite_$id").performClick()
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(0)
+            compose.onNodeWithTag("landscape_details_favorite").performScrollTo().performClick()
             compose.waitUntil(10000) {model.seriesFavorites.isEmpty()}
             // Removing a favorite while inside a series must not filter away its episodes.
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(1)
+            compose.onNodeWithTag("episode_season_jump_2").performScrollTo().performClick()
+            compose.waitUntil(10000) {compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText(episodes[1].name).assertExists()
-            scenario.onActivity {model.closeSeries()}
+            scenario.onActivity {model.closeSeriesDetails()}
             compose.waitUntil(10000) {!model.filtering && model.openedSeriesId==null && model.visibleCount==1}
             compose.onNodeWithText("Filme favorito").assertExists()
         }

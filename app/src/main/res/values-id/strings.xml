@@ -199,4 +199,18 @@
     <string name="broadcast_ended">Siaran berakhir</string>
     <string name="broadcast_scheduled">Siaran terjadwal</string>
     <string name="broadcast_unconfirmed">Siaran langsung belum dikonfirmasi</string>
+    <string name="play_content">Putar</string>
+    <string name="episodes">Episode</string>
+    <string name="cast">Pemeran</string>
+    <string name="cast_unavailable">Penyedia belum memberikan informasi pemeran</string>
+    <string name="synopsis_source">Sumber sinopsis: %1$s</string>
+    <string name="episode_completed">Selesai</string>
+    <string name="episode_unfinished">Belum selesai</string>
+    <string name="episode_progress">%1$d%% episode telah ditonton</string>
+    <string name="episode_scene">Adegan dari episode %1$d</string>
+    <string name="episode_minutes">%1$d mnt</string>
+    <string name="resume_playback_title">Lanjutkan dari posisi terakhir?</string>
+    <string name="resume_playback_message">%1$s\nAnda berhenti pada %2$s.</string>
+    <string name="resume_playback_continue">Lanjutkan</string>
+    <string name="resume_playback_start">Dari awal</string>
 </resources>

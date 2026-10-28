@@ -89,15 +89,18 @@ class SynopsisTest {
             scenario.onActivity {model.browse(MediaKind.SERIES)}
             compose.waitUntil(10000) {compose.onAllNodesWithText("Série de teste").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Série de teste").performClick()
-            compose.waitUntil(10000) {!model.filtering && compose.onAllNodesWithText(episode.name).fetchSemanticsNodes().isNotEmpty()}
+            compose.waitUntil(10000) {compose.onAllNodesWithText("História da série de teste.").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("landscape_details_play").performScrollTo().performClick()
+            compose.waitUntil(10000) {compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("synopsis_content_action",useUnmergedTree=true)
                 .performSemanticsAction(SemanticsActions.OnClick) {it()}
             awaitSynopsis("História do episódio piloto.")
-            compose.onNodeWithText("História da série de teste.").assertExists()
+            compose.onNode(synopsisText("História da série de teste."),useUnmergedTree=true).assertExists()
             assertNull(model.current);screenshot("series-episode-synopsis")
             closeSynopsis(scenario)
             // Exercise the accessible button action after native dialog removal; input dispatch can lag window focus.
-            compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).assertIsDisplayed()
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(0)
+            compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).performScrollTo().assertIsDisplayed()
                 .performSemanticsAction(SemanticsActions.OnClick) {it()}
             awaitSynopsis("História da série de teste.")
             compose.onNodeWithTag("episode_synopsis").assertDoesNotExist()
@@ -137,10 +140,11 @@ class SynopsisTest {
             // Advance several frames explicitly, then synchronize before reading the dialog tree.
             compose.mainClock.advanceTimeBy(100)
             compose.waitForIdle()
-            compose.onAllNodesWithText(text,useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(synopsisText(text),useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText(text,useUnmergedTree=true).assertIsDisplayed()
+        compose.onNode(synopsisText(text),useUnmergedTree=true).assertIsDisplayed()
     }
+    private fun synopsisText(text: String)=hasText(text) and hasAnyAncestor(hasTestTag("synopsis_dialog"))
     private fun closeSynopsis(scenario: ActivityScenario<MainActivity>) {
         compose.onNodeWithText("Fechar").performClick()
         // The native dialog window can still own input after its Compose nodes disappear.
