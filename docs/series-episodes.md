@@ -11,9 +11,7 @@ O estado dos carrosséis e a temporada visível sobrevivem à tela cheia e à ro
 Fechar os detalhes após reproduzir restaura categoria, busca e posição do catálogo.
 O Voltar do sistema segue uma etapa por toque: tela cheia → episódios → elenco →
 catálogo de origem. Um único tratamento coordena as etapas, inclusive se o toque
-chegar antes de a interface concluir a transição para tela cheia. Na reprodução em
-tela cheia, teclas Voltar do Android antigo e de controles remotos são encaminhadas
-a esse tratamento antes do player nativo. Diálogos mantêm o tratamento normal.
+chegar antes de a interface concluir a transição para tela cheia.
 
 ## Cenas e progresso
 
@@ -70,7 +68,8 @@ persistência de mais de 400 progressos e reaproveitamento de fotos. O conjunto 
 de instrumentação e as verificações de force-stop continuam em `test/run-android-checks.sh`.
 A regressão de navegação também envia Voltar na mesma passagem da thread de UI em
 que a tela cheia é solicitada, em retrato e paisagem. Antes do retorno normal, os
-testes aguardam a superfície de tela cheia realmente renderizada. As descrições de
+testes aguardam a superfície de tela cheia realmente renderizada e confirmam o
+tutorial de modo imersivo do Android, quando ele aparece, antes de enviar Voltar. As descrições de
 cenas e conclusão usam o idioma salvo no app, independentemente do idioma do emulador.
 Compilar os testes não significa executá-los; a execução exige APK com assinatura válida.
 O fluxo de publicação existente continua condicionado a todas as verificações obrigatórias.

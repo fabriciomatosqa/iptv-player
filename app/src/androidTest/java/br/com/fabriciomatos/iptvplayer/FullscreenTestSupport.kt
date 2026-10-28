@@ -2,12 +2,23 @@ package br.com.fabriciomatos.iptvplayer
 
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 
-/** Playback can start before Compose replaces the details and registers fullscreen Back. */
+/** Await the actual screen and acknowledge Android's first-use immersive tutorial. */
 internal fun ComposeTestRule.awaitFullscreenPlayer() {
     waitUntil(15000) {
         onAllNodesWithTag("video_back").fetchSemanticsNodes().isNotEmpty() &&
             onAllNodesWithTag("landscape_title_details").fetchSemanticsNodes().isEmpty()
+    }
+    waitForIdle()
+    val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    val tutorial=By.res("android","immersive_cling_description")
+    if(device.wait(Until.hasObject(tutorial),2000)) {
+        checkNotNull(device.findObject(By.res("android","ok"))) {"Immersive tutorial has no confirmation button"}.click()
+        check(device.wait(Until.gone(tutorial),3000)) {"Immersive tutorial did not close"}
     }
     waitForIdle()
 }

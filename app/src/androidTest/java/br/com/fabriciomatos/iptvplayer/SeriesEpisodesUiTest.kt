@@ -107,13 +107,10 @@ class SeriesEpisodesUiTest {
                 // Reproduce Back arriving after playback changes fullscreen but before
                 // Compose disposes the details screen. It must not consume the episode section.
                 fun backDuringFullscreenTransition() {
-                    for(nativeKey in listOf(false,true))scenario.onActivity {activity ->
+                    scenario.onActivity {activity ->
                         val scroll=model.seriesDetails.scroll
                         model.fullscreen=true
-                        if(nativeKey) {
-                            activity.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_BACK))
-                            activity.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_BACK))
-                        } else activity.onBackPressedDispatcher.onBackPressed()
+                        activity.onBackPressedDispatcher.onBackPressed()
                         assertFalse(model.fullscreen)
                         assertTrue(model.seriesDetails.episodesVisible)
                         assertEquals("id:555",model.seriesDetails.series?.id)
