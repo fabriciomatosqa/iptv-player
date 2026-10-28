@@ -53,7 +53,7 @@ private val DetailAccent=Color(0xFF55D9BB)
     if(restricted)return
     val navigation=model.seriesDetails
     val episodesVisible=series!=null && navigation.episodesVisible
-    BackHandler(enabled=episodesVisible) {navigation.episodesVisible=false}
+    BackHandler(enabled=episodesVisible) {model.showSeriesCast()}
     var synopsis by remember(source,movie?.url,series?.id) {mutableStateOf<Synopsis?>(null)}
     var episodeDetails by remember(source,series?.id) {mutableStateOf(emptyList<EpisodeSynopsis>())}
     LaunchedEffect(source,movie?.url,series?.id) {synopsis=model.synopsis(movie,series)}
@@ -88,7 +88,7 @@ private val DetailAccent=Color(0xFF55D9BB)
             verticalArrangement=Arrangement.spacedBy(18.dp)) {
             item(key="header") {
                 Column(Modifier.fillMaxWidth().padding(horizontal=side)) {
-                    IconButton(onClick={if(episodesVisible)navigation.episodesVisible=false else onBack()},
+                    IconButton(onClick={if(episodesVisible)model.showSeriesCast() else onBack()},
                         modifier=Modifier.testTag("landscape_details_back")) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack,tr(R.string.back),tint=DetailText)
                     }
@@ -136,7 +136,7 @@ private val DetailAccent=Color(0xFF55D9BB)
                             Spacer(Modifier.width(6.dp))
                             Text(tr(if(movie!=null)R.string.play_content else R.string.episodes),fontWeight=FontWeight.Bold)
                         }
-                        if(episodesVisible)OutlinedButton(onClick={navigation.episodesVisible=false},
+                        if(episodesVisible)OutlinedButton(onClick={model.showSeriesCast()},
                             modifier=Modifier.testTag("series_show_cast")) {Text(tr(R.string.cast),color=DetailText)}
                         if(series!=null)SynopsisAction(model,series=series)
                         OutlinedButton(onClick={

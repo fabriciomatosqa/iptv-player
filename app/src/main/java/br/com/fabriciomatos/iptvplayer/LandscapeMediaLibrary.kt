@@ -50,7 +50,7 @@ import kotlinx.coroutines.flow.collectLatest
     var chosenMovie by remember(model.playlistUrl,kind) { mutableStateOf<Channel?>(null) }
     val chosenSeries = model.seriesDetails.forSource(model.playlistUrl)
     BackHandler(enabled = chosenMovie != null || chosenSeries != null) {
-        if(chosenSeries!=null && model.seriesDetails.episodesVisible)model.seriesDetails.episodesVisible=false
+        if(chosenSeries!=null && model.seriesDetails.episodesVisible)model.showSeriesCast()
         else {chosenMovie = null; model.closeSeriesDetails()}
     }
     if (chosenMovie != null || chosenSeries != null) {

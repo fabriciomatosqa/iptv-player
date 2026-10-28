@@ -65,6 +65,13 @@ class PlaybackResumeTest {
                 compose.waitUntil(5000) {model.pendingPlayback==null}
                 assertNull(model.current)
                 assertEquals(12000L,repository.playbackProgress(source,first.url)!!.positionMs)
+                // Leaving the section must also cancel the bookmark lookup before a dialog exists.
+                scenario.onActivity {model.requestPlay(first,true);model.showSeriesCast()}
+                compose.waitForIdle()
+                assertNull(model.pendingPlayback);assertNull(model.current);assertFalse(model.fullscreen)
+                scenario.onActivity {model.requestPlay(first,true);model.closeSeriesDetails()}
+                compose.waitForIdle()
+                assertNull(model.pendingPlayback);assertNull(model.current);assertFalse(model.fullscreen)
                 ask(true)
                 compose.onNodeWithTag("resume_playback_continue").performClick()
                 ready(first) {it>=11500}

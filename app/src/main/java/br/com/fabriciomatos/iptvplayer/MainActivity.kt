@@ -402,7 +402,7 @@ private fun Library(model: AuroraViewModel, wide: Boolean) {
     val details=model.seriesDetails.forSource(model.playlistUrl)
     if(!wide && details!=null) {
         BackHandler {
-            if(model.seriesDetails.episodesVisible)model.seriesDetails.episodesVisible=false else model.closeSeriesDetails()
+            if(model.seriesDetails.episodesVisible)model.showSeriesCast() else model.closeSeriesDetails()
         }
         LandscapeContentDetails(model,null,details,onBack={model.closeSeriesDetails()},
             onEpisodes={model.seriesDetails.episodesVisible=true})

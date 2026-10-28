@@ -43,5 +43,11 @@ internal class SeriesDetailsNavigation {
 }
 
 internal fun AuroraViewModel.closeSeriesDetails() {
+    dismissPlaybackResume()
     if(openedSeriesId!=null)closeSeries() else seriesDetails.close()
+}
+
+internal fun AuroraViewModel.showSeriesCast() {
+    dismissPlaybackResume()
+    seriesDetails.episodesVisible=false
 }

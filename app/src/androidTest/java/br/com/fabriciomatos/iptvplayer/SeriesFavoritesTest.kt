@@ -83,11 +83,14 @@ class SeriesFavoritesTest {
             compose.waitUntil(10000) {compose.onAllNodesWithTag("episode_card_1_1").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText(episodes[0].name).assertExists()
             compose.onAllNodesWithContentDescription("Adicionar favorito").assertCountEquals(0)
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(1)
             compose.onNodeWithTag("episode_season_jump_2").performScrollTo().performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithText(episodes[1].name).fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(0)
             compose.onNodeWithTag("landscape_details_favorite").performScrollTo().performClick()
             compose.waitUntil(10000) {model.seriesFavorites.isEmpty()}
             // Removing a favorite while inside a series must not filter away its episodes.
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(1)
             compose.onNodeWithTag("episode_season_jump_2").performScrollTo().performClick()
             compose.waitUntil(10000) {compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText(episodes[1].name).assertExists()

@@ -99,6 +99,7 @@ class SynopsisTest {
             assertNull(model.current);screenshot("series-episode-synopsis")
             closeSynopsis(scenario)
             // Exercise the accessible button action after native dialog removal; input dispatch can lag window focus.
+            compose.onNodeWithTag("title_details_scroll").performScrollToIndex(0)
             compose.onNodeWithTag("synopsis_series_action",useUnmergedTree=true).performScrollTo().assertIsDisplayed()
                 .performSemanticsAction(SemanticsActions.OnClick) {it()}
             awaitSynopsis("História da série de teste.")
