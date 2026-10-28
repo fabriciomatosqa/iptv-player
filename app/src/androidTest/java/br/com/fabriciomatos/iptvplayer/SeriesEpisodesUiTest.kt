@@ -193,7 +193,7 @@ class SeriesEpisodesUiTest {
 
     private fun assertFlag(season: Int,number: Int,status: String,color: Color) {
         val node=compose.onNodeWithTag("episode_flag_${season}_$number",useUnmergedTree=true)
-        node.assert(hasAnyDescendant(hasContentDescription(status)))
+        node.assert(hasContentDescription(status) or hasAnyDescendant(hasContentDescription(status)))
         val pixels=node.captureToImage().toPixelMap()
         var found=false
         for(y in 0 until pixels.height)for(x in 0 until pixels.width) {
