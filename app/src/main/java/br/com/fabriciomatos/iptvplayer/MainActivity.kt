@@ -1,6 +1,7 @@
 package br.com.fabriciomatos.iptvplayer
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -98,6 +99,17 @@ class MainActivity : AppCompatActivity() {
         WindowInsetsControllerCompat(window, window.decorView).apply { isAppearanceLightStatusBars = false; isAppearanceLightNavigationBars = false }
         model = ViewModelProvider(this)[AuroraViewModel::class.java]
         setContent { AuroraApp(model) }
+    }
+    // A native video view can consume legacy BACK before Activity's default dispatch
+    // reaches OnBackPressedDispatcher. Route fullscreen keys through the same Back
+    // policy used by gesture navigation, while dialogs retain their normal handling.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if(::model.isInitialized && event.keyCode==KeyEvent.KEYCODE_BACK && model.fullscreen &&
+            !model.settingsOpen && !model.parentalDialog && model.pendingPlayback==null) {
+            if(event.action==KeyEvent.ACTION_UP && !event.isCanceled)onBackPressedDispatcher.onBackPressed()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
     override fun onStart() { super.onStart(); if (::model.isInitialized) model.foreground(true) }
     override fun onStop() { if (::model.isInitialized && !isChangingConfigurations) model.foreground(false); super.onStop() }

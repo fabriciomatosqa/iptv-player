@@ -11,7 +11,9 @@ O estado dos carrosséis e a temporada visível sobrevivem à tela cheia e à ro
 Fechar os detalhes após reproduzir restaura categoria, busca e posição do catálogo.
 O Voltar do sistema segue uma etapa por toque: tela cheia → episódios → elenco →
 catálogo de origem. Um único tratamento coordena as etapas, inclusive se o toque
-chegar antes de a interface concluir a transição para tela cheia.
+chegar antes de a interface concluir a transição para tela cheia. Na reprodução em
+tela cheia, teclas Voltar do Android antigo e de controles remotos são encaminhadas
+a esse tratamento antes do player nativo. Diálogos mantêm o tratamento normal.
 
 ## Cenas e progresso
 

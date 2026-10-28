@@ -11,3 +11,21 @@ internal fun ComposeTestRule.awaitFullscreenPlayer() {
     }
     waitForIdle()
 }
+
+/** Keep failure evidence from the actual native Back path, without exposing stream URLs. */
+internal fun ComposeTestRule.awaitEpisodeReturn(model: AuroraViewModel, episodeTag: String? = null) {
+    try {
+        waitUntil(10000) {
+            !model.fullscreen && model.seriesDetails.episodesVisible &&
+                (episodeTag==null || onAllNodesWithTag(episodeTag).fetchSemanticsNodes().isNotEmpty())
+        }
+    } catch(failure: Throwable) {
+        val device=androidx.test.uiautomator.UiDevice.getInstance(
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation())
+        device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
+        device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/episode-back-failure.png")
+        throw AssertionError("Episode Back failed: fullscreen=${model.fullscreen}, page=${model.page}, " +
+            "episodes=${model.seriesDetails.episodesVisible}, details=${model.seriesDetails.series!=null}, " +
+            "scroll=${model.seriesDetails.scroll.firstVisibleItemIndex}",failure)
+    }
+}

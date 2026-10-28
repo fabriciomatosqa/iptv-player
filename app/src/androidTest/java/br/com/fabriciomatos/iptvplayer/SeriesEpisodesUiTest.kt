@@ -107,10 +107,13 @@ class SeriesEpisodesUiTest {
                 // Reproduce Back arriving after playback changes fullscreen but before
                 // Compose disposes the details screen. It must not consume the episode section.
                 fun backDuringFullscreenTransition() {
-                    scenario.onActivity {activity ->
+                    for(nativeKey in listOf(false,true))scenario.onActivity {activity ->
                         val scroll=model.seriesDetails.scroll
                         model.fullscreen=true
-                        activity.onBackPressedDispatcher.onBackPressed()
+                        if(nativeKey) {
+                            activity.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_BACK))
+                            activity.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_BACK))
+                        } else activity.onBackPressedDispatcher.onBackPressed()
                         assertFalse(model.fullscreen)
                         assertTrue(model.seriesDetails.episodesVisible)
                         assertEquals("id:555",model.seriesDetails.series?.id)
@@ -153,7 +156,7 @@ class SeriesEpisodesUiTest {
                 compose.waitUntil(10000) {var reached=false;scenario.onActivity {reached=model.player!!.contentPosition in 11500L..12500L};reached}
                 compose.awaitFullscreenPlayer()
                 UiDevice.getInstance(instrumentation).pressBack()
-                compose.waitUntil(10000) {!model.fullscreen && compose.onAllNodesWithTag("episode_card_3_5").fetchSemanticsNodes().isNotEmpty()}
+                compose.awaitEpisodeReturn(model,"episode_card_3_5")
                 assertTrue(model.seriesDetails.episodesVisible)
                 assertEquals("id:555",model.seriesDetails.series?.id)
                 assertEquals(vertical,model.seriesDetails.scroll.firstVisibleItemIndex)

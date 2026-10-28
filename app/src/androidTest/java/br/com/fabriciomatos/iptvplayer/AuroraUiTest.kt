@@ -193,8 +193,7 @@ class AuroraUiTest {
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "Rick e Morty S02E01" }
             compose.awaitFullscreenPlayer()
             UiDevice.getInstance(instrumentation).pressBack()
-            compose.waitUntil(10000) {!model.fullscreen &&
-                compose.onAllNodesWithTag("episode_card_2_1").fetchSemanticsNodes().isNotEmpty()}
+            compose.awaitEpisodeReturn(model,"episode_card_2_1")
             assertTrue(model.seriesDetails.episodesVisible)
             assertEquals("Rick e Morty",model.seriesDetails.series?.title)
             scenario.onActivity {model.stop()}

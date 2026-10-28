@@ -76,7 +76,7 @@ class CatalogNavigationTest {
             compose.waitUntil(15000) {model.isPlaying && model.current?.url==episode.url}
             compose.awaitFullscreenPlayer()
             UiDevice.getInstance(instrumentation).pressBack()
-            compose.waitUntil(10000) {!model.fullscreen && model.seriesDetails.episodesVisible}
+            compose.awaitEpisodeReturn(model)
             compose.onNodeWithTag("episode_card_1_1").assertExists()
             UiDevice.getInstance(instrumentation).pressBack()
             compose.waitUntil(10000) {!model.seriesDetails.episodesVisible}
