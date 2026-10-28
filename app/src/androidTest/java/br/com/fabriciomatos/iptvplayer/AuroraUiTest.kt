@@ -284,7 +284,7 @@ class AuroraUiTest {
                 compose.waitForIdle()
                 assertEquals(2, requests.get())
             }
-        } finally { releaseDaily.countDown(); scenario.close(); server.close() }
+        } finally { releaseDaily.countDown(); scenario.close(); server.close(); instrumentation.waitForIdleSync() }
     }
 
     private fun revealVideoControls() {
