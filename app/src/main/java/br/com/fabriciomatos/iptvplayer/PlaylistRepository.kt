@@ -510,11 +510,8 @@ class PlaylistRepository(context: Context) {
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
             val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key) VALUES(" + List(25){"?"}.joinToString(",") + ")"
             val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=CASE WHEN ?<>'' THEN ? ELSE image_url END,user_agent=?,referrer=?,mime_type=? WHERE source_key=? AND content_key=? AND seen_generation<>?"
-            // Existing rows keep their stable identity and position; only the generation marker
-            // is advanced for rows whose provider metadata has not changed.
-            val markSeenSql="UPDATE channels SET seen_generation=? WHERE source_key=? AND content_key=? AND seen_generation<>?"
             var epg=""
-            db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update -> db.compileStatement(markSeenSql).use { markSeen ->
+            db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
                 epg=scan { c ->
                     val contentKey=catalogContentKey(c.url)
                     val identity=if(c.kind==MediaKind.SERIES)seriesIdentity(c) else null
@@ -538,19 +535,12 @@ class PlaylistRepository(context: Context) {
                         update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.imageUrl)
                         update.bindString(16,c.userAgent);update.bindString(17,c.referrer);update.bindString(18,c.mimeType)
                         update.bindString(19,key);update.bindString(20,contentKey);update.bindLong(21,generation.toLong())
-                        // Avoid rewriting indexed metadata and images when the row is unchanged.
-                        // The comparison uses the same provider fields persisted by the importer.
-                        val unchanged=db.rawQuery("SELECT kind,series_key,series_norm,series_title,series_image,season,episode,episode_title,type_hint,adult,url,user_agent,referrer,mime_type,image_url FROM channels WHERE source_key=? AND content_key=? LIMIT 1",arrayOf(key,contentKey)).use { row ->
-                            row.moveToFirst() && row.getInt(0)==c.kind.ordinal && row.getString(1)==seriesKey && row.getString(2)==norm && row.getString(3)==title && row.getString(4)==c.seriesImageUrl && row.getInt(5)==season && row.getInt(6)==number && row.getString(7)==episodeTitle && row.getString(8)==c.typeHint && row.getInt(9)==if(c.adult)1 else 0 && row.getString(10)==c.url && row.getString(11)==c.userAgent && row.getString(12)==c.referrer && row.getString(13)==c.mimeType && (c.imageUrl.isBlank() || row.getString(14)==c.imageUrl)
-                        }
-                        if(unchanged){
-                            markSeen.clearBindings();markSeen.bindLong(1,generation.toLong());markSeen.bindString(2,key);markSeen.bindString(3,contentKey);markSeen.bindLong(4,generation.toLong());markSeen.executeUpdateDelete()
-                        } else update.executeUpdateDelete()
+                        update.executeUpdateDelete()
                     }
                     parsed++
                     if(parsed%5000==0)progress(parsed)
                 }
-            } } }
+            } }
             if(parsed==0 && (isLocalSource(source) || scalar(db,"SELECT COUNT(*) FROM channels WHERE source_key=?",arrayOf(key))==0)) throw IOException("Não encontrei conteúdos nesta M3U.")
             val values=ContentValues().apply {
                 put("etag",etag);put("modified",modified);put("generation",generation)
