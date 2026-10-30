@@ -499,7 +499,7 @@ class PlaylistRepository(context: Context) {
 
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
         progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, scan: ((Channel) -> Unit) -> String): ImportResult {
-        val db=helper.writableDatabase; val key=digest(source); var added=0; var parsed=0
+        val db=helper.writableDatabase; val key=digest(source); var added=0; var changed=0; var parsed=0
         lateinit var result: ImportResult
         db.beginTransactionNonExclusive()
         try {
@@ -509,7 +509,7 @@ class PlaylistRepository(context: Context) {
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
             val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key) VALUES(" + List(25){"?"}.joinToString(",") + ")"
-            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=CASE WHEN ?<>'' THEN ? ELSE image_url END,user_agent=?,referrer=?,mime_type=? WHERE source_key=? AND content_key=? AND seen_generation<>?"
+            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=CASE WHEN ?<>'' THEN ? ELSE image_url END,user_agent=?,referrer=?,mime_type=? WHERE source_key=? AND content_key=? AND (kind<>? OR series_key<>? OR series_norm<>? OR series_title<>? OR series_image<>? OR season<>? OR episode<>? OR episode_title<>? OR type_hint<>? OR adult<>? OR url<>? OR user_agent<>? OR referrer<>? OR mime_type<>? OR (?<>'' AND image_url<>?))"
             var epg=""
             db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
                 epg=scan { c ->
@@ -534,8 +534,14 @@ class PlaylistRepository(context: Context) {
                         update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L)
                         update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.imageUrl)
                         update.bindString(16,c.userAgent);update.bindString(17,c.referrer);update.bindString(18,c.mimeType)
-                        update.bindString(19,key);update.bindString(20,contentKey);update.bindLong(21,generation.toLong())
-                        update.executeUpdateDelete()
+                        update.bindString(19,key);update.bindString(20,contentKey)
+                        update.bindLong(21,c.kind.ordinal.toLong());update.bindString(22,seriesKey);update.bindString(23,norm)
+                        update.bindString(24,title);update.bindString(25,c.seriesImageUrl);update.bindLong(26,season.toLong())
+                        update.bindLong(27,number.toLong());update.bindString(28,episodeTitle);update.bindString(29,c.typeHint)
+                        update.bindLong(30,if(c.adult)1L else 0L);update.bindString(31,c.url)
+                        update.bindString(32,c.userAgent);update.bindString(33,c.referrer);update.bindString(34,c.mimeType)
+                        update.bindString(35,c.imageUrl);update.bindString(36,c.imageUrl)
+                        changed+=update.executeUpdateDelete()
                     }
                     parsed++
                     if(parsed%5000==0)progress(parsed)
@@ -551,7 +557,10 @@ class PlaylistRepository(context: Context) {
             finalizing()
             pinSavedCatalogUrls(db,prefs,key)
             repairCatalogProgress(db,key)
-            db.update("playlists",values,"source_key=?",arrayOf(key));rebuild(db,key)
+            db.update("playlists",values,"source_key=?",arrayOf(key))
+            // Preserve the previously committed aggregates when the provider supplied
+            // the same catalog. No group or series-directory rebuild is needed.
+            if(added>0 || changed>0) rebuild(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
             db.setTransactionSuccessful();result=ImportResult(added,total)
         } finally { db.endTransaction() }

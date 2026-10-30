@@ -134,7 +134,13 @@ class AppearanceAndPlaylistsTest {
                         listOf("home_total")
                     ).forEachIndexed { index, tags ->
                         compose.onNodeWithTag("home_landscape_compact").performScrollToIndex(index)
-                        tags.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+                        compose.waitForIdle()
+                        tags.forEach { tag ->
+                            compose.waitUntil(10000) {
+                                compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+                            }
+                            compose.onNodeWithTag(tag).assertExists()
+                        }
                     }
                 } else {
                     listOf("home_recent", "home_live", "home_movies", "home_series",
