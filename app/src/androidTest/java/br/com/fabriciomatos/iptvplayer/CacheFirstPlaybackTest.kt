@@ -13,9 +13,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.io.Reader
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -39,6 +41,52 @@ class CacheFirstPlaybackTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
             compose.waitUntil(15000) {model.initialized && model.catalog.total==1}
             compose.waitUntil(15000) {model.guide.programmes["guide.one"]?.any {it.title=="Saved programme"}==true}
+        }
+    }
+
+    @Test fun cachedVideoPlaysWhileAnotherConnectionHoldsAnImportTransaction() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        resetCatalog(context)
+        val video=File(context.cacheDir,"cache-import.mp4")
+        InstrumentationRegistry.getInstrumentation().context.assets.open("smoke.mp4").use {input ->
+            video.outputStream().use {input.copyTo(it)}
+        }
+        val source="local-m3u://00000000-0000-0000-0000-000000000002"
+        val channel=Channel("Canal durante importação HD",video.toURI().toString(),"Ao Vivo",typeHint="live")
+        val repository=PlaylistRepository(context)
+        val entered=CountDownLatch(1);val release=CountDownLatch(1)
+        val executor=Executors.newSingleThreadExecutor()
+        try {
+            repository.saveSource(source,"Leitura durante importação")
+            repository.appendCache(source,Download(Playlist(listOf(channel)),"",""))
+            ActivityScenario.launch(MainActivity::class.java).use {scenario ->
+                lateinit var model: AuroraViewModel
+                scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
+                compose.waitUntil(15000) {model.initialized && model.catalog.total==1}
+                scenario.onActivity {model.browse(MediaKind.LIVE)}
+                compose.waitUntil(15000) {compose.onAllNodesWithText(channel.name).fetchSemanticsNodes().isNotEmpty()}
+                val input=object: Reader() {
+                    private val text="#EXTM3U\n#EXTINF:-1 group-title=\"Ao Vivo\",Novo canal HD\nhttps://example.test/live/new\n".reader()
+                    private var blocked=false
+                    override fun read(buffer: CharArray,offset: Int,length: Int): Int {
+                        if(!blocked) {blocked=true;entered.countDown();check(release.await(30,TimeUnit.SECONDS))}
+                        return text.read(buffer,offset,length)
+                    }
+                    override fun close()=text.close()
+                }
+                val update=executor.submit<ImportResult> {repository.importReader(source,input)}
+                try {
+                    assertTrue(entered.await(5,TimeUnit.SECONDS))
+                    compose.onAllNodesWithText(channel.name).onFirst().performClick()
+                    compose.waitUntil(12000) {model.current?.url==channel.url && model.isPlaying}
+                    assertFalse("Import must still hold its transaction when playback starts",update.isDone)
+                    assertEquals(1L,release.count)
+                } finally {release.countDown()}
+                assertEquals(1,update.get(10,TimeUnit.SECONDS).added)
+                assertEquals(2,repository.overview(source).total)
+            }
+        } finally {
+            release.countDown();executor.shutdown();executor.awaitTermination(10,TimeUnit.SECONDS);repository.close()
         }
     }
 
