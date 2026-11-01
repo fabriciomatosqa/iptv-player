@@ -87,6 +87,7 @@ class CacheFirstPlaybackTest {
                 val playbackStarted=SystemClock.elapsedRealtimeNanos()
                 compose.onAllNodesWithText(channel.name).onFirst().performClick()
                 compose.waitUntil(12000) {model.current?.url==channel.url && model.isPlaying}
+                assertTrue("Playback must start while the HTTP refresh is actually active",model.updating)
                 assertEquals("Playback must start before releasing the HTTP response",1L,respond.count)
                 measurements.put("playback_while_http_pending_ms",(SystemClock.elapsedRealtimeNanos()-playbackStarted)/1_000_000.0)
                 measurements.put("http_still_pending_when_playback_started",true)
