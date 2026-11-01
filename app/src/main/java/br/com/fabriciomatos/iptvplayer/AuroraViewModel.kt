@@ -384,7 +384,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress,compareBody=!force) }
                 val result=if (downloaded) {
-                    withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress) }
+                    withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress,reusePrefix=!force) }
                 } else {
                     withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
                     ImportResult(0,catalog.total)

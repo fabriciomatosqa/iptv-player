@@ -92,8 +92,9 @@ object M3uParser {
 
     /** Production imports write each row immediately; no catalog-sized list or URL set. */
     fun scan(reader: Reader, source: String, categoryKinds: Map<String, MediaKind> = emptyMap(),
-        checkCancelled: () -> Unit = {}, accept: (Channel) -> Unit): ParseStats {
-        var entries = 0
+        checkCancelled: () -> Unit = {}, initialEntries: Int = 0, accept: (Channel) -> Unit): ParseStats {
+        require(initialEntries>=0)
+        var entries = initialEntries
         var rejected = 0
         var name = ""
         var metadata: Map<String, String> = emptyMap()

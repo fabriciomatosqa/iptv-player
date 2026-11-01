@@ -71,9 +71,14 @@ class CatalogStartupPerformanceTest {
             }
             write()
             var repository=PlaylistRepository(context)
+            fun stage() {
+                val ready=File(context.filesDir,"catalog_pending/"+PlaylistRepository.digest(source)+".ready")
+                ready.parentFile!!.mkdirs();input.copyTo(ready,overwrite=true)
+            }
             try {
                 repository.saveSource(source,"Benchmark $size")
-                measure("first_import") {input.bufferedReader().use {assertEquals(size,repository.importReader(source,it).added)}}
+                stage()
+                measure("first_import") {assertEquals(size,repository.importPending(source).added)}
                 val first=repository.channel(source,url(15))!!
                 repository.saveFavorites(setOf(first.url));repository.saveLast(first)
                 repository.savePlaybackProgress(source,first.url,PlaybackProgress(21000,120000))
@@ -108,17 +113,20 @@ class CatalogStartupPerformanceTest {
                         }
                     }
                 }
-                measure("unchanged_reimport") {input.bufferedReader().use {
-                    val delta=repository.importReader(source,it);assertEquals(0,delta.added);assertEquals(0,delta.changed)
-                }}
+                stage()
+                measure("unchanged_reimport") {
+                    val delta=repository.importPending(source);assertEquals(0,delta.added);assertEquals(0,delta.changed)
+                }
                 write(extra=true)
-                measure("two_episodes_added") {input.bufferedReader().use {
-                    val delta=repository.importReader(source,it);assertEquals(2,delta.added);assertEquals(0,delta.changed)
-                }}
+                stage()
+                measure("two_episodes_added") {
+                    val delta=repository.importPending(source);assertEquals(2,delta.added);assertEquals(0,delta.changed)
+                }
                 write(extra=true,changed=true)
-                measure("one_url_changed") {input.bufferedReader().use {
-                    val delta=repository.importReader(source,it);assertEquals(0,delta.added);assertEquals(1,delta.changed)
-                }}
+                stage()
+                measure("one_url_changed") {
+                    val delta=repository.importPending(source);assertEquals(0,delta.added);assertEquals(1,delta.changed)
+                }
                 assertEquals(size+2,repository.overview(source).total)
                 assertEquals(17,repository.seriesDetail(source,seriesIdentity(Channel("Benchmark Demo S01E01",url(0),"Séries")).id)!!.episodeCount)
                 assertTrue(repository.favorites().contains(url(15,true)))
