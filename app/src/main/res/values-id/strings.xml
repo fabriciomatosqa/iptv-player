@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nAnda berhenti pada %2$s.</string>
     <string name="resume_playback_continue">Lanjutkan</string>
     <string name="resume_playback_start">Dari awal</string>
+    <string name="catalog_comparing">Membandingkan katalog…</string>
+    <string name="catalog_added">%1$d konten baru</string>
+    <string name="catalog_unchanged">Tidak ada konten baru</string>
+    <string name="catalog_refreshed">Katalog diperbarui</string>
 </resources>

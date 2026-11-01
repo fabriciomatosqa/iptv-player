@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nJe bent gestopt op %2$s.</string>
     <string name="resume_playback_continue">Doorgaan</string>
     <string name="resume_playback_start">Vanaf het begin</string>
+    <string name="catalog_comparing">Catalogus vergelijken…</string>
+    <string name="catalog_added">%1$d nieuwe items</string>
+    <string name="catalog_unchanged">Geen nieuwe inhoud</string>
+    <string name="catalog_refreshed">Catalogus bijgewerkt</string>
 </resources>

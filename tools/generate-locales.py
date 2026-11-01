@@ -139,10 +139,13 @@ detail_rows={
 'id':'Waktu: %1$s|Sinopsis|Sinopsis serial|Sinopsis episode|Penyedia belum memberikan sinopsis untuk judul ini.|Penyedia belum memberikan sinopsis untuk episode ini.|Sinopsis tidak dapat dimuat. Coba lagi.|Tutup'
 }
 detail_rows['tr']=detail_rows.pop(' tr')
+catalog_delta_keys=['catalog_comparing', 'catalog_added', 'catalog_unchanged', 'catalog_refreshed']
+catalog_delta_rows={'pt': 'Comparando catálogo…|%1$d novos conteúdos|Nenhum conteúdo novo|Catálogo atualizado', 'en': 'Comparing catalog…|%1$d new items|No new content|Catalog updated', 'es': 'Comparando catálogo…|%1$d contenidos nuevos|Sin contenido nuevo|Catálogo actualizado', 'fr': 'Comparaison du catalogue…|%1$d nouveaux contenus|Aucun nouveau contenu|Catalogue actualisé', 'de': 'Katalog wird verglichen…|%1$d neue Inhalte|Keine neuen Inhalte|Katalog aktualisiert', 'it': 'Confronto del catalogo…|%1$d nuovi contenuti|Nessun nuovo contenuto|Catalogo aggiornato', 'nl': 'Catalogus vergelijken…|%1$d nieuwe items|Geen nieuwe inhoud|Catalogus bijgewerkt', 'pl': 'Porównywanie katalogu…|%1$d nowych treści|Brak nowych treści|Katalog zaktualizowany', 'ru': 'Сравнение каталога…|Новых материалов: %1$d|Новых материалов нет|Каталог обновлён', 'uk': 'Порівняння каталогу…|Нових матеріалів: %1$d|Нових матеріалів немає|Каталог оновлено', 'ar': 'جارٍ مقارنة الكتالوج…|%1$d عناصر جديدة|لا يوجد محتوى جديد|تم تحديث الكتالوج', 'hi': 'कैटलॉग की तुलना हो रही है…|%1$d नई सामग्री|कोई नई सामग्री नहीं|कैटलॉग अपडेट हुआ', 'bn': 'ক্যাটালগ তুলনা করা হচ্ছে…|%1$dটি নতুন বিষয়বস্তু|নতুন বিষয়বস্তু নেই|ক্যাটালগ আপডেট হয়েছে', 'zh-rCN': '正在比较目录…|新增 %1$d 项内容|没有新内容|目录已更新', 'zh-rTW': '正在比較目錄…|新增 %1$d 項內容|沒有新內容|目錄已更新', 'ja': 'カタログを比較中…|新しいコンテンツ %1$d 件|新しいコンテンツはありません|カタログを更新しました', 'ko': '카탈로그 비교 중…|새 콘텐츠 %1$d개|새 콘텐츠 없음|카탈로그 업데이트됨', 'tr': 'Katalog karşılaştırılıyor…|%1$d yeni içerik|Yeni içerik yok|Katalog güncellendi', 'vi': 'Đang so sánh danh mục…|%1$d nội dung mới|Không có nội dung mới|Đã cập nhật danh mục', 'id': 'Membandingkan katalog…|%1$d konten baru|Tidak ada konten baru|Katalog diperbarui'}
 root=Path(__file__).resolve().parents[1]/'app/src/main/res'
 for lang,row in rows.items():
     values=row.split('|'); assert len(values)==len(keys),(lang,len(values),len(keys))
     data=dict(zip(keys,values)); u=units[lang].split(',')
+    data.update(zip(catalog_delta_keys,catalog_delta_rows[lang].split('|')))
     translated=extras[lang].split('|');assert len(translated)==len(extra_keys)
     data.update(zip(extra_keys,translated))
     football=football_rows[lang].split('|');assert len(football)==len(football_keys),(lang,len(football))

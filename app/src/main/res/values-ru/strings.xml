@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nВы остановились на %2$s.</string>
     <string name="resume_playback_continue">Продолжить</string>
     <string name="resume_playback_start">С начала</string>
+    <string name="catalog_comparing">Сравнение каталога…</string>
+    <string name="catalog_added">Новых материалов: %1$d</string>
+    <string name="catalog_unchanged">Новых материалов нет</string>
+    <string name="catalog_refreshed">Каталог обновлён</string>
 </resources>

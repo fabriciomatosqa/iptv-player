@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nSie haben bei %2$s aufgehört.</string>
     <string name="resume_playback_continue">Fortsetzen</string>
     <string name="resume_playback_start">Von Anfang an</string>
+    <string name="catalog_comparing">Katalog wird verglichen…</string>
+    <string name="catalog_added">%1$d neue Inhalte</string>
+    <string name="catalog_unchanged">Keine neuen Inhalte</string>
+    <string name="catalog_refreshed">Katalog aktualisiert</string>
 </resources>

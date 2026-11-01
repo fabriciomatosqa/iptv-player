@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nتوقفت عند %2$s.</string>
     <string name="resume_playback_continue">متابعة</string>
     <string name="resume_playback_start">من البداية</string>
+    <string name="catalog_comparing">جارٍ مقارنة الكتالوج…</string>
+    <string name="catalog_added">%1$d عناصر جديدة</string>
+    <string name="catalog_unchanged">لا يوجد محتوى جديد</string>
+    <string name="catalog_refreshed">تم تحديث الكتالوج</string>
 </resources>

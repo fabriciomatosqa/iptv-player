@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nআপনি %2$s-এ থেমেছিলেন।</string>
     <string name="resume_playback_continue">চালিয়ে যান</string>
     <string name="resume_playback_start">শুরু থেকে</string>
+    <string name="catalog_comparing">ক্যাটালগ তুলনা করা হচ্ছে…</string>
+    <string name="catalog_added">%1$dটি নতুন বিষয়বস্তু</string>
+    <string name="catalog_unchanged">নতুন বিষয়বস্তু নেই</string>
+    <string name="catalog_refreshed">ক্যাটালগ আপডেট হয়েছে</string>
 </resources>
