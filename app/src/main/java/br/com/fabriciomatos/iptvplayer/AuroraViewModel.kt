@@ -208,18 +208,18 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 epgOverride=withContext(Dispatchers.IO) {preferences.epgUrl(playlistUrl)}
                 progressText = if (playlistUrl.isBlank()) null else preferences.text(R.string.loading)
                 val source = playlistUrl
-                withContext(Dispatchers.IO) { repository.restore(source, ::showProgress) }
+                withContext(Dispatchers.IO) { repository.openCatalog(source, ::showProgress) }
                 if (playlistUrl != source) return@launch
                 favorites = withContext(Dispatchers.IO) { repository.favorites() }
                 seriesFavorites = withContext(Dispatchers.IO) { repository.seriesFavorites(source) }
-                guide = withContext(Dispatchers.IO) { repository.savedGuide(source) }
-                reloadOverview()
+                reloadOverview(loadGuide = false)
                 recent = withContext(Dispatchers.IO) {
                     repository.channel(source, saved.third)?.takeUnless { it.adult } ?: repository.channels(BrowseQuery(source, MediaKind.MOVIES),limit=1).firstOrNull()
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { message = preferences.text(R.string.load_failed) }
             finally { initialized = true; progressText = null }
+            finishOpening(playlistUrl)
             if (foreground && playlistUrl.isNotBlank()) refreshDaily()
         }
     }
@@ -237,7 +237,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         } else stage
         progressText=completed + if(progress.percent!=null)" · ${progress.percent}%" else if(progress.bytes>0)" · ${progress.bytes/(1024*1024)} MB" else ""
     } }
-    private suspend fun reloadOverview() {
+    private suspend fun reloadOverview(loadGuide: Boolean = true) {
         val source = playlistUrl
         val data = withContext(Dispatchers.IO) {
             Triple(repository.overview(source), repository.state(source), openedSeriesId?.let { repository.seriesDetail(source,it) })
@@ -252,7 +252,29 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             repository.channels(BrowseQuery(source,if(catalog.movies>0)MediaKind.MOVIES else MediaKind.LIVE),limit=1).firstOrNull()
         }
         updateFilter()
+        if(loadGuide)refreshGuide()
+    }
+    private fun finishOpening(source: String) {
         refreshGuide()
+        val initialFavorites=favorites
+        val initialSeriesFavorites=seriesFavorites
+        viewModelScope.launch {
+            try {
+                val saved=withContext(Dispatchers.IO) {
+                    repository.prepareBookmarks()
+                    repository.favorites() to repository.seriesFavorites(source)
+                }
+                if(playlistUrl==source) {
+                    if(pendingFavorites==null && favorites==initialFavorites)favorites=saved.first
+                    if(pendingSeriesFavorites==null && seriesFavorites==initialSeriesFavorites)seriesFavorites=saved.second
+                    if(favoritesOnly && (favorites!=initialFavorites || seriesFavorites!=initialSeriesFavorites)) {
+                        repository.invalidatePages()
+                        updateFilter()
+                    }
+                }
+            } catch(e: CancellationException) {throw e}
+            catch(_: Exception) { /* Retain saved bookmarks; a later opening can retry. */ }
+        }
     }
     fun savePlaylist(url: String, name: String) {
         val clean = url.trim()
@@ -283,14 +305,15 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 settingsOpen=false;message=null
                 if(changed) {
                     page=Page.HOME;loading=true
-                    guide=withContext(Dispatchers.IO) {repository.savedGuide(clean)}
-                    withContext(Dispatchers.IO) {repository.restore(clean,::showProgress)}
+                    guide=Guide()
+                    withContext(Dispatchers.IO) {repository.openCatalog(clean,::showProgress)}
                     recent=withContext(Dispatchers.IO) {repository.channel(clean,repository.lastUrl(clean))?.takeUnless {it.adult}}
-                    reloadOverview()
+                    reloadOverview(loadGuide = false)
                 }
             } catch(e: CancellationException) {throw e}
             catch(_: Exception) {message=preferences.text(R.string.load_failed)}
             finally {switchingPlaylist=false;loading=false;progressText=null;progressPercent=null}
+            if(playlistUrl==clean)finishOpening(clean)
             // A saved catalog appears immediately; only the daily background check may download it again.
             if(playlistUrl==clean && !PlaylistRepository.isLocalSource(clean))refreshDaily()
         }}
@@ -325,7 +348,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun switchPlaylist(playlist: SavedPlaylist) = savePlaylist(playlist.url,playlist.name)
-    private fun refreshDaily() = refresh(silent = true,daily = true)
+    private fun refreshDaily() {
+        if(!PlaylistRepository.isLocalSource(playlistUrl))refresh(silent = true,daily = true)
+    }
     fun refresh(force: Boolean = false, silent: Boolean = false, daily: Boolean = false) {
         if (playlistUrl.isBlank()) { settingsOpen = true; return }
         if (PlaylistRepository.isLocalSource(playlistUrl)) {
@@ -352,13 +377,14 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     return@launch
                 }
                 updating=true;progressPercent=if(pending)50 else 0;progressText=preferences.text(R.string.loading)+" · ${progressPercent}%"
-                if (!quiet) { loading = true; message = null }
+                if (catalog.total==0) loading = true
+                if (!quiet) message = null
                 val metadata = withContext(Dispatchers.IO) {
                     if(pending) repository.metadata(source) else repository.fetchMetadata(source)
                 }
                 val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress,compareBody=!force) }
                 val result=if (downloaded) {
-                    withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress) }
+                    withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress,reusePrefix=!force) }
                 } else {
                     withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
                     ImportResult(0,catalog.total)
@@ -595,22 +621,31 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if(guideJob?.isActive==true)return
         val source = epgOverride.ifBlank { epgUrl.ifBlank { ProviderApi.epgEndpoint(playlistUrl).orEmpty() } }
         val playlist=playlistUrl
-        if(source.isBlank()) { guideLoading=false;guideError=true;return }
         guideJob = viewModelScope.launch {
             guideLoading=true
             try {
+                val saved=withContext(Dispatchers.IO) {repository.savedGuide(playlist)}
+                if(playlistUrl!=playlist)return@launch
+                guide=saved
+                if(source.isBlank() && saved.names.isEmpty() && saved.programmes.isEmpty() && saved.matches.isEmpty()) {
+                    football=emptyList();sports=emptyList();guideError=true
+                    return@launch
+                }
                 val channels=withContext(Dispatchers.IO) { repository.liveChannels(playlist) }
-                football=footballMatches(guide,channels)
-                sports=sportsEvents(guide,channels)
+                val cachedEvents=withContext(Dispatchers.Default) {footballMatches(saved,channels) to sportsEvents(saved,channels)}
+                if(playlistUrl!=playlist)return@launch
+                football=cachedEvents.first;sports=cachedEvents.second
+                if(source.isBlank()) {guideError=false;return@launch}
                 val checked=withContext(Dispatchers.IO) { repository.guideChecked(playlist) }
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
                     val fresh=withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
                     if(fresh.names.isNotEmpty() || fresh.programmes.isNotEmpty()) {
                         val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh);repository.savedGuide(playlist) }
+                        val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
                         if(playlistUrl==playlist) {
                             guide=merged
-                            football=footballMatches(merged,channels)
-                            sports=sportsEvents(merged,channels)
+                            football=events.first
+                            sports=events.second
                             guideError=false
                         }
                     } else guideError=true

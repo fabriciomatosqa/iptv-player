@@ -97,10 +97,24 @@ class PlaylistRepository(context: Context) {
     /** Commit the series identities before removing old episode favorites; retries are idempotent. */
     private fun migrateEpisodeFavorites() {
         val db = helper.writableDatabase
-        db.execSQL("INSERT OR IGNORE INTO series_favorites(source_key,series_key) SELECT c.source_key,c.series_key FROM channels c JOIN favorites f ON f.url=c.url WHERE c.kind=? AND c.series_key<>''",arrayOf(MediaKind.SERIES.ordinal))
-        val episodes = db.rawQuery("SELECT DISTINCT f.url FROM favorites f JOIN channels c ON c.url=f.url WHERE c.kind=? AND c.series_key<>''",arrayOf(MediaKind.SERIES.ordinal.toString())).use {
-            buildSet { while(it.moveToNext())add(it.getString(0)) }
+        val urls=db.rawQuery("SELECT url FROM favorites",null).use { rows ->
+            buildList {while(rows.moveToNext())add(rows.getString(0))}
         }
+        val episodes=mutableSetOf<String>()
+        db.beginTransactionNonExclusive()
+        try {
+            urls.forEach {url ->
+                // Bound work to bookmarks and playlists, using the (source_key,url)
+                // primary key instead of joining every catalog row by URL alone.
+                db.rawQuery("SELECT source_key,series_key FROM channels WHERE source_key IN(SELECT source_key FROM playlists) AND url=? AND kind=2 AND series_key<>''",arrayOf(url)).use {rows ->
+                    while(rows.moveToNext()) {
+                        db.execSQL("INSERT OR IGNORE INTO series_favorites(source_key,series_key) VALUES(?,?)",arrayOf(rows.getString(0),rows.getString(1)))
+                        episodes.add(url)
+                    }
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {db.endTransaction()}
         if(episodes.isNotEmpty())saveFavorites(favorites()-episodes)
     }
     fun playbackProgress(source: String, url: String): PlaybackProgress? = helper.readableDatabase.rawQuery(
@@ -161,6 +175,24 @@ class PlaylistRepository(context: Context) {
         val db = helper.writableDatabase; val key = digest(source)
         ensureSource(db, key)
         db.update("playlists", ContentValues().apply { put("checked", now) }, "source_key=?", arrayOf(key))
+    }
+
+    /** SQLiteOpenHelper performs required schema upgrades before this readiness read.
+     * indexed is committed atomically with the directory and persisted counts. */
+    internal fun hasUsableCatalog(source: String): Boolean {
+        if(source.isBlank())return false
+        return helper.readableDatabase.rawQuery("SELECT indexed,total_count FROM playlists WHERE source_key=?",arrayOf(digest(source))).use {
+            it.moveToFirst() && it.getInt(0)!=0 && it.getInt(1)>0
+        }
+    }
+    /** A ready catalog opens without scanning channels, network access or bookmark writes. */
+    fun openCatalog(source: String, progress: (CatalogProgress) -> Unit = {}) {
+        if(!hasUsableCatalog(source))restore(source,progress)
+    }
+    /** Optional bookmark maintenance runs after the cached catalog is visible. */
+    @Synchronized fun prepareBookmarks() {
+        if(!favoritesSynced)syncFavorites()
+        migrateEpisodeFavorites()
     }
 
     /** Upgrade/migrate in bounded batches; never materialize 300,000 Channel objects. */
@@ -431,7 +463,7 @@ class PlaylistRepository(context: Context) {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
-            setRequestProperty("User-Agent","AuroraIPTV/1.7 Android"); setRequestProperty("Accept-Encoding","identity")
+            setRequestProperty("User-Agent","AuroraIPTV/1.7 Android"); setRequestProperty("Accept-Encoding","gzip")
             if (conditional) {
                 validators.etag.takeIf(String::isNotBlank)?.let { setRequestProperty("If-None-Match",it) }
                 validators.modified.takeIf(String::isNotBlank)?.let { setRequestProperty("If-Modified-Since",it) }
@@ -443,7 +475,7 @@ class PlaylistRepository(context: Context) {
             if (connection.responseCode == 304) return false
             if (connection.responseCode !in 200..299) throw IOException("O servidor respondeu HTTP " + connection.responseCode + ".")
             var bytes = 0L; var shown = -1L
-            val raw = connection.inputStream
+            val raw = CountingInputStream(connection.inputStream)
             val gzip = connection.contentEncoding.equals("gzip",true)
             val input = if (gzip) GZIPInputStream(raw) else raw
             val total = if(gzip)0L else connection.contentLengthLong
@@ -459,7 +491,9 @@ class PlaylistRepository(context: Context) {
                     if(step!=shown){ shown=step; progress(downloadProgress(bytes,total)) }
                 }
             } }
-            if (!gzip && connection.contentLengthLong > 0L && bytes != connection.contentLengthLong) throw IOException("O download da lista ficou incompleto.")
+            // Content-Length describes encoded bytes. Validate gzip downloads too,
+            // including a complete first gzip member followed by a missing member.
+            if (connection.contentLengthLong > 0L && raw.bytes != connection.contentLengthLong) throw IOException("O download da lista ficou incompleto.")
             if (bytes == 0L) throw IOException("A lista veio vazia.")
             if(compareBody && confirmUnchangedBody(source,bodyDigest.finishCatalogHash(),connection.getHeaderField("ETag").orEmpty(),connection.getHeaderField("Last-Modified").orEmpty())) {
                 ready.delete();File(ready.parentFile,ready.name+".info").delete()
@@ -488,29 +522,47 @@ class PlaylistRepository(context: Context) {
             db.setTransactionSuccessful();return true
         } finally {db.endTransaction()}
     }
-    fun importPending(source: String, metadata: ProviderMetadata = metadata(source), progress: (CatalogProgress) -> Unit = {}): ImportResult {
+    @Synchronized fun importPending(source: String, metadata: ProviderMetadata = metadata(source), progress: (CatalogProgress) -> Unit = {}, reusePrefix: Boolean = true): ImportResult {
         val ready = readyFile(source)
         if (!ready.isFile) return ImportResult(0,overview(source).total)
         val info = runCatching { JSONObject(File(ready.parentFile,ready.name + ".info").readText()) }.getOrNull()
         val total=ready.length()
         val resolved=info?.optString("source")?.ifBlank {source} ?: source
-        val bodyDigest=catalogBodyDigest(resolved)
-        val result = ready.inputStream().use { input ->
+        val categoryStamp=catalogCategoryStamp(metadata.categories)
+        val inputInfo=CatalogInput(resolved,categoryStamp,total,catalogEndsAtLineBoundary(ready))
+        val prefix=if(reusePrefix)CatalogPrefix.read(cachedArtwork("catalog-prefix:"+digest(source)))?.takeIf {
+            it.bytes<=total && it.resolved==resolved && it.categories==categoryStamp &&
+                hasUsableCatalog(source) && it.hash==cachedArtwork("catalog-body:"+digest(source)) &&
+                (it.bytes==total || (it.boundary && catalogTailStartsEntry(ready,it.bytes)))
+        } else null
+        fun attempt(previous: CatalogPrefix?): ImportResult = ready.inputStream().use { input ->
+            val bodyDigest=catalogBodyDigest(resolved)
             val counting=CountingInputStream(java.security.DigestInputStream(input,bodyDigest))
-            counting.bufferedReader().use { reader -> importReader(source,reader,metadata,info?.optString("etag").orEmpty(),
+            if(previous!=null) {
+                val prefixDigest=catalogBodyDigest(resolved)
+                if(!digestCatalogPrefix(counting,previous.bytes,prefixDigest) || prefixDigest.finishCatalogHash()!=previous.hash)
+                    throw CatalogPrefixChanged()
+            }
+            counting.bufferedReader().use { reader -> importInput(source,reader,metadata,info?.optString("etag").orEmpty(),
                 info?.optString("modified").orEmpty(),resolved,progress,
-                {counting.bytes},total,{bodyDigest.finishCatalogHash()}) }
+                {counting.bytes},total,{bodyDigest.finishCatalogHash()},inputInfo,previous) }
         }
+        val result=try {attempt(prefix)} catch(_: CatalogPrefixChanged) {attempt(null)}
         ready.delete(); File(ready.parentFile,ready.name + ".info").delete()
         invalidatePages(); return result
     }
     @Synchronized fun importReader(source: String, reader: java.io.Reader, metadata: ProviderMetadata = ProviderMetadata(),
         etag: String = "", modified: String = "", resolvedSource: String = source, progress: (CatalogProgress) -> Unit = {},
         bytesRead: () -> Long = {0L},totalBytes: Long = 0L, bodyHash: (() -> String)? = null): ImportResult =
-        importRows(source,etag,modified,true,bodyHash=bodyHash,progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
+        importInput(source,reader,metadata,etag,modified,resolvedSource,progress,bytesRead,totalBytes,bodyHash)
+
+    private fun importInput(source: String,reader: java.io.Reader,metadata: ProviderMetadata,etag: String,modified: String,
+        resolvedSource: String,progress: (CatalogProgress)->Unit,bytesRead: ()->Long,totalBytes: Long,bodyHash: (() -> String)?,
+        inputInfo: CatalogInput? = null,prefix: CatalogPrefix? = null): ImportResult =
+        importRows(source,etag,modified,true,bodyHash=bodyHash,inputInfo=inputInfo,prefix=prefix,progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
             finalizing={progress(CatalogProgress(CatalogStage.FINALIZING,99))}) { accept ->
-            progress(importProgress(0,totalBytes,0))
-            val stats=M3uParser.scan(reader,resolvedSource,metadata.categories) { accept(it) }
+            progress(importProgress(bytesRead(),totalBytes,prefix?.entries ?: 0))
+            val stats=M3uParser.scan(reader,resolvedSource,metadata.categories,initialEntries=prefix?.entries ?: 0) { accept(it) }
             stats.epgUrl
         }.also { progress(CatalogProgress(CatalogStage.COMPLETE,100,entries=it.total,added=it.added,changed=it.changed)) }
 
@@ -523,16 +575,23 @@ class PlaylistRepository(context: Context) {
     }
 
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
-        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, bodyHash: (() -> String)? = null, scan: ((Channel) -> Unit) -> String): ImportResult {
-        val db=helper.writableDatabase; val key=digest(source); var added=0; var changed=0; var parsed=0
+        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, bodyHash: (() -> String)? = null,
+        inputInfo: CatalogInput? = null,prefix: CatalogPrefix? = null,scan: ((Channel) -> Unit) -> String): ImportResult {
+        val db=helper.writableDatabase; val key=digest(source); var added=0; var changed=0; var parsed=prefix?.entries ?: 0
         lateinit var result: ImportResult
         db.beginTransactionNonExclusive()
         try {
             ensureSource(db,key)
+            if(prefix!=null) {
+                val current=db.rawQuery("SELECT json FROM artwork_cache WHERE cache_key=? AND expires>?",
+                    arrayOf("catalog-body:"+key,now.toString())).use {if(it.moveToFirst())it.getString(0) else null}
+                if(current!=prefix.hash || scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))!=prefix.total ||
+                    scalar(db,"SELECT indexed FROM playlists WHERE source_key=?",arrayOf(key))==0)throw CatalogPrefixChanged()
+            }
             pinSavedCatalogUrls(db,prefs,key)
             val firstAdded=if(scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))>0)now else 0L
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
-            var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
+            val position=prefix?.nextPosition ?: db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
             val delta=CatalogIndexDelta()
             val needsFullIndex=scalar(db,"SELECT indexed FROM playlists WHERE source_key=?",arrayOf(key))==0
             var epg=""
@@ -566,6 +625,11 @@ class PlaylistRepository(context: Context) {
             if(needsFullIndex || delta.requiresFullRebuild)rebuild(db,key)
             else delta.apply(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
+            if(hash!=null && inputInfo!=null) {
+                val receipt=CatalogPrefix(hash,inputInfo.resolved,inputInfo.categories,inputInfo.bytes,parsed,total,position+added,inputInfo.boundary)
+                db.execSQL("INSERT OR REPLACE INTO artwork_cache(cache_key,json,expires) VALUES(?,?,?)",
+                    arrayOf("catalog-prefix:"+key,receipt.json(),now+365L*86400000))
+            } else db.delete("artwork_cache","cache_key=?",arrayOf("catalog-prefix:"+key))
             db.setTransactionSuccessful();result=ImportResult(added,total,changed)
         } finally { db.endTransaction() }
         if(added>0 || changed>0 || !favoritesSynced)syncFavorites()
@@ -772,6 +836,12 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         if(oldVersion<8)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs)
         else if(oldVersion<9)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs,createSchema=false)
         if(oldVersion<10)upgradeFootballMetadata(db)
+        // v2 summaries may be ready while the newly added adult flag is still -1.
+        // Never let the ready-cache path skip this mandatory parental migration.
+        if(oldVersion<3)db.execSQL("UPDATE playlists SET indexed=0")
+        // Receipts describe parser/identity state, not just bytes; never carry them
+        // across schema migrations which may repair rows or their ordering.
+        db.delete("artwork_cache","cache_key LIKE ?",arrayOf("catalog-prefix:%"))
     }
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
