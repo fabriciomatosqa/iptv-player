@@ -61,6 +61,29 @@ class CatalogStartupTest {
         } finally {repo.close()}
     }
 
+    @Test fun deferredLegacyBookmarksMigrateAcrossPlaylistsAndRemainIdempotent() {
+        val other="https://example.test/second.m3u"
+        val episode=Channel("Saved Show S01E01","https://example.test/series/1","Séries")
+        val live=Channel("News HD","https://example.test/live/1","Ao Vivo")
+        val id=seriesIdentity(episode).id
+        PlaylistRepository(context).let {repo ->try {
+            repo.appendCache(source,Download(Playlist(listOf(episode,live)),"",""))
+            repo.appendCache(other,Download(Playlist(listOf(episode)),"",""))
+            repo.saveFavorites(setOf(episode.url,live.url))
+        } finally {repo.close()}}
+        PlaylistRepository(context).let {repo ->try {
+            repo.openCatalog(source)
+            assertTrue(repo.seriesFavorites(source).isEmpty())
+            repo.prepareBookmarks()
+            assertEquals(setOf(live.url),repo.favorites())
+            assertEquals(setOf(id),repo.seriesFavorites(source))
+            assertEquals(setOf(id),repo.seriesFavorites(other))
+            repo.prepareBookmarks()
+            assertEquals(setOf(id),repo.seriesFavorites(source))
+            assertEquals(setOf(live.url),repo.favorites())
+        } finally {repo.close()}}
+    }
+
     @Test fun cachedPagesAndBookmarksRemainReadableWhileImportIsWaitingForMoreInput() {
         val repo=PlaylistRepository(context)
         val first=Channel("Saved HD","https://example.test/live/1","Ao Vivo")

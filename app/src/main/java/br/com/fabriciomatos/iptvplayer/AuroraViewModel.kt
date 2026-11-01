@@ -267,6 +267,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 if(playlistUrl==source) {
                     if(pendingFavorites==null && favorites==initialFavorites)favorites=saved.first
                     if(pendingSeriesFavorites==null && seriesFavorites==initialSeriesFavorites)seriesFavorites=saved.second
+                    if(favoritesOnly && (favorites!=initialFavorites || seriesFavorites!=initialSeriesFavorites)) {
+                        repository.invalidatePages()
+                        updateFilter()
+                    }
                 }
             } catch(e: CancellationException) {throw e}
             catch(_: Exception) { /* Retain saved bookmarks; a later opening can retry. */ }
