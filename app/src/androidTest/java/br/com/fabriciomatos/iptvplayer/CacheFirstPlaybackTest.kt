@@ -1,0 +1,84 @@
+package br.com.fabriciomatos.iptvplayer
+
+import android.os.SystemClock
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.lifecycle.ViewModelProvider
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
+
+@RunWith(AndroidJUnit4::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+class CacheFirstPlaybackTest {
+    @get:Rule val compose=createEmptyComposeRule()
+
+    @Test fun cachedChannelPlaysWhileManualRefreshIsStillWaitingForHttp() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        resetCatalog(context)
+        val video=File(context.cacheDir,"cache-first.mp4")
+        InstrumentationRegistry.getInstrumentation().context.assets.open("smoke.mp4").use {input ->
+            video.outputStream().use {input.copyTo(it)}
+        }
+        val server=ServerSocket(0,8,InetAddress.getByName("127.0.0.1"))
+        val entered=CountDownLatch(1);val respond=CountDownLatch(1)
+        val worker=thread(isDaemon=true,name="cache-first-slow-http") {
+            while(!server.isClosed)try {server.accept().use {socket ->
+                socket.soTimeout=5000
+                val reader=socket.getInputStream().bufferedReader()
+                reader.readLine();while(!reader.readLine().isNullOrEmpty()) { }
+                entered.countDown()
+                if(respond.await(25,TimeUnit.SECONDS)) {
+                    socket.getOutputStream().write("HTTP/1.1 304 Not Modified\r\nETag: saved\r\nConnection: close\r\n\r\n".toByteArray())
+                    socket.getOutputStream().flush()
+                }
+            }} catch(_: Exception) { }
+        }
+        val source="http://127.0.0.1:${server.localPort}/fixture.m3u"
+        val channel=Channel("Canal salvo HD",video.toURI().toString(),"Ao Vivo",typeHint="live")
+        PlaylistRepository(context).let {repo ->try {
+            repo.saveSource(source,"Cache independente")
+            repo.appendCache(source,Download(Playlist(listOf(channel)),"saved",""))
+            repo.saveMetadata(source,ProviderMetadata())
+        } finally {repo.close()}}
+        val measurements=JSONObject()
+        val started=SystemClock.elapsedRealtimeNanos()
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use {scenario ->
+                lateinit var model: AuroraViewModel
+                scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
+                compose.waitUntil(15000) {model.initialized && model.catalog.total==1}
+                measurements.put("activity_ready_ms",(SystemClock.elapsedRealtimeNanos()-started)/1_000_000.0)
+                scenario.onActivity {model.browse(MediaKind.LIVE)}
+                compose.waitUntil(15000) {compose.onAllNodesWithText(channel.name).fetchSemanticsNodes().isNotEmpty()}
+                scenario.onActivity {model.refresh()}
+                assertTrue("Synthetic HTTP request did not start",entered.await(10,TimeUnit.SECONDS))
+                compose.waitUntil(5000) {model.updating}
+                assertFalse("Manual refresh hid the saved catalog",model.loading)
+                val playbackStarted=SystemClock.elapsedRealtimeNanos()
+                compose.onAllNodesWithText(channel.name).onFirst().performClick()
+                compose.waitUntil(12000) {model.current?.url==channel.url && model.isPlaying}
+                assertEquals("Playback must start before releasing the HTTP response",1L,respond.count)
+                measurements.put("playback_while_http_pending_ms",(SystemClock.elapsedRealtimeNanos()-playbackStarted)/1_000_000.0)
+                measurements.put("http_still_pending_when_playback_started",true)
+                respond.countDown()
+                compose.waitUntil(10000) {!model.updating}
+                assertEquals(1,model.catalog.total)
+            }
+        } finally {
+            respond.countDown();server.close();worker.join(1000)
+            File(context.filesDir,"cache-first-playback.json").writeText(measurements.toString(2))
+        }
+    }
+}

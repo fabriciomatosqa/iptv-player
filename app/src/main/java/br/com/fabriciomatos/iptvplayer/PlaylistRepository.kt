@@ -97,10 +97,24 @@ class PlaylistRepository(context: Context) {
     /** Commit the series identities before removing old episode favorites; retries are idempotent. */
     private fun migrateEpisodeFavorites() {
         val db = helper.writableDatabase
-        db.execSQL("INSERT OR IGNORE INTO series_favorites(source_key,series_key) SELECT c.source_key,c.series_key FROM channels c JOIN favorites f ON f.url=c.url WHERE c.kind=? AND c.series_key<>''",arrayOf(MediaKind.SERIES.ordinal))
-        val episodes = db.rawQuery("SELECT DISTINCT f.url FROM favorites f JOIN channels c ON c.url=f.url WHERE c.kind=? AND c.series_key<>''",arrayOf(MediaKind.SERIES.ordinal.toString())).use {
-            buildSet { while(it.moveToNext())add(it.getString(0)) }
+        val urls=db.rawQuery("SELECT url FROM favorites",null).use { rows ->
+            buildList {while(rows.moveToNext())add(rows.getString(0))}
         }
+        val episodes=mutableSetOf<String>()
+        db.beginTransactionNonExclusive()
+        try {
+            urls.forEach {url ->
+                // Bound work to bookmarks and playlists, using the (source_key,url)
+                // primary key instead of joining every catalog row by URL alone.
+                db.rawQuery("SELECT source_key,series_key FROM channels WHERE source_key IN(SELECT source_key FROM playlists) AND url=? AND kind=2 AND series_key<>''",arrayOf(url)).use {rows ->
+                    while(rows.moveToNext()) {
+                        db.execSQL("INSERT OR IGNORE INTO series_favorites(source_key,series_key) VALUES(?,?)",arrayOf(rows.getString(0),rows.getString(1)))
+                        episodes.add(url)
+                    }
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {db.endTransaction()}
         if(episodes.isNotEmpty())saveFavorites(favorites()-episodes)
     }
     fun playbackProgress(source: String, url: String): PlaybackProgress? = helper.readableDatabase.rawQuery(
@@ -161,6 +175,24 @@ class PlaylistRepository(context: Context) {
         val db = helper.writableDatabase; val key = digest(source)
         ensureSource(db, key)
         db.update("playlists", ContentValues().apply { put("checked", now) }, "source_key=?", arrayOf(key))
+    }
+
+    /** SQLiteOpenHelper performs required schema upgrades before this readiness read.
+     * indexed is committed atomically with the directory and persisted counts. */
+    internal fun hasUsableCatalog(source: String): Boolean {
+        if(source.isBlank())return false
+        return helper.readableDatabase.rawQuery("SELECT indexed,total_count FROM playlists WHERE source_key=?",arrayOf(digest(source))).use {
+            it.moveToFirst() && it.getInt(0)!=0 && it.getInt(1)>0
+        }
+    }
+    /** A ready catalog opens without scanning channels, network access or bookmark writes. */
+    fun openCatalog(source: String, progress: (CatalogProgress) -> Unit = {}) {
+        if(!hasUsableCatalog(source))restore(source,progress)
+    }
+    /** Optional bookmark maintenance runs after the cached catalog is visible. */
+    @Synchronized fun prepareBookmarks() {
+        if(!favoritesSynced)syncFavorites()
+        migrateEpisodeFavorites()
     }
 
     /** Upgrade/migrate in bounded batches; never materialize 300,000 Channel objects. */
@@ -772,6 +804,9 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
         if(oldVersion<8)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs)
         else if(oldVersion<9)compactAfterUpgrade=upgradeCatalogIdentity(db,prefs,createSchema=false)
         if(oldVersion<10)upgradeFootballMetadata(db)
+        // v2 summaries may be ready while the newly added adult flag is still -1.
+        // Never let the ready-cache path skip this mandatory parental migration.
+        if(oldVersion<3)db.execSQL("UPDATE playlists SET indexed=0")
     }
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
