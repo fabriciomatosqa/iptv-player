@@ -227,10 +227,15 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if(initialized && !updating && !loading)return@launch
         progressPercent=progress.percent
         val stage=preferences.text(when(progress.stage) {
-            CatalogStage.DOWNLOADING->R.string.downloading;CatalogStage.IMPORTING->R.string.importing
+            CatalogStage.DOWNLOADING->R.string.downloading;CatalogStage.IMPORTING->R.string.catalog_comparing
             CatalogStage.FINALIZING->R.string.finalizing;CatalogStage.COMPLETE->R.string.saved_text;else->R.string.loading
         })
-        progressText=stage + if(progress.percent!=null)" · ${progress.percent}%" else if(progress.bytes>0)" · ${progress.bytes/(1024*1024)} MB" else ""
+        val completed=if(progress.stage==CatalogStage.COMPLETE)when {
+            progress.added>0->preferences.text(R.string.catalog_added,progress.added)
+            progress.changed>0->preferences.text(R.string.catalog_refreshed)
+            else->preferences.text(R.string.catalog_unchanged)
+        } else stage
+        progressText=completed + if(progress.percent!=null)" · ${progress.percent}%" else if(progress.bytes>0)" · ${progress.bytes/(1024*1024)} MB" else ""
     } }
     private suspend fun reloadOverview() {
         val source = playlistUrl
@@ -351,13 +356,16 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 val metadata = withContext(Dispatchers.IO) {
                     if(pending) repository.metadata(source) else repository.fetchMetadata(source)
                 }
-                val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress) }
-                if (downloaded) {
+                val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress,compareBody=!force) }
+                val result=if (downloaded) {
                     withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress) }
-                } else withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
+                } else {
+                    withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
+                    ImportResult(0,catalog.total)
+                }
                 coroutineContext.ensureActive()
                 if (playlistUrl == source) reloadOverview()
-                showProgress(CatalogProgress(CatalogStage.COMPLETE,100));delay(500)
+                showProgress(CatalogProgress(CatalogStage.COMPLETE,100,entries=result.total,added=result.added,changed=result.changed));delay(1500)
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
                 if (!quiet) message = if(catalog.total>0) preferences.text(R.string.load_failed)

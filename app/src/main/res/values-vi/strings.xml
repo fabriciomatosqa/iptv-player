@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nBạn đã dừng ở %2$s.</string>
     <string name="resume_playback_continue">Tiếp tục</string>
     <string name="resume_playback_start">Từ đầu</string>
+    <string name="catalog_comparing">Đang so sánh danh mục…</string>
+    <string name="catalog_added">%1$d nội dung mới</string>
+    <string name="catalog_unchanged">Không có nội dung mới</string>
+    <string name="catalog_refreshed">Đã cập nhật danh mục</string>
 </resources>

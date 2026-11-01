@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\n%2$s konumunda durdunuz.</string>
     <string name="resume_playback_continue">Devam et</string>
     <string name="resume_playback_start">Baştan</string>
+    <string name="catalog_comparing">Katalog karşılaştırılıyor…</string>
+    <string name="catalog_added">%1$d yeni içerik</string>
+    <string name="catalog_unchanged">Yeni içerik yok</string>
+    <string name="catalog_refreshed">Katalog güncellendi</string>
 </resources>

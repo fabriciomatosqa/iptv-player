@@ -1,9 +1,9 @@
-AURORA IPTV Android 1.12.26 — Temporadas, cenas e progresso dos episódios.
+AURORA IPTV Android 1.12.28 — Comparação e gravação incremental do catálogo.
 
-- Ao selecionar uma série, mantém a sinopse e o elenco. O botão Episódios substitui o elenco por temporadas com rolagem vertical e episódios com rolagem horizontal, em retrato e paisagem.
-- Cada cartão usa uma cena do próprio episódio, priorizando o provedor e complementando com TVmaze quando a série e o episódio são identificados com segurança. Imagens não disponíveis conservam um espaço reservado.
-- Flags amarelas indicam episódios não concluídos; flags verdes indicam concluídos. A barra mostra quanto foi assistido e reaproveita o histórico existente.
-- Ao abrir um vídeo incompleto já reproduzido, permite continuar de onde parou, iniciar novamente ou cancelar. Conteúdos novos, concluídos e canais ao vivo seguem diretamente.
-- Fotos do elenco já conhecidas são reutilizadas entre filmes e séries. Atores sem foto recebem uma consulta pública por nome exato, evitando homônimos e protegendo os dados da playlist.
-- Fotos, cenas e capas compartilham um cache de imagens limitado a 64 MiB; consultas e resultados negativos também usam limites e expiração.
-- Preserva temporadas e posição dos carrosséis ao voltar do vídeo e após rotação, além de playlists, favoritos, progresso salvo, controle parental, assinatura original e atualização online.
+- Uma lista byte a byte igual à última importação é reconhecida por SHA-256, mesmo quando o servidor responde HTTP 200; dispensa nova importação.
+- Compara a lista recebida em lotes pequenos com o catálogo salvo. Conteúdos iguais não são enviados novamente aos comandos de inserção ou atualização.
+- Se uma série tinha 15 episódios e recebeu o 16 e o 17, grava apenas os dois novos e atualiza o índice dessa série e sua categoria.
+- Não reconstrói todas as séries e categorias ao encontrar poucas novidades. Endereços e informações de reprodução realmente alterados continuam sendo atualizados sem duplicar conteúdos.
+- A tela informa Comparando catálogo durante a leitura e, ao concluir, mostra quantos conteúdos novos foram adicionados ou que não há novidades.
+- Mantém o catálogo anterior em respostas parciais ou falhas. Listas, favoritos, progresso, controle parental, assinatura e atualização online são preservados.
+- Quando o provedor não oferece uma resposta de lista inalterada, ainda é necessário ler a M3U completa para descobrir as diferenças; isso não significa regravar os conteúdos antigos.

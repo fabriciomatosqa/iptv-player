@@ -21,7 +21,7 @@ import java.util.zip.GZIPInputStream
 
 data class Download(val playlist: Playlist, val etag: String, val modified: String)
 data class CacheState(val etag: String = "", val modified: String = "", val epgUrl: String = "", val checked: Long = 0L, val updated: Long = 0L)
-data class ImportResult(val added: Int, val total: Int)
+data class ImportResult(val added: Int, val total: Int, val changed: Int = 0)
 data class SavedPlaylist(val url: String, val name: String)
 
 /** Only page-sized objects live in memory. The complete catalog stays in SQLite. */
@@ -404,6 +404,7 @@ class PlaylistRepository(context: Context) {
     }
     @Synchronized fun repairMetadata(source: String, metadata: ProviderMetadata) {
         val db = helper.writableDatabase; val key = digest(source)
+        var changed=false
         db.beginTransactionNonExclusive()
         try {
             metadata.categories.forEach { (group, kind) ->
@@ -415,8 +416,10 @@ class PlaylistRepository(context: Context) {
                 }
                 if (batch.isEmpty()) break
                 batch.forEach { indexRow(db, key, typed(it, metadata.categories)) }
+                changed=true
             }
-            rebuild(db,key); db.setTransactionSuccessful()
+            if(changed)rebuild(db,key)
+            db.setTransactionSuccessful()
         } finally { db.endTransaction() }
         invalidatePages()
     }
@@ -424,7 +427,7 @@ class PlaylistRepository(context: Context) {
     private fun readyFile(source: String): File = File(app.filesDir, "catalog_pending/" + digest(source) + ".ready")
     fun hasPending(source: String) = readyFile(source).isFile
     /** Download to disk, validate EOF, then atomically mark the file ready for resumable import. */
-    suspend fun downloadFile(source: String, conditional: Boolean, progress: (CatalogProgress) -> Unit = {}): Boolean {
+    suspend fun downloadFile(source: String, conditional: Boolean, progress: (CatalogProgress) -> Unit = {}, compareBody: Boolean = true): Boolean {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
@@ -444,19 +447,24 @@ class PlaylistRepository(context: Context) {
             val gzip = connection.contentEncoding.equals("gzip",true)
             val input = if (gzip) GZIPInputStream(raw) else raw
             val total = if(gzip)0L else connection.contentLengthLong
+            val bodyDigest=catalogBodyDigest(connection.url.toString())
             progress(downloadProgress(0,total))
             input.use { stream -> partial.outputStream().buffered(65536).use { output ->
                 val buffer=ByteArray(65536)
                 while (true) {
                     context.ensureActive()
                     val n=stream.read(buffer); if(n<0)break
-                    output.write(buffer,0,n); bytes+=n
+                    output.write(buffer,0,n);bodyDigest.update(buffer,0,n);bytes+=n
                     val step = if(total>0)bytes*100/total else bytes/(1024*1024)
                     if(step!=shown){ shown=step; progress(downloadProgress(bytes,total)) }
                 }
             } }
             if (!gzip && connection.contentLengthLong > 0L && bytes != connection.contentLengthLong) throw IOException("O download da lista ficou incompleto.")
             if (bytes == 0L) throw IOException("A lista veio vazia.")
+            if(compareBody && confirmUnchangedBody(source,bodyDigest.finishCatalogHash(),connection.getHeaderField("ETag").orEmpty(),connection.getHeaderField("Last-Modified").orEmpty())) {
+                ready.delete();File(ready.parentFile,ready.name+".info").delete()
+                return false
+            }
             java.io.FileOutputStream(partial,true).use { it.fd.sync() }
             if (!partial.renameTo(ready)) throw IOException("Não consegui guardar o download da lista.")
             val info = JSONObject().put("etag",connection.getHeaderField("ETag").orEmpty())
@@ -465,29 +473,46 @@ class PlaylistRepository(context: Context) {
             return true
         } finally { connection.disconnect(); partial.delete() }
     }
+    private fun catalogBodyDigest(resolved: String)=MessageDigest.getInstance("SHA-256").apply {
+        update(resolved.toByteArray(Charsets.UTF_8));update(0.toByte())
+    }
+    private fun MessageDigest.finishCatalogHash()=digest().joinToString("") {"%02x".format(it)}
+    @Synchronized private fun confirmUnchangedBody(source: String, hash: String, etag: String, modified: String): Boolean {
+        val key=digest(source);val db=helper.writableDatabase
+        db.beginTransactionNonExclusive()
+        try {
+            val previous=db.rawQuery("SELECT json FROM artwork_cache WHERE cache_key=? AND expires>?",
+                arrayOf("catalog-body:"+key,System.currentTimeMillis().toString())).use {if(it.moveToFirst())it.getString(0) else null}
+            if(previous!=hash || scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))==0)return false
+            db.update("playlists",ContentValues().apply {put("etag",etag);put("modified",modified)},"source_key=?",arrayOf(key))
+            db.setTransactionSuccessful();return true
+        } finally {db.endTransaction()}
+    }
     fun importPending(source: String, metadata: ProviderMetadata = metadata(source), progress: (CatalogProgress) -> Unit = {}): ImportResult {
         val ready = readyFile(source)
         if (!ready.isFile) return ImportResult(0,overview(source).total)
         val info = runCatching { JSONObject(File(ready.parentFile,ready.name + ".info").readText()) }.getOrNull()
         val total=ready.length()
+        val resolved=info?.optString("source")?.ifBlank {source} ?: source
+        val bodyDigest=catalogBodyDigest(resolved)
         val result = ready.inputStream().use { input ->
-            val counting=CountingInputStream(input)
+            val counting=CountingInputStream(java.security.DigestInputStream(input,bodyDigest))
             counting.bufferedReader().use { reader -> importReader(source,reader,metadata,info?.optString("etag").orEmpty(),
-                info?.optString("modified").orEmpty(),info?.optString("source")?.ifBlank { source } ?: source,progress,
-                {counting.bytes},total) }
+                info?.optString("modified").orEmpty(),resolved,progress,
+                {counting.bytes},total,{bodyDigest.finishCatalogHash()}) }
         }
         ready.delete(); File(ready.parentFile,ready.name + ".info").delete()
         invalidatePages(); return result
     }
     @Synchronized fun importReader(source: String, reader: java.io.Reader, metadata: ProviderMetadata = ProviderMetadata(),
         etag: String = "", modified: String = "", resolvedSource: String = source, progress: (CatalogProgress) -> Unit = {},
-        bytesRead: () -> Long = {0L},totalBytes: Long = 0L): ImportResult =
-        importRows(source,etag,modified,true,progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
+        bytesRead: () -> Long = {0L},totalBytes: Long = 0L, bodyHash: (() -> String)? = null): ImportResult =
+        importRows(source,etag,modified,true,bodyHash=bodyHash,progress = { progress(importProgress(bytesRead(),totalBytes,it)) },
             finalizing={progress(CatalogProgress(CatalogStage.FINALIZING,99))}) { accept ->
             progress(importProgress(0,totalBytes,0))
             val stats=M3uParser.scan(reader,resolvedSource,metadata.categories) { accept(it) }
             stats.epgUrl
-        }.also { progress(CatalogProgress(CatalogStage.COMPLETE,100,entries=it.total)) }
+        }.also { progress(CatalogProgress(CatalogStage.COMPLETE,100,entries=it.total,added=it.added,changed=it.changed)) }
 
     /** Small-fixture compatibility; production always imports via the streaming reader. */
     @Synchronized fun appendCache(source: String, download: Download, now: Long = System.currentTimeMillis(), markChecked: Boolean = true): Int =
@@ -498,7 +523,7 @@ class PlaylistRepository(context: Context) {
     }
 
     @Synchronized private fun importRows(source: String, etag: String, modified: String, markChecked: Boolean, now: Long = System.currentTimeMillis(),
-        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, scan: ((Channel) -> Unit) -> String): ImportResult {
+        progress: (Int) -> Unit = {}, finalizing: () -> Unit = {}, bodyHash: (() -> String)? = null, scan: ((Channel) -> Unit) -> String): ImportResult {
         val db=helper.writableDatabase; val key=digest(source); var added=0; var changed=0; var parsed=0
         lateinit var result: ImportResult
         db.beginTransactionNonExclusive()
@@ -508,45 +533,17 @@ class PlaylistRepository(context: Context) {
             val firstAdded=if(scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))>0)now else 0L
             val generation=scalar(db,"SELECT generation FROM playlists WHERE source_key=?",arrayOf(key))+1
             var position=db.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM channels WHERE source_key=?",arrayOf(key)).use { it.moveToFirst();it.getLong(0) }
-            val insertSql="INSERT OR IGNORE INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key) VALUES(" + List(25){"?"}.joinToString(",") + ")"
-            val updateSql="UPDATE channels SET kind=?,search_text=CASE WHEN search_text='' THEN ? ELSE search_text END,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=CASE WHEN ?<>'' THEN ? ELSE image_url END,user_agent=?,referrer=?,mime_type=? WHERE source_key=? AND content_key=? AND (kind<>? OR series_key<>? OR series_norm<>? OR series_title<>? OR series_image<>? OR season<>? OR episode<>? OR episode_title<>? OR type_hint<>? OR adult<>? OR url<>? OR user_agent<>? OR referrer<>? OR mime_type<>? OR (?<>'' AND image_url<>?))"
+            val delta=CatalogIndexDelta()
+            val needsFullIndex=scalar(db,"SELECT indexed FROM playlists WHERE source_key=?",arrayOf(key))==0
             var epg=""
-            db.compileStatement(insertSql).use { insert -> db.compileStatement(updateSql).use { update ->
+            CatalogBatchWriter(db,key,position,firstAdded,generation,delta::record).use { writer ->
                 epg=scan { c ->
-                    val contentKey=catalogContentKey(c.url)
-                    val identity=if(c.kind==MediaKind.SERIES)seriesIdentity(c) else null
-                    val title=identity?.title ?: c.seriesTitle
-                    val seriesKey=identity?.id.orEmpty(); val norm=if(identity==null)"" else normalized(identity.title)
-                    val season=identity?.episode?.season ?: c.seasonNumber
-                    val number=identity?.episode?.number ?: c.episodeNumber
-                    val episodeTitle=identity?.episode?.title.orEmpty()
-                    insert.clearBindings();insert.bindString(1,key);insert.bindString(2,c.url);insert.bindLong(3,position)
-                    listOf(c.name,c.group,c.imageUrl,c.tvgId,c.userAgent,c.referrer,c.mimeType,c.typeHint,c.seriesId,title,c.seriesImageUrl).forEachIndexed { i,v -> insert.bindString(i+4,v) }
-                    insert.bindLong(15,season.toLong());insert.bindLong(16,number.toLong());insert.bindLong(17,c.kind.ordinal.toLong())
-                    insert.bindString(18,c.searchText);insert.bindString(19,seriesKey);insert.bindString(20,norm);insert.bindString(21,episodeTitle);insert.bindLong(22,generation.toLong());insert.bindLong(23,if(c.adult)1L else 0L)
-                    insert.bindLong(24,firstAdded)
-                    insert.bindString(25,contentKey)
-                    if(insert.executeInsert()!=-1L){added++;position++}
-                    else {
-                        update.clearBindings();update.bindLong(1,c.kind.ordinal.toLong());update.bindString(2,c.searchText)
-                        update.bindString(3,seriesKey);update.bindString(4,norm);update.bindString(5,title);update.bindString(6,c.seriesImageUrl)
-                        update.bindLong(7,season.toLong());update.bindLong(8,number.toLong());update.bindString(9,episodeTitle)
-                        update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L)
-                        update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.imageUrl)
-                        update.bindString(16,c.userAgent);update.bindString(17,c.referrer);update.bindString(18,c.mimeType)
-                        update.bindString(19,key);update.bindString(20,contentKey)
-                        update.bindLong(21,c.kind.ordinal.toLong());update.bindString(22,seriesKey);update.bindString(23,norm)
-                        update.bindString(24,title);update.bindString(25,c.seriesImageUrl);update.bindLong(26,season.toLong())
-                        update.bindLong(27,number.toLong());update.bindString(28,episodeTitle);update.bindString(29,c.typeHint)
-                        update.bindLong(30,if(c.adult)1L else 0L);update.bindString(31,c.url)
-                        update.bindString(32,c.userAgent);update.bindString(33,c.referrer);update.bindString(34,c.mimeType)
-                        update.bindString(35,c.imageUrl);update.bindString(36,c.imageUrl)
-                        changed+=update.executeUpdateDelete()
-                    }
+                    writer.accept(c)
                     parsed++
                     if(parsed%5000==0)progress(parsed)
                 }
-            } }
+                writer.flush();added=writer.added;changed=writer.updated
+            }
             if(parsed==0 && (isLocalSource(source) || scalar(db,"SELECT COUNT(*) FROM channels WHERE source_key=?",arrayOf(key))==0)) throw IOException("Não encontrei conteúdos nesta M3U.")
             val values=ContentValues().apply {
                 put("etag",etag);put("modified",modified);put("generation",generation)
@@ -555,16 +552,23 @@ class PlaylistRepository(context: Context) {
                 if(added>0)put("updated",now)
             }
             finalizing()
+            // The fingerprint is committed with the rows, never with an unimported download.
+            // Recompute from the actual ready stream so interrupted .info writes cannot lie.
+            val hash=if(parsed>0)bodyHash?.invoke() else null
+            if(hash!=null)db.execSQL("INSERT OR REPLACE INTO artwork_cache(cache_key,json,expires) VALUES(?,?,?)",
+                arrayOf("catalog-body:"+key,hash,now+365L*86400000))
+            else db.delete("artwork_cache","cache_key=?",arrayOf("catalog-body:"+key))
             pinSavedCatalogUrls(db,prefs,key)
             repairCatalogProgress(db,key)
             db.update("playlists",values,"source_key=?",arrayOf(key))
             // Preserve the previously committed aggregates when the provider supplied
             // the same catalog. No group or series-directory rebuild is needed.
-            if(added>0 || changed>0) rebuild(db,key)
+            if(needsFullIndex || delta.requiresFullRebuild)rebuild(db,key)
+            else delta.apply(db,key)
             val total=scalar(db,"SELECT total_count FROM playlists WHERE source_key=?",arrayOf(key))
-            db.setTransactionSuccessful();result=ImportResult(added,total)
+            db.setTransactionSuccessful();result=ImportResult(added,total,changed)
         } finally { db.endTransaction() }
-        syncFavorites()
+        if(added>0 || changed>0 || !favoritesSynced)syncFavorites()
         return result
     }
     private fun typed(channel: Channel, kinds: Map<String, MediaKind>): Channel {

@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\nआप %2$s पर रुके थे।</string>
     <string name="resume_playback_continue">जारी रखें</string>
     <string name="resume_playback_start">शुरू से</string>
+    <string name="catalog_comparing">कैटलॉग की तुलना हो रही है…</string>
+    <string name="catalog_added">%1$d नई सामग्री</string>
+    <string name="catalog_unchanged">कोई नई सामग्री नहीं</string>
+    <string name="catalog_refreshed">कैटलॉग अपडेट हुआ</string>
 </resources>

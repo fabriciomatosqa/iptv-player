@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\n您上次播放到 %2$s。</string>
     <string name="resume_playback_continue">继续</string>
     <string name="resume_playback_start">从头开始</string>
+    <string name="catalog_comparing">正在比较目录…</string>
+    <string name="catalog_added">新增 %1$d 项内容</string>
+    <string name="catalog_unchanged">没有新内容</string>
+    <string name="catalog_refreshed">目录已更新</string>
 </resources>

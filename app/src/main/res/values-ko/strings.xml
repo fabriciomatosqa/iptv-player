@@ -213,4 +213,8 @@
     <string name="resume_playback_message">%1$s\n%2$s에서 멈췄습니다.</string>
     <string name="resume_playback_continue">계속 재생</string>
     <string name="resume_playback_start">처음부터</string>
+    <string name="catalog_comparing">카탈로그 비교 중…</string>
+    <string name="catalog_added">새 콘텐츠 %1$d개</string>
+    <string name="catalog_unchanged">새 콘텐츠 없음</string>
+    <string name="catalog_refreshed">카탈로그 업데이트됨</string>
 </resources>

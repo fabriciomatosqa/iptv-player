@@ -1,7 +1,7 @@
 package br.com.fabriciomatos.iptvplayer
 
 enum class CatalogStage { PREPARING, DOWNLOADING, IMPORTING, FINALIZING, COMPLETE }
-data class CatalogProgress(val stage: CatalogStage, val percent: Int? = null, val bytes: Long = 0, val entries: Int = 0)
+data class CatalogProgress(val stage: CatalogStage, val percent: Int? = null, val bytes: Long = 0, val entries: Int = 0, val added: Int = 0, val changed: Int = 0)
 
 /** Byte counts, rather than a timer, drive progress. 100% means the transaction committed. */
 fun downloadProgress(bytes: Long, total: Long): CatalogProgress = CatalogProgress(CatalogStage.DOWNLOADING,
