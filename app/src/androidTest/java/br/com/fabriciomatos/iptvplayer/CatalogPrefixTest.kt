@@ -64,6 +64,20 @@ class CatalogPrefixTest {
         } finally {repo.close()}
     }
 
+    @Test fun identicalPendingFileUsesVerifiedReceiptEvenWithoutTrailingNewline() {
+        val repo=PlaylistRepository(context)
+        try {
+            val body=("#EXTM3U\n"+rows(15)).trimEnd()
+            stage(body,"first");repo.importPending(source)
+            stage(body,"second")
+            val progress=mutableListOf<CatalogProgress>()
+            val result=repo.importPending(source,progress={progress.add(it)})
+            assertEquals(15,initialEntries(progress));assertEquals(0,result.added)
+            assertEquals(0,result.changed);assertEquals(15,result.total)
+            assertEquals("second",repo.state(source).etag)
+        } finally {repo.close()}
+    }
+
     @Test fun changedProviderCategoriesDisableReuseEvenForEqualBytes() {
         val repo=PlaylistRepository(context)
         fun body(count: Int)="#EXTM3U\n"+(1..count).joinToString("") {"#EXTINF:-1 group-title=\"Mix\",Entry $it\n${url(it)}\n"}

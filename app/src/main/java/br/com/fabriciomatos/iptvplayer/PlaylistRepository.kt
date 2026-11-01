@@ -531,9 +531,9 @@ class PlaylistRepository(context: Context) {
         val categoryStamp=catalogCategoryStamp(metadata.categories)
         val inputInfo=CatalogInput(resolved,categoryStamp,total,catalogEndsAtLineBoundary(ready))
         val prefix=if(reusePrefix)CatalogPrefix.read(cachedArtwork("catalog-prefix:"+digest(source)))?.takeIf {
-            it.boundary && it.bytes<total && it.resolved==resolved && it.categories==categoryStamp &&
+            it.bytes<=total && it.resolved==resolved && it.categories==categoryStamp &&
                 hasUsableCatalog(source) && it.hash==cachedArtwork("catalog-body:"+digest(source)) &&
-                catalogTailStartsEntry(ready,it.bytes)
+                (it.bytes==total || (it.boundary && catalogTailStartsEntry(ready,it.bytes)))
         } else null
         fun attempt(previous: CatalogPrefix?): ImportResult = ready.inputStream().use { input ->
             val bodyDigest=catalogBodyDigest(resolved)
