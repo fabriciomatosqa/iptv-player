@@ -22,10 +22,11 @@ finally:
     if evidence.returncode == 0:
         (output / 'catalog-benchmark.json').write_text(evidence.stdout, encoding='utf-8')
         print(evidence.stdout, flush=True)
-    smoke = subprocess.run(['adb', 'shell', 'run-as', package, 'cat', 'files/cache-first-playback.json'],
-                           capture_output=True, text=True, timeout=30)
-    if smoke.returncode == 0:
-        (output / 'cache-first-playback.json').write_text(smoke.stdout, encoding='utf-8')
+    for name in ('cache-first-playback.json', 'gzip-download.json'):
+        smoke = subprocess.run(['adb', 'shell', 'run-as', package, 'cat', 'files/' + name],
+                               capture_output=True, text=True, timeout=30)
+        if smoke.returncode == 0:
+            (output / name).write_text(smoke.stdout, encoding='utf-8')
     logs = subprocess.run(['adb', 'logcat', '-d', '-s', 'AuroraStartupBenchmark:I', '*:S'],
                           capture_output=True, text=True, timeout=30)
     (output / 'catalog-benchmark.log').write_text(logs.stdout, encoding='utf-8')

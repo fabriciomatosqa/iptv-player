@@ -463,7 +463,7 @@ class PlaylistRepository(context: Context) {
         val context = currentCoroutineContext(); val validators = state(source)
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout=15000; readTimeout=30000; instanceFollowRedirects=true
-            setRequestProperty("User-Agent","AuroraIPTV/1.7 Android"); setRequestProperty("Accept-Encoding","identity")
+            setRequestProperty("User-Agent","AuroraIPTV/1.7 Android"); setRequestProperty("Accept-Encoding","gzip")
             if (conditional) {
                 validators.etag.takeIf(String::isNotBlank)?.let { setRequestProperty("If-None-Match",it) }
                 validators.modified.takeIf(String::isNotBlank)?.let { setRequestProperty("If-Modified-Since",it) }
@@ -475,7 +475,7 @@ class PlaylistRepository(context: Context) {
             if (connection.responseCode == 304) return false
             if (connection.responseCode !in 200..299) throw IOException("O servidor respondeu HTTP " + connection.responseCode + ".")
             var bytes = 0L; var shown = -1L
-            val raw = connection.inputStream
+            val raw = CountingInputStream(connection.inputStream)
             val gzip = connection.contentEncoding.equals("gzip",true)
             val input = if (gzip) GZIPInputStream(raw) else raw
             val total = if(gzip)0L else connection.contentLengthLong
@@ -491,7 +491,9 @@ class PlaylistRepository(context: Context) {
                     if(step!=shown){ shown=step; progress(downloadProgress(bytes,total)) }
                 }
             } }
-            if (!gzip && connection.contentLengthLong > 0L && bytes != connection.contentLengthLong) throw IOException("O download da lista ficou incompleto.")
+            // Content-Length describes encoded bytes. Validate gzip downloads too,
+            // including a complete first gzip member followed by a missing member.
+            if (connection.contentLengthLong > 0L && raw.bytes != connection.contentLengthLong) throw IOException("O download da lista ficou incompleto.")
             if (bytes == 0L) throw IOException("A lista veio vazia.")
             if(compareBody && confirmUnchangedBody(source,bodyDigest.finishCatalogHash(),connection.getHeaderField("ETag").orEmpty(),connection.getHeaderField("Last-Modified").orEmpty())) {
                 ready.delete();File(ready.parentFile,ready.name+".info").delete()

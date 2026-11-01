@@ -38,6 +38,12 @@ de esquema obrigatórias; a migração antiga do controle parental invalida o
 marcador para não expor dados ainda sem classificação. Não há limpeza de banco,
 troca de identidade, relaxamento de synchronous=FULL ou mudança de assinatura.
 
+O download negocia gzip e mantém o hash do conteúdo descomprimido. A contagem de
+Content-Length agora usa bytes codificados para também detectar respostas gzip
+incompletas; EOF/CRC e a confirmação de arquivo pronto continuam obrigatórios.
+O teste HTTP compara as duas codificações da mesma lista, valida 304, hash e
+preservação do catálogo após truncamento do trailer ou do corpo declarado.
+
 A manutenção de favoritos ocorre depois da abertura e não substitui alterações
 do usuário que já estejam pendentes. O diretório de séries e a paginação já
 existentes continuam carregando episódios somente ao abrir a série/temporada.
@@ -87,8 +93,9 @@ Ainda é necessário registrar os resultados reais do CI e diferenças por hardw
 Não há benchmark controlado dos concorrentes nem celular/TV físico conectado.
 Arquivos M3U modificados ainda precisam ser transferidos e interpretados quando
 o servidor não oferece um delta; preservar duas gravações novas não elimina esse
-custo. APIs Xtream adicionais e compressão exigem validação própria e não foram
-adicionadas a este primeiro conjunto de mudanças.
+custo. APIs Xtream adicionais exigem validação própria e não foram adicionadas
+a este primeiro conjunto de mudanças. A redução de bytes do teste gzip não
+constitui garantia de latência em redes ou provedores diferentes.
 
 Esta branch não altera main, versionCode/versionName nem os contratos de
 atualização online. O APK do CI é um candidato para revisão com a identidade
