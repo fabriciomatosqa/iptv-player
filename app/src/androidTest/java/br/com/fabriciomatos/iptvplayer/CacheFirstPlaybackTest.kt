@@ -24,6 +24,24 @@ import kotlin.concurrent.thread
 class CacheFirstPlaybackTest {
     @get:Rule val compose=createEmptyComposeRule()
 
+    @Test fun savedGuideStillLoadsWithoutARemoteGuideUrl() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        resetCatalog(context)
+        val source="local-m3u://00000000-0000-0000-0000-000000000001"
+        val now=System.currentTimeMillis()
+        PlaylistRepository(context).let {repo ->try {
+            repo.saveSource(source,"Guia offline")
+            repo.appendCache(source,Download(Playlist(listOf(Channel("Guide HD","https://example.test/live/1","Ao Vivo",tvgId="guide.one"))),"",""))
+            repo.saveGuide(source,Guide(mapOf("guide.one" to listOf(Programme("Saved programme",now-30000,now+120000))),mapOf("guide hd" to "guide.one")))
+        } finally {repo.close()}}
+        ActivityScenario.launch(MainActivity::class.java).use {scenario ->
+            lateinit var model: AuroraViewModel
+            scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
+            compose.waitUntil(15000) {model.initialized && model.catalog.total==1}
+            compose.waitUntil(15000) {model.guide.programmes["guide.one"]?.any {it.title=="Saved programme"}==true}
+        }
+    }
+
     @Test fun cachedChannelPlaysWhileManualRefreshIsStillWaitingForHttp() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         resetCatalog(context)

@@ -621,25 +621,31 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         if(guideJob?.isActive==true)return
         val source = epgOverride.ifBlank { epgUrl.ifBlank { ProviderApi.epgEndpoint(playlistUrl).orEmpty() } }
         val playlist=playlistUrl
-        if(source.isBlank()) { guideLoading=false;guideError=true;return }
         guideJob = viewModelScope.launch {
             guideLoading=true
             try {
                 val saved=withContext(Dispatchers.IO) {repository.savedGuide(playlist)}
                 if(playlistUrl!=playlist)return@launch
                 guide=saved
+                if(source.isBlank() && saved.names.isEmpty() && saved.programmes.isEmpty() && saved.matches.isEmpty()) {
+                    football=emptyList();sports=emptyList();guideError=true
+                    return@launch
+                }
                 val channels=withContext(Dispatchers.IO) { repository.liveChannels(playlist) }
-                football=footballMatches(guide,channels)
-                sports=sportsEvents(guide,channels)
+                val cachedEvents=withContext(Dispatchers.Default) {footballMatches(saved,channels) to sportsEvents(saved,channels)}
+                if(playlistUrl!=playlist)return@launch
+                football=cachedEvents.first;sports=cachedEvents.second
+                if(source.isBlank()) {guideError=false;return@launch}
                 val checked=withContext(Dispatchers.IO) { repository.guideChecked(playlist) }
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
                     val fresh=withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
                     if(fresh.names.isNotEmpty() || fresh.programmes.isNotEmpty()) {
                         val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh);repository.savedGuide(playlist) }
+                        val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
                         if(playlistUrl==playlist) {
                             guide=merged
-                            football=footballMatches(merged,channels)
-                            sports=sportsEvents(merged,channels)
+                            football=events.first
+                            sports=events.second
                             guideError=false
                         }
                     } else guideError=true
