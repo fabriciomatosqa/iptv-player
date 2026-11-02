@@ -217,4 +217,5 @@
     <string name="catalog_added">%1$d neue Inhalte</string>
     <string name="catalog_unchanged">Keine neuen Inhalte</string>
     <string name="catalog_refreshed">Katalog aktualisiert</string>
+    <string name="sports_no_linked_channel">Kein Kanal der Playlist ist diesem Spiel zugeordnet.</string>
 </resources>
