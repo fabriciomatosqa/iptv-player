@@ -217,5 +217,5 @@
     <string name="catalog_added">%1$d novos conteúdos</string>
     <string name="catalog_unchanged">Nenhum conteúdo novo</string>
     <string name="catalog_refreshed">Catálogo atualizado</string>
-    <string name="sports_no_linked_channel">Partida informativa: nenhum canal desta lista foi associado à transmissão.</string>
+    <string name="sports_no_linked_channel">Nenhum canal da playlist está associado a esta partida.</string>
 </resources>
