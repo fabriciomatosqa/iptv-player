@@ -569,8 +569,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val source=playlistUrl
         footballScoresLoading=true
         try {
-            val matches=football
-            val feed=scores.load(matches,force)
+            val matches=football.filter {it.broadcastEnd>System.currentTimeMillis()-FOOTBALL_RETENTION_MS}
+            // Public schedule is a fallback only: keep real XMLTV broadcasters authoritative.
+            val feed=if(matches.isEmpty())scores.loadPublic(force) else scores.load(matches,force)
             // Scores describe the match, never the channel schedule (including legacy timing caches).
             if(source==playlistUrl) footballFeed=feed
         } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
