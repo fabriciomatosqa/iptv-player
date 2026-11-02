@@ -217,4 +217,5 @@
     <string name="catalog_added">新增 %1$d 项内容</string>
     <string name="catalog_unchanged">没有新内容</string>
     <string name="catalog_refreshed">目录已更新</string>
+    <string name="sports_no_linked_channel">播放列表中没有与这场比赛关联的频道。</string>
 </resources>
