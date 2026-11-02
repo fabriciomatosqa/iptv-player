@@ -619,7 +619,11 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
     private fun refreshGuide(force: Boolean = false) {
-        if(guideJob?.isActive==true)return
+        // A user-requested retry must not be discarded while an older guide fetch is running.
+        if(guideJob?.isActive==true) {
+            if(!force)return
+            guideJob?.cancel()
+        }
         val source = epgOverride.ifBlank { epgUrl.ifBlank { ProviderApi.epgEndpoint(playlistUrl).orEmpty() } }
         val playlist=playlistUrl
         guideJob = viewModelScope.launch {
