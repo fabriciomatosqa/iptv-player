@@ -217,4 +217,5 @@
     <string name="catalog_added">%1$d konten baru</string>
     <string name="catalog_unchanged">Tidak ada konten baru</string>
     <string name="catalog_refreshed">Katalog diperbarui</string>
+    <string name="sports_no_linked_channel">Tidak ada saluran playlist yang terhubung dengan pertandingan ini.</string>
 </resources>
