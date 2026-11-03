@@ -13,7 +13,9 @@ permissions:
 # All builds restore the same existing signing key; no replacement keys are generated.
 concurrency:
   group: aurora-iptv-apk-build-mediafix-${{ github.ref }}
-  cancel-in-progress: false
+  # Superseded PR builds should not block the latest validated commit.
+  # Never cancel a main release once it has started.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
