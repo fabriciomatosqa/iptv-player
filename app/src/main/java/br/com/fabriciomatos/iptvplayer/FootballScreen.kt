@@ -56,12 +56,8 @@ import java.util.Locale
             sport == SportKind.FOOTBALL || sport == SportKind.MOTORSPORT || model.sports.any { it.sport == sport }
         }
     }
-    val visibleFootball = remember(model.football,model.footballFeed,now) {
-        if (model.football.any {it.broadcastEnd>now-FOOTBALL_RETENTION_MS}) model.football
-        else publicFootballMatches(model.footballFeed,now)
-    }
-    val tabs = remember(visibleFootball,model.sports,model.selectedSport) {
-        if (soccer) footballTabs(visibleFootball)
+    val tabs = remember(model.football,model.sports,model.selectedSport) {
+        if (soccer) footballTabs(model.football)
         else sportsCategories(model.sports,model.selectedSport).let { categories ->
             if(model.selectedSport==SportKind.MOTORSPORT && categories.none { it.id=="f1" })
                 categories+SportsCategory("f1","Fórmula 1",10) else categories
@@ -81,8 +77,8 @@ import java.util.Locale
             if (soccer) model.footballTab=FOOTBALL_GAMES else model.sportsCategory=SPORTS_GAMES
         }
     }
-    val footballMatches = remember(visibleFootball,model.footballFeed,activeTab,model.footballSearch,displayTime,soccer) {
-        if(soccer) filterFootball(visibleFootball,activeTab,model.footballSearch,displayTime,model.footballFeed)
+    val footballMatches = remember(model.football,model.footballFeed,activeTab,model.footballSearch,displayTime,soccer) {
+        if(soccer) filterFootball(model.football,activeTab,model.footballSearch,displayTime,model.footballFeed)
         else emptyList()
     }
     val otherEvents = remember(model.sports,model.selectedSport,activeTab,model.footballSearch,displayTime) {
@@ -155,8 +151,8 @@ import java.util.Locale
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(tabs,key={it.key}) { tab ->
                     val selected=activeTab==tab.key
-                    val leagueLogo=remember(tab.key,tab.title,visibleFootball,model.sports,model.selectedSport) {
-                        if(soccer) footballLeagueTabLogo(tab,visibleFootball)
+                    val leagueLogo=remember(tab.key,tab.title,model.football,model.sports,model.selectedSport) {
+                        if(soccer) footballLeagueTabLogo(tab,model.football)
                         else if(tab.key==SPORTS_LIVE || tab.key==SPORTS_GAMES) ""
                         else sportsLeagueLogo(tab.title,model.sports
                             .filter {it.sport==model.selectedSport && it.competitionId==tab.key}
@@ -347,7 +343,7 @@ import java.util.Locale
     val colors = LocalAuroraColors.current
     var artwork by remember(match.id) { mutableStateOf(initialFootballArtwork(match.details)) }
     LaunchedEffect(match.id) { artwork = model.footballArtwork(match.details) }
-    val matched = remember(match, model.footballFeed) { footballMatchedScore(match, model.footballFeed) }
+    val matched = remember(match, model.footballFeed) { matchFootballScore(match, model.footballFeed) }
     val event = matched?.event
     val country = nationalMatch(match.details) != null
     val homeBadge = if (country) artwork.home else matched?.home?.badge?.takeIf { it.isNotBlank() && !it.contains("/countries/") } ?: artwork.home
@@ -364,9 +360,7 @@ import java.util.Locale
         return
     }
     val accent = if (mode == BroadcastMode.REPLAY) colors.violet else colors.mint
-    Card(onClick = { watchChannels.firstOrNull()?.let(model::playFootball) },
-        enabled = watchChannels.isNotEmpty(),
-        modifier = Modifier.fillMaxWidth().landscapeFocusRing().testTag("football_match"), shape = RoundedCornerShape(26.dp),
+    Card(onClick = { model.playFootball(watchChannels.first()) }, modifier = Modifier.fillMaxWidth().landscapeFocusRing().testTag("football_match"), shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = colors.panel), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, Brush.linearGradient(listOf(accent.copy(alpha = .38f), colors.cyan.copy(alpha = .12f), colors.violet.copy(alpha = .2f))))) {
         Box {
@@ -468,11 +462,6 @@ import java.util.Locale
 @Composable internal fun FootballChannelActions(model: AuroraViewModel, channels: List<Channel>, compact: Boolean = false) {
     val colors = LocalAuroraColors.current
     val featured = remember(channels) { footballFeaturedChannels(channels) }
-    if(channels.isEmpty()) {
-        Text(tr(R.string.sports_no_linked_channel),color=colors.muted,fontSize=11.sp,
-            modifier=Modifier.fillMaxWidth().testTag("football_no_channel"))
-        return
-    }
     var menuOpen by remember(channels) { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -699,11 +688,7 @@ import java.util.Locale
         Icon(if (live) Icons.Default.Sensors else Icons.Default.CalendarMonth, null, Modifier.size(18.dp).padding(top = 2.dp), tint = colors.mint)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(tr(R.string.broadcast) + ":", color = colors.muted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            if(match.channels.isEmpty()) {
-                Text(footballDay(match.programme.start,locale)+" · "+footballTime(match.programme.start,locale),
-                    color=colors.text,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
-                Text(tr(R.string.sports_no_linked_channel),color=colors.muted,fontSize=10.sp)
-            } else if (live) {
+            if (live) {
                 val transition = rememberInfiniteTransition(label = "live transmission")
                 val opacity by transition.animateFloat(1f, 0f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "live dot")
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {

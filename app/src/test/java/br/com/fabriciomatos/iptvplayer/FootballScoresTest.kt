@@ -12,29 +12,6 @@ class FootballScoresTest {
         state: MatchState = MatchState.FINISHED, league: String = "afc.champions") =
         FootballScore("1",league,"AFC Champions League Elite",kickoff,ScoreTeam("1",listOf(home)),ScoreTeam("2",listOf(away)),3,1,state,"83:21",now)
 
-    @Test fun publicScoreFixturesAppearWithoutEpgButNeverInventChannelsOrLiveBroadcasts() {
-        val kickoff=now+3600000L
-        val result=FootballScore("fotmob:813","bra.1","Brasileirão",kickoff,
-            ScoreTeam("1",listOf("Fluminense")),ScoreTeam("2",listOf("Botafogo")),
-            null,null,MatchState.SCHEDULED,checked=now)
-        val feed=FootballFeed(listOf(result),now)
-        val public=publicFootballMatches(feed,now)
-        assertEquals(1,public.size)
-        assertEquals("public:bra.1:fotmob:813",public.single().id)
-        assertTrue(public.single().channels.isEmpty())
-        assertEquals(FOOTBALL_BRAZIL,footballTabKey(public.single().details))
-        assertEquals(1,filterFootball(public,FOOTBALL_GAMES,"",now,feed).size)
-        assertEquals(0,filterFootball(public,FOOTBALL_LIVE,"",now,feed).size)
-        assertEquals(result,footballMatchedScore(public.single(),feed)?.event)
-        val live=result.copy(kickoff=now-200000L,state=MatchState.LIVE,homeGoals=1,awayGoals=0)
-        val liveFeed=FootballFeed(listOf(live),now)
-        val running=publicFootballMatches(liveFeed,now)
-        assertTrue(running.single().channels.isEmpty())
-        assertEquals(1,filterFootball(running,FOOTBALL_LIVE,"",now,liveFeed).size)
-        assertFalse(publicFootballLeague("fotmob:99999"))
-        assertTrue(publicFootballMatches(FootballFeed(listOf(result.copy(league="fotmob:99999"))),now).isEmpty())
-        assertTrue(publicFootballMatches(feed,now+4*86400000L).isEmpty())
-    }
     @Test fun finishedGamePreservesTheFutureTvSlotWithoutProvingAReplay() {
         val game=game("AFC Champions League Elite","Al Nassr","Neftchi Fergana",now+2*3600000L)
         val result=matchFootballScore(game,FootballFeed(listOf(score())))!!
