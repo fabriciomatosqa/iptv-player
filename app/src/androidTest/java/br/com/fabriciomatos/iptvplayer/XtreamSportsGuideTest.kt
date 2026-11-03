@@ -45,6 +45,21 @@ class XtreamSportsGuideTest {
         assertEquals(FOOTBALL_GAMES,footballTabs(games).first {it.key==FOOTBALL_GAMES}.key)
     }
 
+    @Test fun partialGuideRefreshKeepsCurrentMatchesButRejectsContradictedOrExpiredSlots() {
+        val now=System.currentTimeMillis()
+        val programme=Programme("Vila Nova x Novorizontino - Campeonato Brasileiro Série B",
+            now-3600000L,now+3600000L)
+        val expired=Programme("Time Antigo x Outro - Campeonato Brasileiro",now-7200000L,now-3600000L)
+        val previous=Guide(matches=listOf(GuideMatch("espn4",programme),GuideMatch("old",expired)))
+        val empty=mergeProviderGuide(previous,Guide(),Guide(),now)
+        assertEquals(1,empty.matches.size)
+        assertEquals(programme,empty.matches.single().programme)
+        val regular=Programme("Filme em vez de jogo",now-3600000L,now+3600000L)
+        val changed=mergeProviderGuide(previous,Guide(programmes=mapOf("espn4" to listOf(regular))),
+            Guide(),now)
+        assertTrue(changed.matches.isEmpty())
+    }
+
     @Test fun missingProviderGuideNeverFabricatesMatchesOrChannelLinks() = runBlocking {
         val now=System.currentTimeMillis()
         val linked=channel("ESPN 4 FHD","12345","espn4")
