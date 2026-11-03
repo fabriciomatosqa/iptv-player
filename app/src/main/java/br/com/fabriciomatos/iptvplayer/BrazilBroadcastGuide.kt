@@ -26,7 +26,7 @@ internal object BrazilBroadcastGuide {
         var label=normalized(name)
         label=label.replace(Regex("^(br|bra|brasil|brazil) "), "")
         label=label.replace(Regex("^(tv|canais|canal) "), "")
-        label=label.replace(Regex(" (full hd|fhd|uhd|4k|hd|sd|h265|h264|hevc|1080p|720p|480p)$"), "")
+        label=label.replace(Regex("(?: (?:full hd|fhd|uhd|4k|hd|sd|h265|h264|hevc|1080p|720p|480p|alt))+$"), "")
         val key=label.replace(" ","")
         return key.takeIf {it in networks}
     }
