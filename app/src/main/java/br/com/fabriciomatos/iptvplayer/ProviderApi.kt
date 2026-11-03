@@ -63,6 +63,13 @@ object ProviderApi {
         return ProviderMetadata(categories, posters)
     }
 
+    internal suspend fun liveGuideStreams(source: String): List<ProviderGuideStream> = buildList {
+        read(source,"get_live_streams",setOf("name","stream_id","epg_channel_id")) { row ->
+            val id=row["stream_id"].orEmpty()
+            if(size<20000 && id.matches(Regex("[0-9]{1,12}")))add(ProviderGuideStream(id,row["name"].orEmpty(),row["epg_channel_id"].orEmpty()))
+        }
+    }
+
     suspend fun readVodIds(source: String, accept: (Map<String, String>) -> Unit) =
         read(source,"get_vod_streams",setOf("name","title","stream_id"),accept)
 
@@ -83,7 +90,8 @@ object ProviderApi {
             setRequestProperty("Accept-Encoding", "gzip")
         }
         try {
-            if (connection.responseCode !in 200..299) throw IOException("Metadados indisponíveis.")
+            val code=connection.responseCode
+            if (code !in 200..299) throw GuideHttpException(code)
             val input = if (connection.contentEncoding.equals("gzip", true)) GZIPInputStream(connection.inputStream) else connection.inputStream
             JsonReader(input.bufferedReader()).use { json ->
                 if (json.peek() != JsonToken.BEGIN_ARRAY) throw IOException("Resposta de metadados inválida.")

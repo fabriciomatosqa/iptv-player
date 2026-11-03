@@ -16,7 +16,7 @@ internal data class CatalogImportRow(
             title!=old.title || c.seriesImageUrl!=p.seriesImageUrl || season!=old.season ||
             episode!=old.episode || episodeTitle!=old.episodeTitle || c.typeHint!=p.typeHint ||
             c.url!=p.url || c.userAgent!=p.userAgent || c.referrer!=p.referrer || c.mimeType!=p.mimeType ||
-            (c.imageUrl.isNotBlank() && c.imageUrl!=p.imageUrl) || (old.search.isBlank() && search.isNotBlank())
+            (c.tvgId.isNotBlank() && c.tvgId!=p.tvgId) || (c.imageUrl.isNotBlank() && c.imageUrl!=p.imageUrl) || (old.search.isBlank() && search.isNotBlank())
     }
     fun changesDirectory(old: CatalogImportRow): Boolean = old.needsIndexing || channel.kind!=old.channel.kind ||
         ((channel.kind==MediaKind.SERIES || old.channel.kind==MediaKind.SERIES) &&
@@ -26,7 +26,7 @@ internal data class CatalogImportRow(
 
     /** Names, groups and first-added order already saved on the device remain authoritative. */
     fun preserving(old: CatalogImportRow)=copy(channel=channel.copy(name=old.channel.name,
-        group=old.channel.group,tvgId=old.channel.tvgId,seriesId=old.channel.seriesId,
+        group=old.channel.group,tvgId=channel.tvgId.ifBlank {old.channel.tvgId},seriesId=old.channel.seriesId,
         imageUrl=channel.imageUrl.ifBlank {old.channel.imageUrl}),search=old.search.ifBlank {search})
 
     companion object {
@@ -56,7 +56,7 @@ internal class CatalogBatchWriter(
 ): Closeable {
     private val batch=ArrayList<CatalogImportRow>(BATCH_SIZE)
     private val insert=db.compileStatement("INSERT INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key) VALUES("+List(25){"?"}.joinToString(",")+")")
-    private val update=db.compileStatement("UPDATE channels SET kind=?,search_text=?,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=?,user_agent=?,referrer=?,mime_type=? WHERE source_key=? AND content_key=?")
+    private val update=db.compileStatement("UPDATE channels SET kind=?,search_text=?,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=?,user_agent=?,referrer=?,mime_type=?,tvg_id=? WHERE source_key=? AND content_key=?")
     var added=0;private set
     var updated=0;private set
     fun accept(channel: Channel) {
@@ -89,7 +89,7 @@ internal class CatalogBatchWriter(
                 update.bindLong(7,fresh.season.toLong());update.bindLong(8,fresh.episode.toLong());update.bindString(9,fresh.episodeTitle)
                 update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L)
                 update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.userAgent)
-                update.bindString(16,c.referrer);update.bindString(17,c.mimeType);update.bindString(18,source);update.bindString(19,fresh.key)
+                update.bindString(16,c.referrer);update.bindString(17,c.mimeType);update.bindString(18,c.tvgId);update.bindString(19,source);update.bindString(20,fresh.key)
                 updated+=update.executeUpdateDelete();saved[fresh.key]=fresh;changed(old,fresh)
             }
         }

@@ -9,7 +9,7 @@ enum class BroadcastHint { UNKNOWN, LIVE, REPLAY }
 fun programmeBroadcastHint(title: String, category: String): BroadcastHint {
     val text=normalized("$title $category")
     return when {
-        Regex("\\b(reprise|replay|repeticao|reexibicao)\\b").containsMatchIn(text)->BroadcastHint.REPLAY
+        Regex("\\b(reprise|replay|repeticao|reexibicao|vt)\\b").containsMatchIn(text)->BroadcastHint.REPLAY
         Regex("\\b(ao vivo|live)\\b").containsMatchIn(text)->BroadcastHint.LIVE
         else->BroadcastHint.UNKNOWN
     }
@@ -17,7 +17,7 @@ fun programmeBroadcastHint(title: String, category: String): BroadcastHint {
 
 /** Raw provider evidence is persisted separately from the display title and derived classification. */
 data class FootballMetadata(val originalTitle: String = "", val subtitle: String = "", val description: String = "",
-    val competition: String = "", val gender: String = "", val country: String = "", val division: String = "", val sport: String = "", val retainedEvidence: String = "")
+    val competition: String = "", val gender: String = "", val country: String = "", val division: String = "", val sport: String = "", val retainedEvidence: String = "", val guideSource: String = "")
 data class Programme(val title: String, val start: Long, val end: Long, val image: String = "", val category: String = "", val broadcast: BroadcastHint = BroadcastHint.UNKNOWN,
     val metadata: FootballMetadata = FootballMetadata())
 data class GuideMatch(val channelId: String, val programme: Programme)
@@ -28,7 +28,7 @@ data class FootballMatch(val id: String, val programme: Programme, val channels:
 }
 fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.currentTimeMillis()): List<FootballMatch> {
     val live = channels.filter { it.kind == MediaKind.LIVE && !it.adult }
-    val byId = live.filter { it.tvgId.isNotBlank() }.groupBy { it.tvgId }
+    val byId = live.filter { it.tvgId.isNotBlank() }.groupBy { guide.channelId(it) }
     val byNameId = live.filter { it.tvgId.isBlank() }.mapNotNull { channel ->
         guide.channelId(channel)?.let { it to channel }
     }.groupBy({ it.first }, { it.second })
@@ -88,7 +88,9 @@ data class Guide(val programmes: Map<String, List<Programme>> = emptyMap(), val 
     private val aliases = names.entries.groupBy({ guideChannelName(it.key) }, { it.value }).mapValues { (_, ids) ->
         ids.distinct().singleOrNull()?.takeIf(String::isNotBlank)
     }
-    fun channelId(channel: Channel): String? = if (channel.tvgId.isNotBlank()) channel.tvgId
+    private val identifiers = (programmes.keys+matches.map {it.channelId}).groupBy {it.trim().lowercase(Locale.ROOT)}
+    fun channelId(channel: Channel): String? = if (channel.tvgId.isNotBlank())
+        identifiers[channel.tvgId.trim().lowercase(Locale.ROOT)]?.distinct()?.singleOrNull() ?: channel.tvgId
         else aliases[guideChannelName(channel.name).takeIf(String::isNotBlank)]
     fun forChannel(channel: Channel): List<Programme> = if (channel.kind != MediaKind.LIVE) emptyList()
         else programmes[channelId(channel)].orEmpty()

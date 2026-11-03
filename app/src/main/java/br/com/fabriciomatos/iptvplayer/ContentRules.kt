@@ -17,14 +17,15 @@ private val matchSeparator = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
 /** Interpret evidence before removing any prefix from display names. Club names alone are never gender evidence. */
 fun footballDetails(title: String, category: String = "", metadata: FootballMetadata = FootballMetadata(),
     channelNames: List<String> = emptyList(), playlistGroups: List<String> = emptyList()): FootballDetails? {
-    val text = normalized("$title $category ${metadata.sport}")
+    val fixtureTitle=footballFixtureTitle(title,metadata)
+    val text = normalized("$fixtureTitle $category ${metadata.sport}")
     // A head-to-head fixture does not imply soccer. Source sport and competition
     // evidence take precedence, including longer EPG descriptions of the NHL.
     if (detectOtherSport(Programme(title,0L,1L,category=category,metadata=metadata)) != null) return null
     if (Regex("\\b(rugby|ufc|bjj|futsal)\\b").containsMatchIn(text)) return null
-    if (Regex("\\b(resenha|debate|mesa redonda|central do|noticias|jornal|sportcenter|sportscenter|gols da rodada|melhores momentos|documentario|40 minutos)\\b").containsMatchIn(text)) return null
-    val clean=title.replace(Regex("(?i)\\s*[\\[(](?:reprise|replay|ao vivo|live)[\\])]\\s*")," ")
-        .replace(Regex("(?i)^(?:reprise|replay)\\s*(?::|-)?\\s+|\\s+[-–—]\\s+(?:reprise|replay|ao vivo|live)$"),"")
+    if (Regex("\\b(resenha|debate|mesa redonda|central do|noticias|jornal|sportcenter|sportscenter|gols da rodada|melhores momentos|documentario|40 minutos)\\b").containsMatchIn(normalized("$title $fixtureTitle $category"))) return null
+    val clean=fixtureTitle.replace(Regex("(?i)\\s*[\\[(](?:reprise|replay|ao vivo|live)[\\])]\\s*")," ")
+        .replace(Regex("(?i)^(?:reprise|replay|vt)\\s*(?::|-)?\\s+|\\s+[-–—]\\s+(?:reprise|replay|ao vivo|live)$"),"")
     val parts = clean.split(Regex("[║|]+|\\s+·\\s+")).map(String::trim).filter(String::isNotBlank)
     val main = parts.firstOrNull { matchSeparator.containsMatchIn(it) } ?: return null
     val separator = matchSeparator.find(main) ?: return null
@@ -61,12 +62,21 @@ fun footballDetails(title: String, category: String = "", metadata: FootballMeta
         playlistGroups.joinToString(" "), channelNames.joinToString(" "))
     val gender = evidence.map(::footballGender).firstOrNull { it != FootballGender.UNKNOWN } ?: FootballGender.UNKNOWN
     val footballContext = competition.isNotBlank() || Regex("\\b(futebol|soccer|football)\\b").containsMatchIn(text) ||
-        (playlistGroups + channelNames).any { Regex("\\b(futebol|soccer|football)\\b").containsMatchIn(normalized(it)) }
+        (playlistGroups + channelNames).any { Regex("\\b(futebol|soccer|football)\\b").containsMatchIn(normalized(it)) } || Regex("\\b(futebol|soccer|football)\\b").containsMatchIn(normalized(metadata.description))
     if(!footballContext) return null
     if (home.length !in 2..80 || away.length !in 2..80 || normalized(home) == normalized(away) ||
         footballCompetitionRule(home) != null || footballCompetitionRule(away) != null) return null
     return FootballDetails(competition, home, away, gender,
         footballAgeGroup("$competition $home $away ${metadata.division}"),metadata.country)
 }
+/** Descriptions are accepted only as one short, unambiguous matchup line. */
+internal fun footballFixtureTitle(title: String, metadata: FootballMetadata): String {
+    if(hasFootballMatchup(title))return title
+    val candidates=metadata.description.lineSequence().map(String::trim)
+        .filter {it.length in 7..160 && matchSeparator.findAll(it).count()==1}
+        .filter { !it.contains(". ") && !it.contains('!') && !it.contains('?') }.toList()
+    return candidates.singleOrNull() ?: title
+}
+internal fun footballProgrammeCandidate(p: Programme) = hasFootballMatchup(footballFixtureTitle(p.title,p.metadata))
 fun hasFootballMatchup(title: String) = matchSeparator.containsMatchIn(title)
 fun isFootballProgramme(title: String, category: String = "") = footballDetails(title, category) != null

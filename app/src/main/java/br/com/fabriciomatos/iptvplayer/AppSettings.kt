@@ -36,6 +36,8 @@ class AppSettings(context: Context) {
     }
     fun saveEpgUrl(value: String, source: String = "") = prefs.edit().putString(
         if(source.isBlank())"epg_url" else "epg_"+PlaylistRepository.digest(source), value).commit()
+    fun alternateGuide(source:String)=prefs.getBoolean("alternate_guide_"+PlaylistRepository.digest(source),true)
+    fun saveAlternateGuide(source:String,value:Boolean)=prefs.edit().putBoolean("alternate_guide_"+PlaylistRepository.digest(source),value).commit()
     fun text(@StringRes id: Int, vararg args: Any): String {
         val config = Configuration(app.resources.configuration)
         config.setLocales(LocaleList.forLanguageTags(language()))

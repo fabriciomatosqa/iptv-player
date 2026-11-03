@@ -1,5 +1,16 @@
 ## Versão 1.12.28
 
+## Android 1.12.32 — recuperação do guia de Esportes
+
+O provedor pode responder HTTP 200 com canais cadastrados e nenhum programa, ou com dados já vencidos.
+A recuperação agora consulta também os IDs oficiais e a programação detalhada da API. Quando o provedor
+não tiver dados atuais, um guia de emissoras brasileiras EPGShare associa apenas identificadores brasileiros
+reconhecidos aos canais já salvos. A fonte fica visível e pode ser desativada em Configurações → Programação.
+Não são criados cards a partir de agendas públicas sem canais.
+
+[Investigação, evidências reais, testes e limitações](docs/sports-guide-recovery.md).
+
+
 - **Lista inalterada:** reconhece respostas HTTP 200 idênticas por SHA-256 e dispensa uma nova importação. A referência só avança após gravação confirmada.
 - **Atualização incremental:** compara o catálogo salvo com a M3U em lotes de 400 registros e grava somente entradas novas ou dados de reprodução realmente alterados. Registros iguais não executam INSERT nem UPDATE.
 - **Índices:** pequenas novidades atualizam somente as séries e categorias afetadas, sem reconstruir o restante do catálogo. Uma lista inalterada ou uma resposta HTTP 304 não provoca reconstrução geral.
