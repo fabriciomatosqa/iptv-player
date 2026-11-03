@@ -569,9 +569,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val source=playlistUrl
         footballScoresLoading=true
         try {
-            val matches=football.filter {it.broadcastEnd>System.currentTimeMillis()-FOOTBALL_RETENTION_MS}
-            // Public schedule is a fallback only: keep real XMLTV broadcasters authoritative.
-            val feed=if(matches.isEmpty())scores.loadPublic(force) else scores.load(matches,force)
+            val matches=football
+            val feed=scores.load(matches,force)
             // Scores describe the match, never the channel schedule (including legacy timing caches).
             if(source==playlistUrl) footballFeed=feed
         } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
@@ -643,9 +642,23 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 if(source.isBlank()) {guideError=false;return@launch}
                 val checked=withContext(Dispatchers.IO) { repository.guideChecked(playlist) }
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
-                    val fresh=withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
-                    if(fresh.names.isNotEmpty() || fresh.programmes.isNotEmpty()) {
-                        val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,fresh);repository.savedGuide(playlist) }
+                    val fresh=try {
+                        withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
+                    } catch(e: CancellationException) {throw e}
+                    catch(_: Exception) { Guide() }
+                    // Public scores do not identify TV channels. If XMLTV no longer
+                    // supplies a usable match, try the provider's channel-specific EPG.
+                    val shortGuide=if(footballMatches(fresh,channels).isEmpty())
+                        XtreamSportsGuide.load(playlist,channels) else Guide()
+                    val resolved=if(shortGuide.matches.isEmpty())fresh else Guide(
+                        fresh.programmes+shortGuide.programmes,
+                        fresh.names+shortGuide.names,
+                        (fresh.matches+shortGuide.matches).distinctBy {
+                            it.channelId+":"+it.programme.start+":"+it.programme.title
+                        })
+                    // A partial or empty XMLTV response must not erase a usable saved guide.
+                    if(resolved.programmes.isNotEmpty() || resolved.matches.isNotEmpty()) {
+                        val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,resolved);repository.savedGuide(playlist) }
                         val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
                         if(playlistUrl==playlist) {
                             guide=merged
