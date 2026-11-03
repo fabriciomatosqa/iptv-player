@@ -45,7 +45,7 @@ Não há mudança de versão do SQLite, recriação do banco, alteração da ass
 
 ## Validação
 
-As consultas reais acima foram executadas separadamente do aplicativo, sem iniciar reprodução nem alterar dados no provedor. As fixtures preservam os formatos observados, retirando informações privadas; não substituem as evidências das consultas reais.
+As consultas reais acima foram executadas separadamente do aplicativo, sem iniciar reprodução nem alterar dados no provedor. As fixtures preservam os formatos observados, retirando informações privadas e omitindo sinopses extensas; não substituem as evidências das consultas reais.
 
 - `GuideRecoveryRulesTest`: estados vazio/vencido/sem jogos/sem associação, IDs brasileiros, descrição inequívoca, exclusão de NFL, `VT` e atualização pontual de `tvg-id`.
 - `SportsGuideRecoveryTest`: XMLTV real sem programas + tabela real vencida + amostra atual do guia alternativo; cards ligados somente aos streams do catálogo, variantes de qualidade, fonte alternativa desativada, preferência por programação atual do provedor, rejeição de canais estrangeiros/parecidos/ambíguos e tabela com jogo após a linha 24.
@@ -53,7 +53,7 @@ As consultas reais acima foram executadas separadamente do aplicativo, sem inici
 - `RecoveredSportsUiTest`: card original com escudos/equipes, botão Assistir, seletor HD/FHD, aviso da fonte e diagnóstico nas configurações.
 - Suíte existente: filmes, séries, favoritos, progresso, navegação, player e fechamento forçado com catálogo grande; publicação condicionada ao workflow Android completo aprovado.
 
-Os resultados finais do workflow e a validação do APK/manifesto serão registrados antes da conclusão da publicação.
+A publicação é condicionada à aprovação do workflow Android completo no [PR #48](https://github.com/fabriciomatosqa/iptv-player/pull/48/checks). Os logs definitivos, inclusive a execução na `main`, ficam em [GitHub Actions](https://github.com/fabriciomatosqa/iptv-player/actions/workflows/build-apk.yml). O APK, manifesto e SHA-256 são conferidos novamente após a publicação.
 
 ## Limitações e distinções importantes
 
