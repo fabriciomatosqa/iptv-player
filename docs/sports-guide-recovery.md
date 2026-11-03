@@ -29,7 +29,8 @@ A recuperação da 1.12.31 também não cobria essa lista: os streams usam ender
 5. **Origem identificável:** programação alternativa tem proveniência persistida junto aos metadados do programa. A tela informa EPGShare; Configurações → Programação permite desativá-lo por playlist e consultar o diagnóstico de cada fonte. Desativá-lo também retira seus programas do cache usado pela interface, sem apagar o catálogo.
 6. **Identificadores:** diferenças apenas de caixa no mesmo ID XMLTV são aceitas sem substituir IDs conflitantes por nomes parecidos. Uma mudança real de `tvg-id` na M3U passa a atualizar somente o registro afetado; ID vazio recebido posteriormente não apaga um existente.
 7. **Reconhecimento:** aceitar um confronto em uma linha curta e inequívoca da descrição quando existe contexto futebolístico; conservar a exclusão de outros esportes/noticiários. `VT` é tratado como reprise, preservando os horários reais do guia.
-8. **Concorrência:** uma nova tentativa cancela e aguarda a anterior; respostas e indicadores de carregamento de uma tentativa antiga não sobrescrevem a lista selecionada ou uma tentativa mais recente.
+8. **Cache:** uma programação salva e ainda utilizável respeita o intervalo de seis horas, inclusive após reabrir o app. A tentativa manual continua forçando a atualização; um guia ausente/vencido pode ser recuperado imediatamente.
+9. **Concorrência:** uma nova tentativa cancela e aguarda a anterior; respostas e indicadores de carregamento de uma tentativa antiga não sobrescrevem a lista selecionada ou uma tentativa mais recente.
 
 ## Arquivos principais
 

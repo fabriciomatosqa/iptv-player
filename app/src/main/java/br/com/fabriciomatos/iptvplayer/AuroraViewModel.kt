@@ -561,10 +561,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     fun showFootball() {
         dismissPlaybackResume()
         page=Page.FOOTBALL
-        // One migration refresh per session also reclassifies EPG entries saved by older APKs.
-        val migration = !sportsGuideBootstrapped
+        // Recover a missing/expired guide once, while honouring a usable cache's six-hour TTL.
+        val now=System.currentTimeMillis()
+        val recover = !sportsGuideBootstrapped && football.none {it.broadcastEnd>now} &&
+            sports.none {it.programme.end>now}
         sportsGuideBootstrapped=true
-        refreshGuide(migration)
+        refreshGuide(recover)
     }
     fun refreshFootball() {refreshGuide(true);if(selectedSport==SportKind.FOOTBALL)
         viewModelScope.launch {updateFootballScores(force=true)}}
