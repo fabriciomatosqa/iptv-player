@@ -49,7 +49,9 @@ class XtreamSportsGuideTest {
         val now=System.currentTimeMillis()
         val linked=channel("ESPN 4 FHD","12345","espn4")
         assertNull(XtreamSportsGuide.streamId(source,linked.copy(
-            url="https://unrelated.example.test/live/user/pass/12345.ts")))
+            url="https://unrelated.example.test/live/someone-else/pass/12345.ts")))
+        assertEquals("12345",XtreamSportsGuide.streamId(source,linked.copy(
+            url="https://provider-cdn.example.test/live/user/pass/12345.ts")))
         assertNull(XtreamSportsGuide.streamId(source,linked.copy(
             url="https://iptv.example.test/live/user/pass/not-a-stream.ts")))
         val guide=XtreamSportsGuide.load(source,listOf(linked),now) { JSONObject() }
