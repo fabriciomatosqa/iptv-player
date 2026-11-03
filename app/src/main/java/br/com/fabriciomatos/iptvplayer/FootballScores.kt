@@ -28,39 +28,6 @@ data class FootballFeed(val events: List<FootballScore> = emptyList(), val check
 data class MatchedScore(val event: FootballScore, val home: ScoreTeam, val away: ScoreTeam, val homeGoals: Int?, val awayGoals: Int?)
 data class FootballTab(val key: String, val title: String = "")
 
-/** Only known senior / explicitly identified women's competitions become public cards.
- * Unknown leagues, youth fixtures and ambiguous gender categories remain excluded. */
-fun publicFootballLeague(league: String): Boolean =
-    footballCompetitionRules.any {it.id==league} || league.startsWith("fifa.")
-
-fun publicFootballMatches(feed: FootballFeed, now: Long): List<FootballMatch> =
-    feed.events.asSequence()
-        .filter {publicFootballLeague(it.league) &&
-            it.state !in listOf(MatchState.CANCELLED,MatchState.POSTPONED) &&
-            it.kickoff in (now-3*3600000L)..(now+3*86400000L)}
-        .filter {it.home.names.isNotEmpty() && it.away.names.isNotEmpty() &&
-            footballAgeGroup(it.competition).isBlank() &&
-            footballGender(it.competition)!=FootballGender.CONFLICT}
-        .sortedWith(compareBy<FootballScore> {it.kickoff}.thenBy {it.league}.thenBy {it.id})
-        .distinctBy {it.league+":"+it.id}.take(200)
-        .map {score ->
-            val home=score.home.names.first()
-            val away=score.away.names.first()
-            val title="$home x $away - ${score.competition}"
-            val programme=Programme(title,score.kickoff,score.kickoff+2*3600000L)
-            FootballMatch("public:${score.league}:${score.id}",programme,emptyList(),
-                FootballDetails(score.competition,home,away))
-        }.toList()
-
-/** A public fixture's score has a precise identity and must not be fuzzy-matched to
- * a different match or used to claim that a playlist channel is broadcasting it. */
-fun footballMatchedScore(match: FootballMatch, feed: FootballFeed): MatchedScore? {
-    if(match.id.startsWith("public:"))return feed.events.firstOrNull {
-        match.id=="public:${it.league}:${it.id}"
-    }?.let {MatchedScore(it,it.home,it.away,it.homeGoals,it.awayGoals)}
-    return matchFootballScore(match,feed)
-}
-
 private fun qualifierLeague(details: FootballDetails): String? {
     val name=normalized(details.competition)
     val country=nationalMatch(details)?.first?.country
@@ -134,15 +101,12 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
             if (!words.all(teams::contains)) return@filter false
         }
         if (tab != FOOTBALL_LIVE && match.broadcastEnd > now - FOOTBALL_RETENTION_MS) return@filter true
-        val score=footballMatchedScore(match,feed)?.event
-        val live = if(match.channels.isEmpty() && match.id.startsWith("public:"))
-            score!=null && score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) && scoreIsFresh(score,now)
-        else footballHasLiveTransmission(match,score,now)
+        val live = footballHasLiveTransmission(match, matchFootballScore(match,feed)?.event, now)
         (match.broadcastEnd > now - FOOTBALL_RETENTION_MS || live) &&
             (tab != FOOTBALL_LIVE || live)
     }.map { match ->
         if(tab!=FOOTBALL_LIVE || match.channels.isEmpty())match else {
-            val channels=footballLiveChannels(match,footballMatchedScore(match,feed)?.event,now)
+            val channels=footballLiveChannels(match,matchFootballScore(match,feed)?.event,now)
             if(channels.size==match.channels.size)match else match.copy(
                 programme=match.programmeFor(channels.first()),channels=channels,
                 channelProgrammes=match.channelProgrammes.filterKeys { url -> channels.any { it.url==url } })
