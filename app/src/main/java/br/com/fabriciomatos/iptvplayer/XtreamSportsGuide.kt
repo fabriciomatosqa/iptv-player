@@ -31,8 +31,21 @@ internal object XtreamSportsGuide {
     internal fun streamId(source: String, channel: Channel): String? = runCatching {
         val playlist = URL(source)
         val stream = URL(channel.url)
-        if(!playlist.host.equals(stream.host, true) ||
-            playlist.port != stream.port || playlist.protocol != stream.protocol) return null
+        val sameOrigin=playlist.host.equals(stream.host,true) &&
+            (if(playlist.port<0)playlist.defaultPort else playlist.port)==
+            (if(stream.port<0)stream.defaultPort else stream.port) &&
+            playlist.protocol==stream.protocol
+        // Some legal Xtream configurations use a different delivery hostname.
+        // Trust it only when the stream's own path carries the same account pair.
+        val credentials=playlist.query.orEmpty().split('&').mapNotNull {
+            val key=it.substringBefore('=')
+            if(key=="username" || key=="password") key to java.net.URLDecoder.decode(it.substringAfter('=',""),"UTF-8")
+            else null
+        }.toMap()
+        val streamParts=stream.path.split('/').filter(String::isNotBlank)
+        val matchingAccount=streamParts.size>=4 && streamParts[0]=="live" &&
+            streamParts[1]==credentials["username"] && streamParts[2]==credentials["password"]
+        if(!sameOrigin && !matchingAccount)return null
         val candidate=stream.path.substringAfterLast('/').substringBefore('.')
         candidate.takeIf {streamNumber.matches(it)}
     }.getOrNull()
