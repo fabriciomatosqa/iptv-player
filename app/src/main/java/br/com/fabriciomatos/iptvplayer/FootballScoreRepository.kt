@@ -56,6 +56,41 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
             .none {!it.failed && !footballRefreshDue(it.checked,now)}
         FootballFeed(events,responses.maxOfOrNull {it.checked} ?: 0L,currentFailed)
     }
+    /** Public fixtures are independent of the user's XMLTV. No channel or stream URL is
+     * inferred from a score: the UI renders these as informational matches only.
+     * Keep this path scoped to the sports screen and reuse the existing daily cache. */
+    suspend fun loadPublic(force: Boolean = false, now: Long = System.currentTimeMillis()): FootballFeed = withContext(Dispatchers.IO) {
+        val days=(-1..2).map { footballDateKey(now+it*86400000L) }.distinct()
+        val responses=ConcurrentHashMap<String,FootballFeed>()
+        withTimeoutOrNull(36000L) {
+            coroutineScope {
+                days.map { day -> async { requests.withPermit {
+                    val age=if(day==footballDateKey(now))FOOTBALL_REFRESH_MS else 6*3600000L
+                    dayScores("fotmob",day,age,force,now).also { responses["fotmob:$day"]=it }
+                } } }.awaitAll()
+            }
+        }
+        val primary=responses.values.flatMap {it.events}
+        if(primary.none {publicFootballLeague(it.league)} || responses.values.all {it.failed}) {
+            // Only a small, fixed set of public competitions: never query IPTV/provider credentials.
+            val fallbackLeagues=listOf("bra.1","eng.1","esp.1","uefa.champions","conmebol.libertadores")
+            val fallbackDays=listOf(footballDateKey(now),footballDateKey(now+86400000L)).distinct()
+            withTimeoutOrNull(28000L) {
+                coroutineScope {
+                    fallbackLeagues.flatMap {league -> fallbackDays.map {day -> async {requests.withPermit {
+                        dayScores(league,day,FOOTBALL_REFRESH_MS,force,now)
+                            .also { responses["$league:$day"]=it }
+                    }}}}.awaitAll()
+                }
+            }
+        }
+        val feeds=responses.values.toList()
+        val events=feeds.flatMap {it.events}.filter {publicFootballLeague(it.league)}
+            .distinctBy {it.league+":"+it.id}
+        FootballFeed(events,feeds.maxOfOrNull {it.checked} ?: 0L,
+            events.isEmpty() && feeds.none {!it.failed})
+    }
+
     /** Fetch incidents only when a user expands a card, never while scrolling the match list. */
     suspend fun incidents(score: FootballScore): List<FootballIncident>? = withContext(Dispatchers.IO) {
         val id=score.id.takeIf {it.startsWith("fotmob:")}

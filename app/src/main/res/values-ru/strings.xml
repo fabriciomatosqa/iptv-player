@@ -217,4 +217,5 @@
     <string name="catalog_added">Новых материалов: %1$d</string>
     <string name="catalog_unchanged">Новых материалов нет</string>
     <string name="catalog_refreshed">Каталог обновлён</string>
+    <string name="sports_no_linked_channel">Ни один канал плейлиста не связан с этим матчем.</string>
 </resources>

@@ -217,4 +217,5 @@
     <string name="catalog_added">%1$d nieuwe items</string>
     <string name="catalog_unchanged">Geen nieuwe inhoud</string>
     <string name="catalog_refreshed">Catalogus bijgewerkt</string>
+    <string name="sports_no_linked_channel">Geen kanaal uit de afspeellijst is aan deze wedstrijd gekoppeld.</string>
 </resources>

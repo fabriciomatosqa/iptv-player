@@ -217,4 +217,5 @@
     <string name="catalog_added">%1$d nội dung mới</string>
     <string name="catalog_unchanged">Không có nội dung mới</string>
     <string name="catalog_refreshed">Đã cập nhật danh mục</string>
+    <string name="sports_no_linked_channel">Không có kênh nào trong danh sách phát được liên kết với trận đấu này.</string>
 </resources>
