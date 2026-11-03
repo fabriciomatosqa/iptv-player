@@ -89,6 +89,7 @@ internal object XtreamSportsGuide {
         val failures=java.util.Collections.synchronizedList(ArrayList<GuideStatus>())
         val apiRows=if(representatives.any {streamId(source,it)==null}) {
             try {readChannels(source)} catch(e:CancellationException) {throw e}
+            catch(e:GuideHttpException) {failures.add(if(e.code==401 || e.code==403)GuideStatus.AUTH else GuideStatus.HTTP);emptyList()}
             catch(_:Exception) {failures.add(GuideStatus.NETWORK);emptyList()}
         } else emptyList()
         val ids=representatives.mapNotNull {c->(streamId(source,c) ?: mappedStream(c,apiRows))?.let {c to it}}
@@ -126,7 +127,7 @@ internal object XtreamSportsGuide {
         }
         val guide=Guide(programmes,names,matches.distinctBy {it.channelId+":"+it.programme.start+":"+it.programme.title})
         val counts=GuideCounts(results.size,results.values.sumOf {it.counts.programmes},
-            results.values.sumOf {it.counts.current},results.values.sumOf {it.counts.candidates})
+            results.values.sumOf {it.counts.current},results.values.sumOf {it.counts.candidates},results.values.sumOf {it.counts.valid.coerceAtLeast(0)})
         val linked=footballMatches(guide,channels,now).count {it.broadcastEnd>now}
         val status=if(counts.programmes==0 && failures.isNotEmpty())failures.first() else guideStatus(counts,linked)
         GuideRead(guide,GuideAttempt(GuideSource.PROVIDER_API,status,counts))
@@ -135,14 +136,16 @@ internal object XtreamSportsGuide {
     internal fun parse(json:JSONObject,now:Long)=parseRows(json,now).programmes.filter {footballProgrammeCandidate(it) || sportsProgrammeCandidate(it)}
     internal fun parseRows(json:JSONObject,now:Long):ProviderGuideRows {
         val rows=json.optJSONArray("epg_listings") ?: throw org.json.JSONException("Missing guide rows")
-        var current=0
+        var current=0;var valid=0
         val result=buildList {
             // Detailed API tables are chronological: do not discard future games after row 24.
             for(i in 0 until minOf(rows.length(),2048)) {
                 val item=rows.optJSONObject(i) ?: continue
                 val start=timestamp(item,"start_timestamp","start_tz","start")
                 val end=timestamp(item,"stop_timestamp","end_timestamp","end")
-                if(start==0L || end<=start || start>now+7*86400000L)continue
+                if(start==0L || end<=start)continue
+                valid++
+                if(start>now+7*86400000L)continue
                 if(end>now)current++
                 if(end<now-6*3600000L)continue
                 val title=decode(item.optString("title")).trim().take(1000)
@@ -154,7 +157,7 @@ internal object XtreamSportsGuide {
             }
         }.distinctBy {it.start to it.title}
         return ProviderGuideRows(result,GuideCounts(programmes=rows.length(),current=current,
-            candidates=result.count {it.end>now && (footballProgrammeCandidate(it) || sportsProgrammeCandidate(it))}))
+            candidates=result.count {it.end>now && (footballProgrammeCandidate(it) || sportsProgrammeCandidate(it))},valid=valid))
     }
     private fun timestamp(item:JSONObject,vararg keys:String):Long {
         for(key in keys) {

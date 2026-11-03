@@ -63,7 +63,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
             val matches = ArrayList<GuideMatch>()
             var id = ""; var start = 0L; var end = 0L; var title = ""; var image = ""
             var metadata = FootballMetadata()
-            var totalChannels=0;var totalProgrammes=0;var currentProgrammes=0;var rootSeen=false
+            var totalChannels=0;var totalProgrammes=0;var currentProgrammes=0;var validProgrammes=0;var rootSeen=false
             var entry = ""; var accepted = false; var iterations = 0; var category = "";var broadcast=BroadcastHint.UNKNOWN
             while (parser.eventType != XmlPullParser.END_DOCUMENT) {
                 if (iterations++ % 512 == 0) checkCancelled()
@@ -87,6 +87,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                             title = ""; image = ""; category = "";broadcast=BroadcastHint.UNKNOWN;metadata=FootballMetadata()
                             // Retain source metadata without deriving replay status from previous slots.
                             // Keep ordinary channel guide cards filtered below as before.
+                            if(start>0 && end>start)validProgrammes++
                             if(start>0 && end>start && end>now && start<now+7*86400000L)currentProgrammes++
                             accepted = start>0 && end>start && end > now-36*3600000L && start<now+7*86400000L
                         }
@@ -128,7 +129,7 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                 parser.next()
             }
             check(rootSeen)
-            inspect(GuideCounts(totalChannels,totalProgrammes,currentProgrammes,matches.count {it.programme.end>now}))
+            inspect(GuideCounts(totalChannels,totalProgrammes,currentProgrammes,matches.count {it.programme.end>now},validProgrammes))
             Guide(programmes, names, matches.distinctBy { it.channelId + ":" + it.programme.start + ":" + it.programme.title })
         }
 

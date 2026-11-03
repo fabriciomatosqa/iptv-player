@@ -623,7 +623,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             catch(_: Exception) {if(pendingSeriesFavorites==(source to next))pendingSeriesFavorites=null;message=preferences.text(R.string.load_failed)}
         }
     }
-    fun setAlternateGuide(value:Boolean) {
+    fun chooseAlternateGuide(value:Boolean) {
         val source=playlistUrl
         viewModelScope.launch {
             if(withContext(Dispatchers.IO) {preferences.saveAlternateGuide(source,value)} && source==playlistUrl) {

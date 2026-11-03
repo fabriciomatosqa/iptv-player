@@ -44,7 +44,7 @@ class RecoveredSportsUiTest {
             compose.onNodeWithText("Porto").assertExists();compose.onNodeWithText("Estoril").assertExists()
             compose.onNodeWithTag("guide_alternate_active").assertExists()
             compose.onNodeWithTag("football_watch_0").assertExists()
-            compose.onNodeWithTag("football_all_channels").performClick()
+            compose.onNodeWithTag("football_all_channels").performScrollTo().performClick()
             compose.onNodeWithText("ESPN 5 HD [ALT]").assertExists()
             assertEquals(2,model.football.single().channels.size)
             androidx.test.uiautomator.UiDevice.getInstance(instrumentation).pressBack()

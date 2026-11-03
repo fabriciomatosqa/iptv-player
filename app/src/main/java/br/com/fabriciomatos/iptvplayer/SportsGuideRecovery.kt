@@ -25,5 +25,5 @@ internal suspend fun recoverSportsGuide(playlist:String,address:String,channels:
     }
     val linked=footballMatches(guide,channels,now).count {it.broadcastEnd>now}
     val received=attempts.any {it.counts.current>0 && it.status !in listOf(GuideStatus.NETWORK,GuideStatus.INVALID,GuideStatus.AUTH,GuideStatus.HTTP)}
-    return SportsGuideRecovery(guide,GuideDiagnostics(attempts,linked,now),received)
+    return SportsGuideRecovery(guide,GuideDiagnostics(attempts,linked,now,guide.matches.any {it.programme.end>now && it.programme.metadata.guideSource=="epgshare-br"}),received)
 }

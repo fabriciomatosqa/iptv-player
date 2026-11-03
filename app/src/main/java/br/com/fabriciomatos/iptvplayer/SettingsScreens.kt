@@ -83,7 +83,7 @@ import coil.compose.AsyncImage
                                 Text(tr(R.string.guide_alternate_switch),fontWeight=FontWeight.SemiBold)
                                 Text(tr(R.string.guide_alternate_help),fontSize=12.sp)
                             }
-                            Switch(model.alternateGuide,model::setAlternateGuide,Modifier.testTag("alternate_guide_switch"))
+                            Switch(model.alternateGuide,model::chooseAlternateGuide,Modifier.testTag("alternate_guide_switch"))
                         }
                     }
                     item { GuideDiagnosticDetails(model) }

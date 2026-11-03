@@ -153,6 +153,8 @@ class SportsGuideRecoveryTest {
         assertEquals(GuideStatus.EMPTY,serve(200,"<tv><channel id=\"a\"/></tv>".toByteArray()).attempt.status)
         assertEquals(GuideStatus.INVALID,serve(200,"<html>login</html>".toByteArray()).attempt.status)
         assertEquals(GuideStatus.INVALID,serve(200,"<tv><programme".toByteArray()).attempt.status)
+        val invalidTime="<tv><programme channel=\"a\" start=\"invalid\" stop=\"invalid\"><title>A x B</title></programme></tv>"
+        assertEquals(GuideStatus.INVALID,serve(200,invalidTime.toByteArray()).attempt.status)
         val past="<tv><programme channel=\"a\" start=\"20261027000000 +0000\" stop=\"20261027010000 +0000\"><title>Campeonato Brasileiro: A x B</title></programme></tv>"
         assertEquals(GuideStatus.STALE,serve(200,past.toByteArray()).attempt.status)
         val zipped=ByteArrayOutputStream().apply {GZIPOutputStream(this).use {it.write("<tv/>".toByteArray())}}.toByteArray()
