@@ -41,9 +41,13 @@ class RecoveredSportsUiTest {
             // Opening the existing recovered cache must not need public fixture generation.
             scenario.onActivity {model.page=Page.FOOTBALL}
             compose.onNodeWithTag("football_match").assertExists()
-            compose.onNodeWithText("Porto").assertExists();compose.onNodeWithText("Estoril").assertExists()
+            compose.onNodeWithText("Porto × Estoril").assertExists()
             compose.onNodeWithTag("guide_alternate_active").assertExists()
-            compose.onNodeWithTag("football_watch_0").assertExists()
+            // Replays intentionally start compact; expand the existing card before checking its actions.
+            compose.onNodeWithTag("football_match").performClick()
+            compose.onNodeWithText("Porto",useUnmergedTree=true).assertExists()
+            compose.onNodeWithText("Estoril",useUnmergedTree=true).assertExists()
+            compose.onNodeWithTag("football_compact_watch").assertExists()
             compose.onNodeWithTag("football_all_channels").performScrollTo().performClick()
             compose.onNodeWithText("ESPN 5 HD [ALT]").assertExists()
             assertEquals(2,model.football.single().channels.size)
@@ -52,6 +56,9 @@ class RecoveredSportsUiTest {
             compose.onNodeWithTag("guide_diagnostics").performScrollTo().assertExists()
             compose.onNodeWithText("O guia contém apenas programação vencida.",substring=true).assertExists()
             assertTrue(model.guideDiagnostics.alternate)
+            val device=androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+            device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
+            device.executeShellCommand("screencap -p /sdcard/Download/aurora-ui/recovered-guide-diagnostics.png")
         }
     }
 }
