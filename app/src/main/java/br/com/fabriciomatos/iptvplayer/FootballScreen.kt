@@ -108,7 +108,7 @@ import java.util.Locale
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,tr(R.string.back_home))
                 }
                 Column(if(wide)Modifier.width(170.dp).padding(end=12.dp) else Modifier.weight(1f)) {
-                    Text(tr(R.string.sports_hub),fontSize=if(wide)20.sp else 25.sp,fontWeight=FontWeight.Black)
+                    Text(tr(R.string.sports_hub),fontSize=25.sp,fontWeight=FontWeight.Black)
                     if(!wide) Text(tr(R.string.sports_hub_help),fontSize=11.sp,color=colors.muted,
                         maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
@@ -134,7 +134,7 @@ import java.util.Locale
                         model.sportsCategory=SPORTS_GAMES
                     },label={Text(sport.displayName,maxLines=1,
                         fontWeight=if(selected)FontWeight.Bold else FontWeight.Medium)},
-                        modifier=Modifier.landscapeFocusRing().testTag("sports_kind_"+sport.name.lowercase()),
+                        modifier=Modifier.testTag("sports_kind_"+sport.name.lowercase()),
                         shape=RoundedCornerShape(14.dp),
                         colors=FilterChipDefaults.filterChipColors(
                             containerColor=colors.panel.copy(alpha=.65f),
@@ -170,7 +170,7 @@ import java.util.Locale
                                 fontWeight=if(selected)FontWeight.Bold else FontWeight.Medium)
                         }
                     },
-                        modifier=Modifier.landscapeFocusRing().testTag("football_tab_"+tab.key),
+                        modifier=Modifier.testTag("football_tab_"+tab.key),
                         shape=RoundedCornerShape(14.dp),
                         colors=FilterChipDefaults.filterChipColors(
                             containerColor=colors.panel.copy(alpha=.65f),
@@ -202,9 +202,6 @@ import java.util.Locale
                         NumberFormat.getIntegerInstance(Locale.forLanguageTag(model.language)).format(gameCount)),
                     fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=colors.mint)
             }
-            if(model.alternateGuide && model.guideDiagnostics.alternate)
-                Text(tr(R.string.guide_alternate_active),Modifier.padding(horizontal=20.dp,vertical=4.dp)
-                    .testTag("guide_alternate_active"),fontSize=11.sp,color=colors.muted)
             if(soccer && model.footballFeed.failed)
                 Text(tr(R.string.scores_stale),Modifier.padding(horizontal=20.dp,vertical=4.dp),
                     fontSize=11.sp,color=MaterialTheme.colorScheme.error)
@@ -217,18 +214,15 @@ import java.util.Locale
                     Text(tr(when {
                         model.guideLoading->R.string.loading
                         model.football.isNotEmpty() || model.sports.isNotEmpty()->R.string.no_matching_games
-                        model.guideError->guideStatusResource(model.guideDiagnostics.status)
+                        model.guideError->R.string.no_guide
                         else->R.string.no_games
                     }),textAlign=TextAlign.Center)
                     if(!model.guideLoading && model.football.isEmpty() && model.sports.isEmpty())
                         OutlinedButton(onClick=model::refreshFootball){Text(tr(R.string.retry))}
-                    if(!model.guideLoading)TextButton(onClick={model.openSettings();model.settingsSection=4}) {
-                        Text(tr(R.string.guide_diagnostics))
-                    }
                 }
             } else LazyColumn(Modifier.weight(1f).testTag("football_list"),state=scroll,
                 contentPadding=PaddingValues(start=16.dp,end=16.dp,top=8.dp,bottom=24.dp),
-                verticalArrangement=Arrangement.spacedBy(if(wide)10.dp else 18.dp)) {
+                verticalArrangement=Arrangement.spacedBy(18.dp)) {
                 if(soccer) items(footballMatches,key={it.id}) { match ->
                     FootballCard(model,match,displayTime)
                 } else items(otherEvents,key={it.id}) { event ->
@@ -366,7 +360,7 @@ import java.util.Locale
         return
     }
     val accent = if (mode == BroadcastMode.REPLAY) colors.violet else colors.mint
-    Card(onClick = { model.playFootball(watchChannels.first()) }, modifier = Modifier.fillMaxWidth().landscapeFocusRing().testTag("football_match"), shape = RoundedCornerShape(26.dp),
+    Card(onClick = { model.playFootball(watchChannels.first()) }, modifier = Modifier.fillMaxWidth().testTag("football_match"), shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = colors.panel), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, Brush.linearGradient(listOf(accent.copy(alpha = .38f), colors.cyan.copy(alpha = .12f), colors.violet.copy(alpha = .2f))))) {
         Box {
@@ -423,7 +417,7 @@ import java.util.Locale
     val replay=broadcastMode(match.programme,event)==BroadcastMode.REPLAY
     val accent=if(replay) colors.violet else colors.muted
     var detailsExpanded by remember(match.id) { mutableStateOf(false) }
-    Card(onClick={ detailsExpanded=!detailsExpanded },modifier=Modifier.fillMaxWidth().landscapeFocusRing().testTag("football_match"),
+    Card(onClick={ detailsExpanded=!detailsExpanded },modifier=Modifier.fillMaxWidth().testTag("football_match"),
         shape=RoundedCornerShape(19.dp),colors=CardDefaults.cardColors(containerColor=colors.panel),
         border=BorderStroke(1.dp,accent.copy(alpha=.28f))) {
         Column(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=11.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -474,7 +468,7 @@ import java.util.Locale
         featured.forEachIndexed { index, channel ->
             Surface(onClick = { model.playFootball(channel) },
                 modifier = Modifier.weight(1f).heightIn(min = 66.dp)
-                    .landscapeFocusRing().testTag(if (compact && index == 0) "football_compact_watch" else "football_watch_$index"),
+                    .testTag(if (compact && index == 0) "football_compact_watch" else "football_watch_$index"),
                 shape = RoundedCornerShape(14.dp),
                 color = colors.mint.copy(alpha = .12f), contentColor = colors.mint) {
                 Row(Modifier.padding(horizontal = 8.dp, vertical = 10.dp),

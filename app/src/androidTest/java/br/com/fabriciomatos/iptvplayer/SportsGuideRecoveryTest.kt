@@ -63,6 +63,46 @@ class SportsGuideRecoveryTest {
         assertFalse(recovered.diagnostics.encode().contains("password"))
     }
 
+    @Test fun legacy118ExactBroadcasterAliasesLinkBlankOrOpaqueProviderIdsToRealChannels() {
+        val blank=channels.first().copy(name="ESPN 5 FHD",tvgId="")
+        val opaque=channels[1].copy(name="BR ESPN 5 HD [ALT]",tvgId="opaque-stream-450")
+        val legacy=listOf(blank,opaque)
+        val linked=BrazilBroadcastGuide.link(capturedPublic(),legacy)
+        val games=footballMatches(linked,legacy,now)
+        assertTrue("A precise broadcaster-name alias from 1.12.18 must recover the real channel schedule",
+            games.isNotEmpty())
+        assertTrue(games.any {match ->
+            match.channels.any {it.url==blank.url} && match.channels.any {it.url==opaque.url}
+        })
+        assertTrue(games.all {it.channels.all {channel -> channel in legacy}})
+        assertEquals("espn5",BrazilBroadcastGuide.broadcaster(blank))
+        assertEquals("espn5",BrazilBroadcastGuide.broadcaster(opaque))
+        assertTrue(BrazilBroadcastGuide.eligible(legacy))
+        assertEquals("epgshare-br",games.first().programme.metadata.guideSource)
+    }
+
+    @Test fun legacyBroadcasterFallbackRejectsSimilarBrandsAndExplicitConflictingCountries() {
+        val origin=channels.first()
+        val invalid=listOf(
+            origin.copy(name="ESPN 50 HD",tvgId=""),
+            origin.copy(name="ESPN 5 Extra Eventos HD",tvgId=""),
+            origin.copy(name="ESPN 5 HD",tvgId="espn.5.pt"),
+            origin.copy(name="ESPN 5 HD",tvgId="unrelated.id"),
+            origin.copy(name="ESPN 5 HD",tvgId="espn.50.br"),
+            origin.copy(name="ESPN 5 HD",tvgId="espn.4.br")
+        )
+        invalid.take(5).forEach {channel ->
+            assertNull("Ambiguous/foreign sources cannot supply a guessed football broadcaster",
+                BrazilBroadcastGuide.broadcaster(channel))
+            assertTrue(BrazilBroadcastGuide.link(capturedPublic(),listOf(channel)).matches.isEmpty())
+        }
+        assertEquals("espn4",BrazilBroadcastGuide.broadcaster(invalid.last()))
+        assertTrue(BrazilBroadcastGuide.link(capturedPublic(),listOf(invalid.last())).matches.isEmpty() ||
+            BrazilBroadcastGuide.link(capturedPublic(),listOf(invalid.last())).matches.all {
+                it.channelId=="espn.4.br"
+            })
+    }
+
     @Test fun alternateGuideNeverOverridesProviderScheduleOrLinksOtherCountriesAndSimilarNames()=runBlocking {
         val linked=publicRead()
         val foreign=channels.first().copy(name="ESPN 5 FHD",tvgId="espn.5.pt")
