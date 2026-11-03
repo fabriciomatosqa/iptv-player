@@ -45,9 +45,9 @@ internal object XtreamSportsGuide {
         val streamParts=stream.path.split('/').filter(String::isNotBlank)
         val matchingAccount=streamParts.size>=4 && streamParts[0]=="live" &&
             streamParts[1]==credentials["username"] && streamParts[2]==credentials["password"]
-        if(!sameOrigin && !matchingAccount)return null
-        val candidate=stream.path.substringAfterLast('/').substringBefore('.')
-        candidate.takeIf {streamNumber.matches(it)}
+        if(!sameOrigin && !matchingAccount)null
+        else stream.path.substringAfterLast('/').substringBefore('.')
+            .takeIf {streamNumber.matches(it)}
     }.getOrNull()
 
     private fun eligible(channel: Channel) =
