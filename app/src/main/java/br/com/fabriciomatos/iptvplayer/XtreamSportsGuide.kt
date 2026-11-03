@@ -31,8 +31,17 @@ internal fun mergeProviderGuide(previous: Guide, fresh: Guide, short: Guide, now
                 new.start<old.programme.end && old.programme.start<new.end
             }
     }
+    val shows=previous.programmes.mapValues {(_,rows)->rows.filter {it.end>now}}.toMutableMap()
+    // Partial updates are authoritative only for the intervals they actually describe.
+    // Empty or expired API rows cannot replace a still-valid cached channel schedule.
+    for(update in listOf(fresh,short))for((id,rows)in update.programmes) {
+        val incoming=rows.filter {it.end>now}
+        if(incoming.isEmpty())continue
+        val kept=shows[id].orEmpty().filter {old->incoming.none {it.start<old.end && old.start<it.end}}
+        shows[id]=(kept+incoming).distinctBy {it.start to it.title}.sortedBy {it.start}.take(2)
+    }
     return Guide(
-        (if(fresh.programmes.isEmpty())previous.programmes else fresh.programmes)+short.programmes,
+        shows.filterValues {it.isNotEmpty()},
         previous.names+fresh.names+short.names,
         (authoritative+validPrevious).distinctBy {
             it.channelId+":"+it.programme.start+":"+it.programme.title

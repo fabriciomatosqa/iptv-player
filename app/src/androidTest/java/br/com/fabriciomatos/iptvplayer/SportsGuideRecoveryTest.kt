@@ -85,6 +85,21 @@ class SportsGuideRecoveryTest {
         assertTrue(disabled.guide.matches.isEmpty())
     }
 
+    @Test fun emptyAndPartialSourcesKeepUnexpiredChannelGuideSlots() {
+        val p=Programme("Futebol: Porto x Estoril",now,now+3600000L)
+        val previous=Guide(programmes=mapOf("espn.5.br" to listOf(p)),matches=listOf(GuideMatch("espn.5.br",p)))
+        val other=Programme("Noticiário esportivo",now,now+3600000L)
+        val fresh=Guide(programmes=mapOf("espn.4.br" to listOf(other)))
+        val empty=Guide(programmes=mapOf("espn.5.br" to emptyList()))
+        val merged=mergeProviderGuide(previous,fresh,empty,now)
+        assertEquals(listOf(p),merged.forChannel(channels.first()))
+        assertEquals(listOf(other),merged.forChannel(channels.last()))
+        assertEquals(1,footballMatches(merged,channels,now).size)
+        val contradicted=mergeProviderGuide(previous,Guide(programmes=mapOf("espn.5.br" to listOf(other))),empty,now)
+        assertEquals(listOf(other),contradicted.forChannel(channels.first()))
+        assertTrue(contradicted.matches.isEmpty())
+    }
+
     @Test fun opaqueDeliveryIdsComeFromAuthenticatedApiAndDetailedTablesAreNotTruncatedAt24()=runBlocking {
         val channel=channels.first()
         assertNull(XtreamSportsGuide.streamId(source,channel))
