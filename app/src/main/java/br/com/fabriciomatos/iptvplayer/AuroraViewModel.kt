@@ -650,14 +650,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     // supplies a usable match, try the provider's channel-specific EPG.
                     val shortGuide=if(footballMatches(fresh,channels).isEmpty())
                         XtreamSportsGuide.load(playlist,channels) else Guide()
-                    val resolved=if(shortGuide.matches.isEmpty())fresh else Guide(
-                        fresh.programmes+shortGuide.programmes,
-                        fresh.names+shortGuide.names,
-                        (fresh.matches+shortGuide.matches).distinctBy {
-                            it.channelId+":"+it.programme.start+":"+it.programme.title
-                        })
+                    val resolved=mergeProviderGuide(saved,fresh,shortGuide,System.currentTimeMillis())
                     // A partial or empty XMLTV response must not erase a usable saved guide.
-                    if(resolved.programmes.isNotEmpty() || resolved.matches.isNotEmpty()) {
+                    if(fresh.programmes.isNotEmpty() || fresh.matches.isNotEmpty() || shortGuide.matches.isNotEmpty()) {
                         val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,resolved);repository.savedGuide(playlist) }
                         val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
                         if(playlistUrl==playlist) {
