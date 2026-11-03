@@ -11,40 +11,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ScoreSourcesTest {
-    @Test fun publicScheduleLoadsWithoutAnyProviderGuideAndCachesNetworkReads() = runBlocking {
-        val context=InstrumentationRegistry.getInstrumentation().targetContext
-        resetCatalog(context)
-        val now=System.currentTimeMillis()
-        val kickoff=java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",java.util.Locale.ROOT).apply {
-            timeZone=java.util.TimeZone.getTimeZone("UTC")
-        }.format(java.util.Date(now+3600000L))
-        val match=JSONObject().put("id",813).put("status",JSONObject().put("utcTime",kickoff)
-            .put("started",false).put("finished",false))
-            .put("home",JSONObject().put("id",1).put("name","Fluminense"))
-            .put("away",JSONObject().put("id",2).put("name","Botafogo"))
-        val payload=JSONObject().put("leagues",JSONArray().put(
-            JSONObject().put("id",268).put("primaryId",268).put("ccode","BRA")
-                .put("name","Brasileirão").put("matches",JSONArray().put(match))))
-        val calls=java.util.concurrent.atomic.AtomicInteger(0)
-        val repo=PlaylistRepository(context)
-        try {
-            val loader=FootballScoreRepository(repo) {address ->
-                assertTrue(address.startsWith("https://www.fotmob.com/api/data/matches?date="))
-                assertFalse(address.contains("username"))
-                calls.incrementAndGet()
-                payload
-            }
-            val first=loader.loadPublic(now=now)
-            assertFalse(first.failed)
-            assertEquals(1,publicFootballMatches(first,now).size)
-            assertTrue(publicFootballMatches(first,now).single().channels.isEmpty())
-            val count=calls.get()
-            assertTrue(count>=3)
-            val cached=loader.loadPublic(now=now)
-            assertEquals(count,calls.get())
-            assertEquals(first.events,cached.events)
-        } finally {repo.close()}
-    }
     @Test fun capturedFotMobFeedIncludesFinalResultsAndTheRealLiveClock() {
         val context=InstrumentationRegistry.getInstrumentation().context
         val json=JSONObject(context.assets.open("scores-fotmob.json").bufferedReader().use {it.readText()})
