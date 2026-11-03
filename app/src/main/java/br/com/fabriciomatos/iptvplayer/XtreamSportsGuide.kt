@@ -20,6 +20,25 @@ import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.GZIPInputStream
 
+/** Keep already verified broadcaster slots until they expire when an IPTV provider
+ * returns a partial XMLTV file. Never carry over a slot contradicted by fresh EPG. */
+internal fun mergeProviderGuide(previous: Guide, fresh: Guide, short: Guide, now: Long): Guide {
+    val authoritative=fresh.matches+short.matches
+    val validPrevious=previous.matches.filter {old ->
+        old.programme.end>now && old.programme.start<now+86400000L &&
+            authoritative.none {it.channelId==old.channelId && it.programme.start==old.programme.start} &&
+            fresh.programmes[old.channelId].orEmpty().none {new ->
+                new.start<old.programme.end && old.programme.start<new.end
+            }
+    }
+    return Guide(
+        (if(fresh.programmes.isEmpty())previous.programmes else fresh.programmes)+short.programmes,
+        previous.names+fresh.names+short.names,
+        (authoritative+validPrevious).distinctBy {
+            it.channelId+":"+it.programme.start+":"+it.programme.title
+        })
+}
+
 /** Provider TV guide fallback. Public scores never establish a broadcast channel. */
 internal object XtreamSportsGuide {
     private val sportsBroadcaster = Regex("""(?i)\b(?:espn(?:\s*\d+)?|sportv(?:\s*\d+)?|sport\s*tv|premiere(?:\s*\d+)?|tnt\s*sports?|band\s*sports|dazn|caze\s*tv|nsports|fox\s*sports|bein\s*sports|eleven\s*sports|pfc)\b""")
