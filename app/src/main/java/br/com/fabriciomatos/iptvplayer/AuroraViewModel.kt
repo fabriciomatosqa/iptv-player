@@ -97,6 +97,9 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var fromFootball by mutableStateOf(false); private set
     var guideLoading by mutableStateOf(false); private set
     var guideError by mutableStateOf(false); private set
+    var guideDiagnostics by mutableStateOf(GuideDiagnostics()); private set
+    var alternateGuide by mutableStateOf(true); private set
+    private var guideRequestNumber=0L
     var catalog by mutableStateOf(CatalogOverview(), referentialEqualityPolicy()); private set
     var playlistUrl by mutableStateOf(""); private set
     var playlistName by mutableStateOf("Minha playlist"); private set
@@ -206,6 +209,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 playlistUrl = saved.first; playlistName = saved.second
                 savedPlaylists=withContext(Dispatchers.IO) {repository.savedPlaylists()}
                 epgOverride=withContext(Dispatchers.IO) {preferences.epgUrl(playlistUrl)}
+                alternateGuide=withContext(Dispatchers.IO) {preferences.alternateGuide(playlistUrl)}
                 progressText = if (playlistUrl.isBlank()) null else preferences.text(R.string.loading)
                 val source = playlistUrl
                 withContext(Dispatchers.IO) { repository.openCatalog(source, ::showProgress) }
@@ -302,6 +306,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 playlistUrl=clean;playlistName=name.trim().ifBlank {"Minha playlist"}
                 savedPlaylists=withContext(Dispatchers.IO) {repository.savedPlaylists()}
                 epgOverride=withContext(Dispatchers.IO) {preferences.epgUrl(clean)}
+                alternateGuide=withContext(Dispatchers.IO) {preferences.alternateGuide(clean)}
+                guideDiagnostics=GuideDiagnostics()
                 settingsOpen=false;message=null
                 if(changed) {
                     page=Page.HOME;loading=true
@@ -617,55 +623,61 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
             catch(_: Exception) {if(pendingSeriesFavorites==(source to next))pendingSeriesFavorites=null;message=preferences.text(R.string.load_failed)}
         }
     }
-    private fun refreshGuide(force: Boolean = false) {
-        // A user-requested retry must not be discarded while an older guide fetch is running.
-        if(guideJob?.isActive==true) {
-            if(!force)return
-            guideJob?.cancel()
+    fun setAlternateGuide(value:Boolean) {
+        val source=playlistUrl
+        viewModelScope.launch {
+            if(withContext(Dispatchers.IO) {preferences.saveAlternateGuide(source,value)} && source==playlistUrl) {
+                alternateGuide=value;refreshGuide(true)
+            }
         }
-        val source = epgOverride.ifBlank { epgUrl.ifBlank { ProviderApi.epgEndpoint(playlistUrl).orEmpty() } }
-        val playlist=playlistUrl
-        guideJob = viewModelScope.launch {
+    }
+    private fun refreshGuide(force: Boolean = false) {
+        val previous=guideJob
+        if(previous?.isActive==true && !force)return
+        val request=++guideRequestNumber
+        previous?.cancel()
+        val address=epgOverride.ifBlank {epgUrl.ifBlank {ProviderApi.epgEndpoint(playlistUrl).orEmpty()}}
+        val playlist=playlistUrl;val useAlternate=alternateGuide
+        guideJob=viewModelScope.launch {
+            previous?.cancelAndJoin()
             guideLoading=true
             try {
-                val saved=withContext(Dispatchers.IO) {repository.savedGuide(playlist)}
-                if(playlistUrl!=playlist)return@launch
-                guide=saved
-                if(source.isBlank() && saved.names.isEmpty() && saved.programmes.isEmpty() && saved.matches.isEmpty()) {
-                    football=emptyList();sports=emptyList();guideError=true
-                    return@launch
+                val key="guide-diagnostic:"+PlaylistRepository.digest(playlist)
+                val cached=withContext(Dispatchers.IO) {
+                    repository.savedGuide(playlist) to repository.cachedArtwork(key)?.let(GuideDiagnostics::decode)
                 }
-                val channels=withContext(Dispatchers.IO) { repository.liveChannels(playlist) }
+                if(playlistUrl!=playlist || request!=guideRequestNumber)return@launch
+                val saved=if(useAlternate)cached.first else cached.first.withoutAlternate()
+                guide=saved;guideDiagnostics=cached.second ?: GuideDiagnostics()
+                val channels=withContext(Dispatchers.IO) {repository.liveChannels(playlist)}
                 val cachedEvents=withContext(Dispatchers.Default) {footballMatches(saved,channels) to sportsEvents(saved,channels)}
-                if(playlistUrl!=playlist)return@launch
+                if(playlistUrl!=playlist || request!=guideRequestNumber)return@launch
                 football=cachedEvents.first;sports=cachedEvents.second
-                if(source.isBlank()) {guideError=false;return@launch}
-                val checked=withContext(Dispatchers.IO) { repository.guideChecked(playlist) }
+                guideError=guideDiagnostics.status !in listOf(GuideStatus.READY,GuideStatus.NO_GAMES)
+                val checked=withContext(Dispatchers.IO) {repository.guideChecked(playlist)}
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
-                    val fresh=try {
-                        withContext(Dispatchers.IO) { loadGuide(source,channels.flatMap {listOf(it.tvgId,normalized(it.name),guideChannelName(it.name))}.filter(String::isNotBlank).toSet()) }
-                    } catch(e: CancellationException) {throw e}
-                    catch(_: Exception) { Guide() }
-                    // Public scores do not identify TV channels. If XMLTV no longer
-                    // supplies a usable match, try the provider's channel-specific EPG.
-                    val shortGuide=if(footballMatches(fresh,channels).isEmpty())
-                        XtreamSportsGuide.load(playlist,channels) else Guide()
-                    val resolved=mergeProviderGuide(saved,fresh,shortGuide,System.currentTimeMillis())
-                    // A partial or empty XMLTV response must not erase a usable saved guide.
-                    if(fresh.programmes.isNotEmpty() || fresh.matches.isNotEmpty() || shortGuide.matches.isNotEmpty()) {
-                        val merged=withContext(Dispatchers.IO) { repository.saveGuide(playlist,resolved);repository.savedGuide(playlist) }
-                        val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
-                        if(playlistUrl==playlist) {
-                            guide=merged
-                            football=events.first
-                            sports=events.second
-                            guideError=false
-                        }
-                    } else guideError=true
+                    val result=withContext(Dispatchers.IO) {recoverSportsGuide(playlist,address,channels,saved,useAlternate)}
+                    ensureActive()
+                    if(playlistUrl!=playlist || request!=guideRequestNumber)return@launch
+                    val merged=withContext(Dispatchers.IO) {
+                        if(result.received)repository.saveGuide(playlist,result.guide)
+                        repository.saveArtwork(key,result.diagnostics.encode())
+                        if(result.received)repository.savedGuide(playlist) else result.guide
+                    }
+                    val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
+                    if(playlistUrl==playlist && request==guideRequestNumber) {
+                        guide=merged;football=events.first;sports=events.second
+                        guideDiagnostics=result.diagnostics
+                        guideError=result.diagnostics.status !in listOf(GuideStatus.READY,GuideStatus.NO_GAMES)
+                    }
                 }
-            } catch(e: CancellationException) { throw e }
-            catch(_: Exception) { guideError=true }
-            finally { guideLoading=false }
+            } catch(e:CancellationException) {throw e}
+            catch(_:Exception) {
+                if(playlistUrl==playlist && request==guideRequestNumber) {
+                    guideError=true
+                    guideDiagnostics=GuideDiagnostics(listOf(GuideAttempt(GuideSource.XMLTV,GuideStatus.INTERNAL)))
+                }
+            } finally {if(request==guideRequestNumber)guideLoading=false}
         }
     }
 

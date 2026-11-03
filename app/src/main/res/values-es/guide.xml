@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="guide_diagnostics">Diagnóstico de la guía</string>
+    <string name="guide_not_configured">No hay guía de programación configurada.</string>
+    <string name="guide_network">No se pudo acceder al servidor de la guía. Se conserva la programación guardada.</string>
+    <string name="guide_auth">El servidor rechazó la autenticación (401/403).</string>
+    <string name="guide_http">El servidor de la guía devolvió un error HTTP.</string>
+    <string name="guide_invalid">La respuesta de la guía no es válida o no se pudo interpretar.</string>
+    <string name="guide_empty">La guía respondió, pero no contiene programas.</string>
+    <string name="guide_stale">La guía solo contiene programación caducada.</string>
+    <string name="guide_unlinked">Hay eventos en la guía, pero no se identificaron canales correspondientes en la lista.</string>
+    <string name="guide_internal">No se pudo procesar o guardar la guía.</string>
+    <string name="guide_ready">Programación actual cargada.</string>
+    <string name="guide_counts">Canales: %1$d · Programas: %2$d · Actuales/futuros: %3$d · Eventos: %4$d</string>
+    <string name="guide_linked">%1$d transmisiones vinculadas a tus canales</string>
+    <string name="guide_alternate_switch">Recuperar con guía de emisoras brasileñas</string>
+    <string name="guide_alternate_help">Consultar EPGShare si el proveedor no tiene programación actual. Solo se vinculan identificadores de canales brasileños reconocidos.</string>
+    <string name="guide_alternate_active">Programación: EPGShare · guía del proveedor sin datos actuales.</string>
+    <string name="guide_diagnostics_refresh">Actualizar diagnóstico de la guía</string>
+    <string name="guide_provider_api">API del proveedor</string>
+</resources>

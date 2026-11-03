@@ -142,7 +142,7 @@ fun sportsCompetition(programme: Programme, sport: SportKind): Pair<String,Strin
 }
 fun sportsEvents(guide:Guide,channels:List<Channel>,now:Long=System.currentTimeMillis()):List<SportsEvent> {
     val live=channels.filter { it.kind==MediaKind.LIVE && !it.adult }
-    val byId=live.filter { it.tvgId.isNotBlank() }.groupBy { it.tvgId }
+    val byId=live.filter { it.tvgId.isNotBlank() }.groupBy { guide.channelId(it) }
     val byName=live.groupBy { guideChannelName(it.name) }
     val aliases=guide.names.entries.groupBy({ it.value },{ guideChannelName(it.key) })
     val merged=linkedMapOf<String,SportsEvent>()

@@ -202,6 +202,9 @@ import java.util.Locale
                         NumberFormat.getIntegerInstance(Locale.forLanguageTag(model.language)).format(gameCount)),
                     fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=colors.mint)
             }
+            if(model.alternateGuide && model.guideDiagnostics.alternate)
+                Text(tr(R.string.guide_alternate_active),Modifier.padding(horizontal=20.dp,vertical=4.dp)
+                    .testTag("guide_alternate_active"),fontSize=11.sp,color=colors.muted)
             if(soccer && model.footballFeed.failed)
                 Text(tr(R.string.scores_stale),Modifier.padding(horizontal=20.dp,vertical=4.dp),
                     fontSize=11.sp,color=MaterialTheme.colorScheme.error)
@@ -214,11 +217,14 @@ import java.util.Locale
                     Text(tr(when {
                         model.guideLoading->R.string.loading
                         model.football.isNotEmpty() || model.sports.isNotEmpty()->R.string.no_matching_games
-                        model.guideError->R.string.no_guide
+                        model.guideError->guideStatusResource(model.guideDiagnostics.status)
                         else->R.string.no_games
                     }),textAlign=TextAlign.Center)
                     if(!model.guideLoading && model.football.isEmpty() && model.sports.isEmpty())
                         OutlinedButton(onClick=model::refreshFootball){Text(tr(R.string.retry))}
+                    if(!model.guideLoading)TextButton(onClick={model.openSettings();model.settingsSection=4}) {
+                        Text(tr(R.string.guide_diagnostics))
+                    }
                 }
             } else LazyColumn(Modifier.weight(1f).testTag("football_list"),state=scroll,
                 contentPadding=PaddingValues(start=16.dp,end=16.dp,top=8.dp,bottom=24.dp),

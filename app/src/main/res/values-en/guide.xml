@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="guide_diagnostics">Guide diagnostics</string>
+    <string name="guide_not_configured">No TV guide is configured.</string>
+    <string name="guide_network">The guide server could not be reached. Saved schedules are preserved.</string>
+    <string name="guide_auth">The guide server refused authentication (401/403).</string>
+    <string name="guide_http">The guide server returned an HTTP error.</string>
+    <string name="guide_invalid">The guide response is invalid or could not be processed.</string>
+    <string name="guide_empty">The guide responded but contains no programmes.</string>
+    <string name="guide_stale">The guide contains only expired programmes.</string>
+    <string name="guide_unlinked">Schedule entries were found, but no matching playlist channels were identified.</string>
+    <string name="guide_internal">The guide could not be processed or saved.</string>
+    <string name="guide_ready">Current schedules loaded.</string>
+    <string name="guide_counts">Channels: %1$d · Programmes: %2$d · Current/upcoming: %3$d · Events: %4$d</string>
+    <string name="guide_linked">%1$d broadcasts linked to your channels</string>
+    <string name="guide_alternate_switch">Recover with a Brazilian broadcaster guide</string>
+    <string name="guide_alternate_help">Use EPGShare when the provider has no current schedules. Only recognised Brazilian channel IDs are linked.</string>
+    <string name="guide_alternate_active">Schedule: EPGShare · provider guide has no current data.</string>
+    <string name="guide_diagnostics_refresh">Refresh guide diagnostics</string>
+    <string name="guide_provider_api">Provider API</string>
+</resources>

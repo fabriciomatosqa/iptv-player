@@ -63,6 +63,13 @@ object ProviderApi {
         return ProviderMetadata(categories, posters)
     }
 
+    internal suspend fun liveGuideStreams(source: String): List<ProviderGuideStream> = buildList {
+        read(source,"get_live_streams",setOf("name","stream_id","epg_channel_id")) { row ->
+            val id=row["stream_id"].orEmpty()
+            if(id.matches(Regex("[0-9]{1,12}")))add(ProviderGuideStream(id,row["name"].orEmpty(),row["epg_channel_id"].orEmpty()))
+        }
+    }
+
     suspend fun readVodIds(source: String, accept: (Map<String, String>) -> Unit) =
         read(source,"get_vod_streams",setOf("name","title","stream_id"),accept)
 

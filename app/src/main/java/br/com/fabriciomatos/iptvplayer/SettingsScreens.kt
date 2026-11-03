@@ -77,6 +77,19 @@ import coil.compose.AsyncImage
                     item { OutlinedTextField(guideAddress,{guideAddress=it},Modifier.fillMaxWidth(),label={Text(tr(R.string.epg_address))},
                         singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Uri)) }
                     item { Button(onClick={model.setGuideAddress(guideAddress)},modifier=Modifier.fillMaxWidth()) {Text(tr(R.string.save))} }
+                    item {
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(tr(R.string.guide_alternate_switch),fontWeight=FontWeight.SemiBold)
+                                Text(tr(R.string.guide_alternate_help),fontSize=12.sp)
+                            }
+                            Switch(model.alternateGuide,model::setAlternateGuide,Modifier.testTag("alternate_guide_switch"))
+                        }
+                    }
+                    item { GuideDiagnosticDetails(model) }
+                    item { OutlinedButton(onClick=model::refreshFootball,enabled=!model.guideLoading,modifier=Modifier.fillMaxWidth()) {
+                        Text(tr(R.string.guide_diagnostics_refresh))
+                    } }
                     item { OutlinedButton(onClick={model.settingsOpen=false;model.showFootball()},modifier=Modifier.fillMaxWidth()) {Text(tr(R.string.football))} }
                 }
                 6 -> item { AppUpdateContent(model.onlineUpdate) }
@@ -127,4 +140,25 @@ import coil.compose.AsyncImage
 @Composable private fun PasswordField(value: String, change: (String)->Unit, label: String) {
     OutlinedTextField(value,change,Modifier.fillMaxWidth(),singleLine=true,label={Text(label)},visualTransformation=PasswordVisualTransformation(),
         keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password))
+}
+
+@Composable internal fun GuideDiagnosticDetails(model:AuroraViewModel) {
+    Column(Modifier.fillMaxWidth().testTag("guide_diagnostics"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text(tr(R.string.guide_diagnostics),fontWeight=FontWeight.Bold)
+        if(model.guideLoading)LinearProgressIndicator(Modifier.fillMaxWidth())
+        val diagnostic=model.guideDiagnostics
+        Text(tr(guideStatusResource(diagnostic.status)),fontSize=13.sp)
+        diagnostic.attempts.forEach {attempt ->
+            val source=when(attempt.source) {
+                GuideSource.XMLTV->"XMLTV"
+                GuideSource.PROVIDER_API->tr(R.string.guide_provider_api)
+                GuideSource.EPGSHARE_BR->"EPGShare · BR"
+            }
+            Text(source+" · "+tr(guideStatusResource(attempt.status)),fontSize=12.sp)
+            val c=attempt.counts
+            Text(tr(R.string.guide_counts,c.channels,c.programmes,c.current,c.candidates),fontSize=11.sp,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(tr(R.string.guide_linked,diagnostic.linked),fontSize=12.sp)
+    }
 }

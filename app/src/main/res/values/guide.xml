@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="guide_diagnostics">Diagnóstico do guia</string>
+    <string name="guide_not_configured">Nenhum guia de programação configurado.</string>
+    <string name="guide_network">Não foi possível acessar o servidor do guia. A programação salva foi preservada.</string>
+    <string name="guide_auth">O servidor do guia recusou a autenticação (401/403).</string>
+    <string name="guide_http">O servidor do guia retornou um erro HTTP.</string>
+    <string name="guide_invalid">A resposta do guia é inválida ou não pôde ser interpretada.</string>
+    <string name="guide_empty">O guia respondeu, mas não contém nenhum programa.</string>
+    <string name="guide_stale">O guia contém apenas programação vencida.</string>
+    <string name="guide_unlinked">Existem eventos no guia, mas não foram identificados canais correspondentes na playlist.</string>
+    <string name="guide_internal">Não foi possível processar ou salvar o guia.</string>
+    <string name="guide_ready">Programação atual carregada.</string>
+    <string name="guide_counts">Canais: %1$d · Programas: %2$d · Atuais/futuros: %3$d · Eventos: %4$d</string>
+    <string name="guide_linked">%1$d transmissões vinculadas aos seus canais</string>
+    <string name="guide_alternate_switch">Recuperar com guia de emissoras brasileiras</string>
+    <string name="guide_alternate_help">Consultar EPGShare quando o provedor não tiver programação atual. Apenas identificadores de canais brasileiros reconhecidos são associados.</string>
+    <string name="guide_alternate_active">Programação: EPGShare · guia do provedor sem dados atuais.</string>
+    <string name="guide_diagnostics_refresh">Atualizar diagnóstico do guia</string>
+    <string name="guide_provider_api">API do provedor</string>
+</resources>
