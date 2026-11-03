@@ -42,7 +42,8 @@ class RecoveredSportsUiTest {
             scenario.onActivity {model.page=Page.FOOTBALL}
             compose.onNodeWithTag("football_match").assertExists()
             compose.onNodeWithText("Porto × Estoril").assertExists()
-            compose.onNodeWithTag("guide_alternate_active").assertExists()
+            // The original 1.12.18 screen does not display the optional guide-source banner.
+            // Guide provenance remains available from Settings > Programação.
             // Replays intentionally start compact; expand the existing card before checking its actions.
             compose.onNodeWithTag("football_match").performClick()
             compose.onNodeWithText("Porto",useUnmergedTree=true).assertExists()
