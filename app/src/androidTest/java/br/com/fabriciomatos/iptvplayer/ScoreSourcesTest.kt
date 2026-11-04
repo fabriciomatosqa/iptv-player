@@ -24,7 +24,9 @@ class ScoreSourcesTest {
         assertEquals(3,matchFootballScore(match,FootballFeed(scores))?.homeGoals)
         // A confirmed finished fixture several hours before the same named EPG slot qualifies as a replay.
         assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme,final))
-        assertFalse(compactFootballMatch(match,final,match.programme.start-1))
+        // Replays remain compact even before the rebroadcast starts; scheduled time stays intact.
+        assertTrue(compactFootballMatch(match,final,match.programme.start-1))
+        assertEquals(final.kickoff+4*3600000,match.programme.start)
         assertFalse(transmissionIsLive(match.programme,final,match.programme.start))
         assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme.copy(broadcast=BroadcastHint.REPLAY),final))
     }
