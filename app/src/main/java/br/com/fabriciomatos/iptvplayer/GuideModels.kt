@@ -77,7 +77,7 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
 
 /** Extract only a whole explicit league label from structured EPG or a title segment. */
 internal fun explicitFootballCompetition(p:Programme):String? {
-    val titleParts=p.title.split(Regex("""\\s+[-–—]\\s+"""))
+    val titleParts=p.title.split(Regex("""\s+[-–—]\s+"""))
     return (listOf(p.metadata.competition,p.category)+titleParts)
         .firstNotNullOfOrNull { footballCompetitionRule(it)?.id }
 }
