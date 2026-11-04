@@ -82,6 +82,11 @@ class FootballGroupingTest {
     }
     @Test fun twoNamedDivisionsNeverBecomeOneFixture() {
         val now=1800000000000L
+        val firstDetails=footballDetails("Sport x Fortaleza - Campeonato Brasileiro")
+        val secondDetails=footballDetails("Sport x Fortaleza - Campeonato Brasileiro Série B")
+        assertNotNull("Serie A fixture must be recognized",firstDetails)
+        assertNotNull("Serie B fixture must be recognized",secondDetails)
+        assertNotEquals("Both competition identities must differ",footballCompetitionIdentity(firstDetails!!),footballCompetitionIdentity(secondDetails!!))
         val entries=listOf(GuideMatch("a",Programme("Sport x Fortaleza - Campeonato Brasileiro",now,now+2*3600000L)),
             GuideMatch("b",Programme("Sport x Fortaleza - Campeonato Brasileiro Série B",now,now+2*3600000L)))
         assertEquals(2,footballMatches(Guide(matches=entries),
