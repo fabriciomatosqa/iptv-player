@@ -61,3 +61,23 @@ internal fun championshipBroadcasts(race: ChampionshipRace, events: List<SportsE
                 }==true
             }
     }.distinctBy { it.id }
+
+/** Constructor ID maps to official 2026 Formula 1 team logo, never an unrelated badge. */
+internal fun f1ConstructorLogo(id:String,year:Int):String {
+    if(year!=2026)return ""
+    val name=when(id.lowercase(Locale.ROOT)) {
+        "alpine"->"alpine"
+        "aston_martin"->"astonmartin"
+        "audi"->"audi"
+        "cadillac"->"cadillac"
+        "ferrari"->"ferrari"
+        "haas"->"haas"
+        "mclaren"->"mclaren"
+        "mercedes"->"mercedes"
+        "rb","racing_bulls","racingbulls"->"racingbulls"
+        "red_bull","redbull"->"redbullracing"
+        "williams"->"williams"
+        else->return ""
+    }
+    return "https://media.formula1.com/image/upload/common/f1/2026/"+name+"/2026"+name+"logo.svg"
+}

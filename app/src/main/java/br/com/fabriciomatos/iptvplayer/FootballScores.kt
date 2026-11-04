@@ -155,7 +155,7 @@ fun compactFootballMatch(match: FootballMatch, score: FootballScore?, now: Long)
     return match.broadcastEnd<=now || score?.state==MatchState.FINISHED && match.programme.start<=now
 }
 fun broadcastMode(programme: Programme, score: FootballScore?): BroadcastMode {
-    if(programme.broadcast==BroadcastHint.REPLAY)return BroadcastMode.REPLAY
+    if(footballExplicitReplay(programme))return BroadcastMode.REPLAY
     if(programme.broadcast==BroadcastHint.LIVE)return BroadcastMode.LIVE
     if(score!=null && score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) &&
         score.kickoff in (programme.start-15*60000L)..minOf(programme.end-1,programme.start+90*60000L))return BroadcastMode.LIVE

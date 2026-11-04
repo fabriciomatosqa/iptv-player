@@ -2,6 +2,9 @@ package br.com.fabriciomatos.iptvplayer
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -114,8 +117,8 @@ import java.util.Locale
                             } }
                             item { NextChampionshipRace(next,locale,now,events,broadcasts) }
                         }
-                        1 -> item { ChampionshipStandings(season.drivers,true,locale) }
-                        2 -> item { ChampionshipStandings(season.teams,false,locale) }
+                        1 -> item { ChampionshipStandings(season.drivers,true,locale,season.year) }
+                        2 -> item { ChampionshipStandings(season.teams,false,locale,season.year) }
                         3 -> item { NextChampionshipRace(next,locale,now,events,broadcasts) }
                         4 -> {
                             item { Text("Calendário da temporada · horários do aparelho",color=colors.muted,fontSize=12.sp) }
@@ -158,7 +161,7 @@ private fun sessionTime(session: ChampionshipSession, locale: Locale) = session.
     championshipDateTime(it,locale)
 } ?: "${session.date} · horário não informado"
 
-@Composable private fun ChampionshipStandings(rows: List<ChampionshipStanding>, drivers: Boolean, locale: Locale) {
+@Composable private fun ChampionshipStandings(rows: List<ChampionshipStanding>, drivers: Boolean, locale: Locale, year: Int) {
     val colors=LocalAuroraColors.current
     ChampionshipPanel(if(drivers)"Classificação dos pilotos" else "Classificação dos construtores") {
         if(rows.isEmpty()) Unavailable("Classificação") else {
@@ -175,9 +178,19 @@ private fun sessionTime(session: ChampionshipSession, locale: Locale) = session.
                     Row(Modifier.padding(vertical=10.dp)) {
                         val accent=if(row.position<=3)colors.mint else colors.text
                         Text(if(row.position==1)"★ 1" else row.position.toString(),Modifier.width(65.dp),color=accent,fontWeight=FontWeight.Bold)
-                        Column(Modifier.width(250.dp).padding(end=8.dp)) {
-                            Text(row.name,color=accent,fontWeight=if(row.position==1)FontWeight.Bold else FontWeight.Medium)
-                            if(drivers)Text(row.team.ifBlank { "Equipe não informada" },color=colors.muted,fontSize=12.sp)
+                        Row(Modifier.width(250.dp).padding(end=8.dp),
+                            verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            if(!drivers) {
+                                val url=f1ConstructorLogo(row.id,year)
+                                if(url.isNotBlank()) AsyncImage(model=url,contentDescription="Logo da equipe "+row.name,
+                                    modifier=Modifier.size(30.dp).testTag("f1_constructor_logo_"+row.id),
+                                    contentScale=ContentScale.Fit)
+                                else Text("•",color=colors.muted)
+                            }
+                            Column {
+                                Text(row.name,color=accent,fontWeight=if(row.position==1)FontWeight.Bold else FontWeight.Medium)
+                                if(drivers)Text(row.team.ifBlank { "Equipe não informada" },color=colors.muted,fontSize=12.sp)
+                            }
                         }
                         Text(championshipNumber(row.points,locale),Modifier.width(65.dp))
                         Text(championshipGap(row,rows.firstOrNull { it.position==1 })?.let { championshipNumber(it,locale) } ?: "—",Modifier.width(65.dp))

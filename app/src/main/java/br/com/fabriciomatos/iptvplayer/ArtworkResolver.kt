@@ -42,15 +42,41 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         val cached=withContext(Dispatchers.IO) { repository.cachedArtwork(cacheKey) }
         val bundle=if(cached!=null) JSONObject(cached) else try {
             withContext(Dispatchers.IO) {
-                val teams=readJson("https://site.api.espn.com/apis/site/v2/sports/soccer/$slug/teams?limit=100")
-                val league=readJson("https://site.api.espn.com/apis/site/v2/sports/soccer/$slug/scoreboard?limit=1")
+                val teams=readJson("https://site.web.api.espn.com/apis/site/v2/sports/soccer/$slug/teams?limit=100")
+                val league=readJson("https://site.web.api.espn.com/apis/site/v2/sports/soccer/$slug/scoreboard?limit=1")
                 sportsBundle(teams,league).also { repository.saveArtwork(cacheKey,it.toString()) }
             }
         } catch(e: CancellationException) {throw e} catch(_: Exception) {
             JSONObject().also {withContext(Dispatchers.IO) {repository.saveArtwork(cacheKey,"{}",3600000L)}}
         }
-        FootballArtwork(bundle.optString("badge"),selectTeamBadge(details.home,bundle.optJSONArray("teams") ?: JSONArray()),
-            selectTeamBadge(details.away,bundle.optJSONArray("teams") ?: JSONArray()))
+        val teams=bundle.optJSONArray("teams") ?: JSONArray()
+        var home=selectTeamBadge(details.home,teams)
+        var away=selectTeamBadge(details.away,teams)
+        if(slug=="bra.2") {
+            if(home.isBlank())home=brazilianFootballBadge(details.home)
+            if(away.isBlank())away=brazilianFootballBadge(details.away)
+        }
+        FootballArtwork(bundle.optString("badge"),home,away)
+    }
+
+    /** Fallback is restricted to unique Brazilian Soccer identities. Cache negatives briefly. */
+    private suspend fun brazilianFootballBadge(name:String):String {
+        val key="football:brazilian-badge:v1:"+footballScoreTeamKey(name)
+        withContext(Dispatchers.IO) { repository.cachedArtwork(key) }?.let {
+            return runCatching { JSONObject(it).optString("badge") }.getOrDefault("")
+        }
+        val result=try {
+            val query=URLEncoder.encode(name,"UTF-8")
+            val json=withContext(Dispatchers.IO) {
+                readJson("https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=$query")
+            }
+            selectBrazilianFootballBadge(name,json)
+        } catch(e:CancellationException) {throw e} catch(_:Exception) {""}
+        withContext(Dispatchers.IO) {
+            repository.saveArtwork(key,JSONObject().put("badge",result).toString(),
+                if(result.isBlank())3600000L else 30*86400000L)
+        }
+        return result
     }
 
     /** One cached league/team catalog per sport, resolved only for cards currently on screen. */
@@ -148,6 +174,22 @@ fun selectSportsDatabaseBadge(name: String, sportName: String, json: JSONObject)
         team.optString("strBadge").takeIf { it.startsWith("https://") }?.let(exact::add)
     }
     return exact.distinct().singleOrNull().orEmpty()
+}
+
+/** Never return a football badge for a foreign club or a different sport. */
+fun selectBrazilianFootballBadge(name:String,json:JSONObject):String {
+    val rows=json.optJSONArray("teams") ?: return ""
+    val key=footballScoreTeamKey(name)
+    if(key.isBlank())return ""
+    val badges=mutableSetOf<String>()
+    for(i in 0 until rows.length()) {
+        val row=rows.optJSONObject(i) ?: continue
+        if(!row.optString("strSport").equals("Soccer",true))continue
+        if(normalized(row.optString("strCountry")) !in setOf("brazil","brasil"))continue
+        if(footballScoreTeamKey(row.optString("strTeam"))!=key)continue
+        row.optString("strBadge").takeIf { it.startsWith("https://") }?.let { badges.add(it) }
+    }
+    return badges.singleOrNull().orEmpty()
 }
 
 fun selectFederationBadge(request: NationalTeam, json: JSONObject): String {

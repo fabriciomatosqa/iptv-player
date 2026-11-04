@@ -26,46 +26,55 @@ data class FootballMatch(val id: String, val programme: Programme, val channels:
     fun programmeFor(channel: Channel): Programme = channelProgrammes[channel.url] ?: programme
     val broadcastEnd: Long get() = channelProgrammes.values.maxOfOrNull { it.end } ?: programme.end
 }
+/** Merge the same fixture across broadcasters, retaining EPG slots and every stream.
+ * Generic football labels can borrow a known championship; two named leagues,
+ * age groups, genders and explicitly marked replays remain separate. */
 fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.currentTimeMillis()): List<FootballMatch> {
-    val live = channels.filter { it.kind == MediaKind.LIVE && !it.adult }
-    val byId = live.filter { it.tvgId.isNotBlank() }.groupBy { guide.channelId(it) }
-    val byNameId = live.filter { it.tvgId.isBlank() }.mapNotNull { channel ->
+    val live=channels.filter { it.kind==MediaKind.LIVE && !it.adult }
+    val byId=live.filter { it.tvgId.isNotBlank() }.groupBy { guide.channelId(it) }
+    val byName=live.filter { it.tvgId.isBlank() }.mapNotNull { channel ->
         guide.channelId(channel)?.let { it to channel }
-    }.groupBy({ it.first }, { it.second })
-    val result = linkedMapOf<String, FootballMatch>()
-    val mostRecentByTeams = mutableMapOf<String, String>()
-    // Group nearby, overlapping slots, retaining each channel's original interval.
+    }.groupBy({ it.first },{ it.second })
+    val result=linkedMapOf<String,FootballMatch>()
+    val nearby=mutableMapOf<String,MutableList<String>>()
     guide.matches.asSequence().sortedBy { it.programme.start }.forEach { entry ->
-        val available = (byId[entry.channelId].orEmpty() + byNameId[entry.channelId].orEmpty())
-            .distinctBy { it.url }.sortedByDescending { if (it.name.contains("FHD", true)) 3 else if (it.name.contains("HD", true)) 2 else 1 }
-        // Do not import basketball, hockey, NFL, MLB, etc. into the football fixtures
-        // even when an EPG description contains "Liga", "Campeonato" or "vs".
-        if (detectOtherSport(entry.programme) != null) return@forEach
-        val details = footballDetails(entry.programme.title, entry.programme.category, entry.programme.metadata,
-            available.map { it.name }, available.map { it.group }) ?: return@forEach
-        val teams = listOf(footballScoreTeamKey(details.home), footballScoreTeamKey(details.away)).sorted()
-        val competition = footballCompetitionIdentity(details)
-        val fixtureKey = listOf(competition, teams[0], teams[1]).joinToString(":")
-        // Repeated names or a final score alone do not prove a replay.
-        val programme = entry.programme
-        if (entry.programme.end <= now-FOOTBALL_RETENTION_MS) return@forEach
-        if (available.isNotEmpty()) {
-            val category = if (programme.broadcast == BroadcastHint.REPLAY) "replay" else "game"
-            val groupKey = listOf(fixtureKey, category).joinToString(":")
-            val previous = mostRecentByTeams[groupKey]?.let(result::get)
-                ?.takeIf { previous -> abs(previous.programme.start - programme.start) <= 90 * 60000L &&
-                    previous.programme.start < programme.end && programme.start < previous.programme.end &&
-                    available.none { channel -> previous.channelProgrammes[channel.url]?.let { it != programme } == true } }
-            val id = previous?.id ?: groupKey + ":" + entry.programme.start
-            result[id] = FootballMatch(id, previous?.programme ?: programme,
-                (previous?.channels.orEmpty() + available).distinctBy { it.url }
-                    .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name }), details,
-                previous?.channelProgrammes.orEmpty() + available.associate { it.url to programme })
-            mostRecentByTeams[groupKey] = id
+        val available=(byId[entry.channelId].orEmpty()+byName[entry.channelId].orEmpty())
+            .distinctBy { it.url }.sortedByDescending { footballChannelQuality(it.name) }
+        if(available.isEmpty() || detectOtherSport(entry.programme)!=null) return@forEach
+        val details=footballDetails(entry.programme.title,entry.programme.category,entry.programme.metadata,
+            available.map { it.name },available.map { it.group }) ?: return@forEach
+        val programme=entry.programme
+        if(programme.end<=now-FOOTBALL_RETENTION_MS)return@forEach
+        val teams=listOf(footballScoreTeamKey(details.home),footballScoreTeamKey(details.away)).sorted()
+        val fixture=listOf(teams[0],teams[1],details.gender.name,details.ageGroup,
+            if(footballExplicitReplay(programme))"replay" else "game").joinToString(":")
+        val candidates=nearby.getOrPut(fixture) { mutableListOf() }
+        candidates.removeAll { id -> result[id]?.let { programme.start-it.programme.start>90*60000L } ?: true }
+        val old=candidates.asReversed().mapNotNull(result::get).firstOrNull { previous ->
+            val compatible=footballCompetitionIdentity(previous.details)==footballCompetitionIdentity(details) ||
+                !isCompetitionLabel(previous.details.competition) || !isCompetitionLabel(details.competition)
+            compatible && abs(previous.programme.start-programme.start)<=90*60000L &&
+                previous.programme.start<programme.end && programme.start<previous.broadcastEnd &&
+                available.none { channel -> previous.channelProgrammes[channel.url]?.let { it!=programme }==true }
         }
+        val id=old?.id ?: fixture+":"+programme.start
+        val retainKnown=old?.let { isCompetitionLabel(it.details.competition) }==true
+        result[id]=FootballMatch(id,if(retainKnown)old!!.programme else programme,
+            (old?.channels.orEmpty()+available).distinctBy { it.url }
+                .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name }),
+            if(retainKnown)old!!.details else details,
+            old?.channelProgrammes.orEmpty()+available.associate { it.url to programme })
+        if(old==null)candidates.add(id)
     }
     return result.values.sortedWith(compareBy<FootballMatch> { it.programme.start }.thenBy { it.programme.title })
 }
+
+/** Extra EPG fields count only if they explicitly say replay; a final score alone is insufficient. */
+internal fun footballExplicitReplay(p:Programme):Boolean =
+    p.broadcast==BroadcastHint.REPLAY ||
+        (p.broadcast!=BroadcastHint.LIVE && listOf(p.title,p.category,p.metadata.originalTitle,p.metadata.subtitle)
+            .any { programmeBroadcastHint(it,"")==BroadcastHint.REPLAY })
+
 /** Prefer HD/FHD variants of different broadcasters as the two main buttons.
  * Every underlying stream remains available through the overflow menu. */
 fun footballChannelQuality(name: String): Int = when {

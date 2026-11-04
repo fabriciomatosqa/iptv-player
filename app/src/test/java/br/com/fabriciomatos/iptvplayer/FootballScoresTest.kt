@@ -102,4 +102,12 @@ class FootballScoresTest {
         assertEquals(1,filterFootball(matches,FOOTBALL_BRAZIL,"Fluminénse",now).size)
         assertTrue(filterFootball(matches,FOOTBALL_FIFA,"Fluminense",now).isEmpty())
     }
+
+    @Test fun explicitEpgSubtitleMarksReplayButPastFinalScoreAloneDoesNot() {
+        val slot=Programme("Sport x Fortaleza",now,now+2*3600000L,
+            metadata=FootballMetadata(subtitle="Reprise da partida"))
+        assertEquals(BroadcastMode.REPLAY,broadcastMode(slot,null))
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(slot.copy(metadata=FootballMetadata()),score()))
+    }
+
 }

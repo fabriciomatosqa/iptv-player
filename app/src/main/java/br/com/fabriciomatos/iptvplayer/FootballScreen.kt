@@ -380,10 +380,10 @@ import java.util.Locale
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         if (maxWidth >= 600.dp) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                             FootballConfrontation(match, matched, homeBadge, awayBadge, now, Modifier.weight(1.2f))
-                            FootballTransmission(model, match, liveTransmission, now, Modifier.weight(1f))
+                            FootballTransmission(model, match, liveTransmission, now, Modifier.weight(1f),mode==BroadcastMode.REPLAY)
                         } else Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             FootballConfrontation(match, matched, homeBadge, awayBadge, now, Modifier.fillMaxWidth())
-                            FootballTransmission(model, match, liveTransmission, now, Modifier.fillMaxWidth())
+                            FootballTransmission(model, match, liveTransmission, now, Modifier.fillMaxWidth(),mode==BroadcastMode.REPLAY)
                         }
                     }
                     if (event != null && mode == BroadcastMode.REPLAY) Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -445,7 +445,7 @@ import java.util.Locale
             if(detailsExpanded) {
                 HorizontalDivider(color=colors.muted.copy(alpha=.15f))
                 FootballConfrontation(match,matched,homeBadge,awayBadge,now,Modifier.fillMaxWidth())
-                FootballTransmission(model,match,false,now,Modifier.fillMaxWidth())
+                FootballTransmission(model,match,false,now,Modifier.fillMaxWidth(),replay)
                 if(replay && event!=null) Text(tr(R.string.original_match,
                     footballDay(event.kickoff,Locale.forLanguageTag(model.language))+" · "+
                         footballTime(event.kickoff,Locale.forLanguageTag(model.language))),
@@ -680,14 +680,21 @@ import java.util.Locale
     }
 }
 
-@Composable private fun FootballTransmission(model: AuroraViewModel, match: FootballMatch, live: Boolean, now: Long, modifier: Modifier) {
+@Composable private fun FootballTransmission(model: AuroraViewModel, match: FootballMatch, live: Boolean, now: Long, modifier: Modifier, replay: Boolean = false) {
     val colors = LocalAuroraColors.current
     val locale = Locale.forLanguageTag(model.language)
     Row(modifier.testTag("football_broadcast").clip(RoundedCornerShape(16.dp)).background(colors.elevated.copy(alpha = .55f))
         .border(1.dp, colors.muted.copy(alpha = .08f), RoundedCornerShape(16.dp)).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Icon(if (live) Icons.Default.Sensors else Icons.Default.CalendarMonth, null, Modifier.size(18.dp).padding(top = 2.dp), tint = colors.mint)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(tr(R.string.broadcast) + ":", color = colors.muted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(tr(R.string.broadcast) + ":",color=colors.muted,fontSize=10.sp,fontWeight=FontWeight.Medium)
+                if(replay) Surface(Modifier.testTag("football_replay_badge"),
+                    shape=RoundedCornerShape(6.dp),color=Color(0xFF7130A7)) {
+                    Text(tr(R.string.replay).uppercase(locale),Modifier.padding(horizontal=8.dp,vertical=3.dp),
+                        color=Color.White,fontSize=10.sp,fontWeight=FontWeight.Black)
+                }
+            }
             if (live) {
                 val transition = rememberInfiniteTransition(label = "live transmission")
                 val opacity by transition.animateFloat(1f, 0f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "live dot")

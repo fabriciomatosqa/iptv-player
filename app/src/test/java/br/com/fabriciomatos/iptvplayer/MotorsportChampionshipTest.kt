@@ -63,4 +63,13 @@ class MotorsportChampionshipTest {
         assertSame(channel,found.single().channels.single())
         assertTrue(championshipBroadcasts(race(time=null),listOf(event)).isEmpty())
     }
+
+    @Test fun f1ConstructorLogosHaveStrictStableIds() {
+        assertTrue(f1ConstructorLogo("ferrari",2026).contains("/ferrari/2026ferrarilogo.svg"))
+        assertTrue(f1ConstructorLogo("red_bull",2026).contains("/redbullracing/2026redbullracinglogo.svg"))
+        assertTrue(f1ConstructorLogo("rb",2026).contains("/racingbulls/2026racingbullslogo.svg"))
+        assertEquals("",f1ConstructorLogo("fake",2026))
+        assertEquals("",f1ConstructorLogo("ferrari",2024))
+    }
+
 }
