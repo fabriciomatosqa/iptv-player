@@ -42,8 +42,8 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         val cached=withContext(Dispatchers.IO) { repository.cachedArtwork(cacheKey) }
         val bundle=if(cached!=null) JSONObject(cached) else try {
             withContext(Dispatchers.IO) {
-                val teams=readJson("https://site.web.api.espn.com/apis/site/v2/sports/soccer/$slug/teams?limit=100")
-                val league=readJson("https://site.web.api.espn.com/apis/site/v2/sports/soccer/$slug/scoreboard?limit=1")
+                val teams=readJson("https://site.api.espn.com/apis/site/v2/sports/soccer/$slug/teams?limit=100")
+                val league=readJson("https://site.api.espn.com/apis/site/v2/sports/soccer/$slug/scoreboard?limit=1")
                 sportsBundle(teams,league).also { repository.saveArtwork(cacheKey,it.toString()) }
             }
         } catch(e: CancellationException) {throw e} catch(_: Exception) {
