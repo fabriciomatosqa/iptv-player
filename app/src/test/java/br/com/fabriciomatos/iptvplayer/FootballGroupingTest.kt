@@ -69,4 +69,28 @@ class FootballGroupingTest {
         assertEquals(1,matches.size)
         assertEquals(2,matches.single().channels.size)
     }
+
+    @Test fun genericAndNamedLeagueBroadcastsForSameFixtureMerge() {
+        val now=1800000000000L
+        val generic=GuideMatch("g",Programme("Athletico-PR x Vasco",now,now+2*3600000L,category="Futebol"))
+        val named=GuideMatch("n",Programme("Athletico-PR x Vasco - Campeonato Brasileiro",now+5*60000L,now+2*3600000L))
+        val result=footballMatches(Guide(matches=listOf(generic,named)),
+            listOf(channel("Record HD","g"),channel("ESPN HD","n")),now)
+        assertEquals(1,result.size)
+        assertEquals(2,result.single().channels.size)
+        assertEquals("bra.1",footballCompetitionIdentity(result.single().details))
+    }
+    @Test fun twoNamedDivisionsNeverBecomeOneFixture() {
+        val now=1800000000000L
+        val firstDetails=footballDetails("Sport x Fortaleza - Campeonato Brasileiro")
+        val secondDetails=footballDetails("Sport x Fortaleza - Campeonato Brasileiro Série B")
+        assertNotNull("Serie A fixture must be recognized",firstDetails)
+        assertNotNull("Serie B fixture must be recognized",secondDetails)
+        assertNotEquals("Both competition identities must differ",footballCompetitionIdentity(firstDetails!!),footballCompetitionIdentity(secondDetails!!))
+        val entries=listOf(GuideMatch("a",Programme("Sport x Fortaleza - Campeonato Brasileiro",now,now+2*3600000L)),
+            GuideMatch("b",Programme("Sport x Fortaleza - Campeonato Brasileiro Série B",now,now+2*3600000L)))
+        assertEquals(2,footballMatches(Guide(matches=entries),
+            listOf(channel("A HD","a"),channel("B HD","b")),now).size)
+    }
+
 }
