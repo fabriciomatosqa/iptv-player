@@ -68,15 +68,21 @@ class FootballBroadcasterDiagnosisTest {
         assertTrue(footballMatches(g,listOf(c),now).isEmpty())
         assertEquals(listOf(channel()),footballMatches(g,listOf(channel()),now).single().channels)
     }
-    @Test fun finalScoresDoNotChangeFutureSchedulesOrProveAReplay() {
+    @Test fun confirmedFinishedFixtureHoursEarlierMayIndicateReplayWithoutMovingTheSlot() {
         val p=slot(now+5*3600000L)
         val match=footballMatches(guide(p),listOf(channel()),now).single()
         val final=score.copy(state=MatchState.FINISHED)
         assertNotNull(matchFootballScore(match,FootballFeed(listOf(final),now)))
-        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(p,final))
-        assertFalse(compactFootballMatch(match,final,now))
+        // The newly requested replay rule requires a confirmed, matching finished
+        // fixture with kickoff hours before this separate scheduled TV interval.
+        assertEquals(BroadcastMode.REPLAY,broadcastMode(p,final))
+        assertTrue(compactFootballMatch(match,final,now))
         assertFalse(transmissionIsLive(p,final,p.start))
         assertEquals(p,match.programme)
+        // No confirmed score => the later programme remains unconfirmed, not replay.
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(p,null))
+        // A final score at this slot's kickoff cannot prove a repeat.
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(p,final.copy(kickoff=p.start)))
     }
     @Test fun xmltvOffsetsAndDeviceTimezonesRepresentTheSameInstant() {
         assertEquals(now,xmltvTime("20261018210000 +0000"))
