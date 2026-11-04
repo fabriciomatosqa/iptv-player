@@ -157,6 +157,11 @@ fun compactFootballMatch(match: FootballMatch, score: FootballScore?, now: Long)
 fun broadcastMode(programme: Programme, score: FootballScore?): BroadcastMode {
     if(footballExplicitReplay(programme))return BroadcastMode.REPLAY
     if(programme.broadcast==BroadcastHint.LIVE)return BroadcastMode.LIVE
+    // The caller supplies an exact-team, league-compatible score. A confirmed final
+    // with an original kickoff several hours before this EPG slot is a repeat.
+    // Never infer replay from a finished score at the same kickoff.
+    if(score?.state==MatchState.FINISHED && score.kickoff>0L &&
+        programme.start-score.kickoff in 3*3600000L..7*86400000L)return BroadcastMode.REPLAY
     if(score!=null && score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) &&
         score.kickoff in (programme.start-15*60000L)..minOf(programme.end-1,programme.start+90*60000L))return BroadcastMode.LIVE
     return BroadcastMode.UNCONFIRMED
