@@ -63,7 +63,8 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
                 previous.programme.start<programme.end && programme.start<previous.broadcastEnd &&
                 available.none { channel -> previous.channelProgrammes[channel.url]?.let { it!=programme }==true }
         }
-        val id=old?.id ?: fixture+":"+programme.start
+        // Distinct leagues or separate channel slots must never overwrite the same map key.
+        val id=old?.id ?: fixture+":"+footballCompetitionIdentity(details)+":"+programme.start+":"+entry.channelId
         val retainKnown=old?.let { isCompetitionLabel(it.details.competition) }==true
         result[id]=FootballMatch(id,if(retainKnown)old!!.programme else programme,
             (old?.channels.orEmpty()+available).distinctBy { it.url }
