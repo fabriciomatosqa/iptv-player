@@ -51,8 +51,14 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
         val candidates=nearby.getOrPut(fixture) { mutableListOf() }
         candidates.removeAll { id -> result[id]?.let { programme.start-it.programme.start>90*60000L } ?: true }
         val old=candidates.asReversed().mapNotNull(result::get).firstOrNull { previous ->
-            val compatible=footballCompetitionIdentity(previous.details)==footballCompetitionIdentity(details) ||
-                !isCompetitionLabel(previous.details.competition) || !isCompetitionLabel(details.competition)
+            // Names in raw EPG headings must never silently collapse Serie A and Serie B,
+            // even when the derived generic classification loses its division.
+            val priorLeague=explicitFootballCompetition(previous.programme)
+            val nextLeague=explicitFootballCompetition(programme)
+            val contradictory=priorLeague!=null && nextLeague!=null && priorLeague!=nextLeague
+            val compatible=!contradictory && (
+                footballCompetitionIdentity(previous.details)==footballCompetitionIdentity(details) ||
+                !isCompetitionLabel(previous.details.competition) || !isCompetitionLabel(details.competition))
             compatible && abs(previous.programme.start-programme.start)<=90*60000L &&
                 previous.programme.start<programme.end && programme.start<previous.broadcastEnd &&
                 available.none { channel -> previous.channelProgrammes[channel.url]?.let { it!=programme }==true }
@@ -67,6 +73,13 @@ fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.cu
         if(old==null)candidates.add(id)
     }
     return result.values.sortedWith(compareBy<FootballMatch> { it.programme.start }.thenBy { it.programme.title })
+}
+
+/** Extract only a whole explicit league label from structured EPG or a title segment. */
+internal fun explicitFootballCompetition(p:Programme):String? {
+    val titleParts=p.title.split(Regex("""\\s+[-–—]\\s+"""))
+    return (listOf(p.metadata.competition,p.category)+titleParts)
+        .firstNotNullOfOrNull { footballCompetitionRule(it)?.id }
 }
 
 /** Extra EPG fields count only if they explicitly say replay; a final score alone is insufficient. */
