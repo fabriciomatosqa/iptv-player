@@ -158,7 +158,8 @@ fun enrichBrazilianFootballCompetitions(
     return matches.map {match ->
         val details=match.details
         if(match.channels.isEmpty() || details.gender in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) ||
-            details.ageGroup.isNotBlank() || details.country.isNotBlank() ||
+            details.ageGroup.isNotBlank() ||
+            (details.country.isNotBlank() && normalized(details.country) !in setOf("brasil","brazil","bra")) ||
             isCompetitionValue(details.competition) || footballExplicitReplay(match.programme)) return@map match
         val candidates=eligible[pair(details.home,details.away)].orEmpty()
             .filter {kotlin.math.abs(it.kickoff-match.programme.start)<=90*60000L}
