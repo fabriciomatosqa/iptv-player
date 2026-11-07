@@ -12,6 +12,67 @@ class FootballScoresTest {
         state: MatchState = MatchState.FINISHED, league: String = "afc.champions") =
         FootballScore("1",league,"AFC Champions League Elite",kickoff,ScoreTeam("1",listOf(home)),ScoreTeam("2",listOf(away)),3,1,state,"83:21",now)
 
+    @Test fun genericEpgClubFixturesRecoverOfficialBrazilianLeagueOnlyWithExactScoreEvidence() {
+        val start=now+3600000L
+        val channels=listOf(
+            Channel("SPORTV 4K","https://provider.example.test/live/sportv-4k","Esportes",tvgId="sportv"),
+            Channel("SPORTV FHD","https://provider.example.test/live/sportv-fhd","Esportes",tvgId="sportv"))
+        fun match(home:String,away:String,id:String)=FootballMatch(
+            id,Programme("$home x $away",start,start+3600000L,category="Futebol"),
+            channels,FootballDetails("",home,away))
+        val serieA=match("Flamengo","Grêmio","a")
+        val serieB=match("Vila Nova","Novorizontino","b")
+        val outside=match("Flamengo","Palmeiras","c")
+        fun score(id:String,league:String,home:String,away:String)=FootballScore(
+            id,league,if(league=="bra.1")"Brasileirão" else "Brasileirão Série B",
+            start,ScoreTeam("1",listOf(home)),ScoreTeam("2",listOf(away)),
+            null,null,MatchState.SCHEDULED,checked=now)
+        val feed=FootballFeed(listOf(
+            score("a","bra.1","Grêmio","Flamengo"),
+            score("b","bra.2","Vila Nova","Novorizontino")),now)
+        val result=enrichBrazilianFootballCompetitions(listOf(serieA,serieB,outside),feed)
+        assertEquals("Brasileirão",result[0].details.competition)
+        assertEquals(FOOTBALL_BRAZIL,footballTabKey(result[0].details))
+        assertEquals(listOf("bra.1"),footballScoreLeagues(result[0].details))
+        assertEquals(2,result[0].channels.size)
+        assertEquals(serieA.programme,result[0].programme)
+        assertEquals("Brasileirão — Série B",result[1].details.competition)
+        assertEquals("bra.2",footballTabKey(result[1].details))
+        assertEquals("",result[2].details.competition)
+        assertEquals(2,footballTabs(result).count {it.key=="__games__" || it.key=="__live__"})
+        assertTrue(footballTabs(result).any {it.key==FOOTBALL_BRAZIL})
+        assertTrue(footballTabs(result).any {it.key=="bra.2"})
+        assertNotNull(matchFootballScore(result[0],feed))
+        assertEquals(listOf(serieA,serieB,outside),enrichBrazilianFootballCompetitions(listOf(serieA,serieB,outside),FootballFeed()))
+    }
+
+    @Test fun scoreLeagueInferenceRejectsContradictionsWrongDatesAndReplays() {
+        val start=now+3600000L
+        val channel=Channel("ESPN 4 HD","https://provider.test/live/4","Esportes",tvgId="espn4")
+        fun match(details:FootballDetails=FootballDetails("","Flamengo","Grêmio"),
+            programme:Programme=Programme("Flamengo x Grêmio",start,start+3600000L,category="Futebol")) =
+            FootballMatch("fixture",programme,listOf(channel),details)
+        fun score(league:String,kickoff:Long=start,home:String="Flamengo",away:String="Grêmio") =
+            FootballScore(league,league,"Campeonato Brasileiro",kickoff,
+                ScoreTeam("1",listOf(home)),ScoreTeam("2",listOf(away)),null,null,
+                MatchState.SCHEDULED,checked=now)
+        val regular=score("bra.1")
+        val original=match()
+        fun inferred(m:FootballMatch, feed:FootballFeed) =
+            enrichBrazilianFootballCompetitions(listOf(m),feed).single()
+        assertEquals("",inferred(original,FootballFeed(listOf(score("bra.1",start+2*3600000L)),now)).details.competition)
+        assertEquals("",inferred(original,FootballFeed(listOf(score("bra.1",home="Flamengo",away="Botafogo")),now)).details.competition)
+        assertEquals("",inferred(original,FootballFeed(listOf(regular,score("bra.2")),now)).details.competition)
+        assertEquals("Copa do Brasil",inferred(match(details=FootballDetails("Copa do Brasil","Flamengo","Grêmio")),
+            FootballFeed(listOf(regular),now)).details.competition)
+        assertEquals("",inferred(match(programme=original.programme.copy(broadcast=BroadcastHint.REPLAY)),
+            FootballFeed(listOf(regular),now)).details.competition)
+        assertEquals("",inferred(match(details=FootballDetails("","Flamengo","Grêmio",gender=FootballGender.WOMEN)),
+            FootballFeed(listOf(regular),now)).details.competition)
+        assertEquals("",inferred(original.copy(channels=emptyList()),FootballFeed(listOf(regular),now)).details.competition)
+        assertEquals("",inferred(original,FootballFeed(listOf(regular.copy(state=MatchState.POSTPONED)),now)).details.competition)
+    }
+
     @Test fun confirmedFinalFromHoursEarlierMarksFutureRebroadcast() {
         val game=game("AFC Champions League Elite","Al Nassr","Neftchi Fergana",now+2*3600000L)
         val result=matchFootballScore(game,FootballFeed(listOf(score())))!!
