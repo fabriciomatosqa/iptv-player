@@ -10,3 +10,5 @@ AURORA IPTV Android 1.12.38 — Calendário completo do Brasileirão Série A
 - Esta melhoria parte da reversão da 1.12.36: não reintroduz o mecanismo de substituição do EPG que foi rejeitado.
 
 Fontes públicas de calendário e placar são sujeitas à disponibilidade da rede. Os testes automatizados utilizam fixtures sintéticas; a disponibilidade de transmissão do provedor real requer validação no aparelho.
+
+A correção 1.12.38 foi integrada sobre a versão de rollback 1.12.37 publicada, preservando o estado de código revertido antes de introduzir o calendário independente da Série A.
