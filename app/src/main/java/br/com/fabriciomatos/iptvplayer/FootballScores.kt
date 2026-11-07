@@ -148,7 +148,13 @@ fun enrichBrazilianFootballCompetitions(
         event.league in leagues && event.gender !in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) &&
             event.state !in listOf(MatchState.CANCELLED,MatchState.POSTPONED,MatchState.UNKNOWN) &&
             event.kickoff>0L && event.home.names.isNotEmpty() && event.away.names.isNotEmpty()
-    }.groupBy { pair(it.home.names.first(),it.away.names.first()) }
+    }.flatMap {event ->
+        // A provider can give "CR Flamengo" plus the simpler "Flamengo" alias.
+        // Require an exact normalized alias on BOTH sides, never substring search.
+        event.home.names.asSequence().flatMap {home ->
+            event.away.names.asSequence().map {away -> pair(home,away) to event }
+        }.distinctBy {it.first}
+    }.groupBy({it.first},{it.second})
     return matches.map {match ->
         val details=match.details
         if(match.channels.isEmpty() || details.gender in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) ||
