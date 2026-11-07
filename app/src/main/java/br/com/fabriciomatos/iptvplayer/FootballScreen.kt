@@ -56,8 +56,12 @@ import java.util.Locale
             sport == SportKind.FOOTBALL || sport == SportKind.MOTORSPORT || model.sports.any { it.sport == sport }
         }
     }
-    val tabs = remember(model.football,model.sports,model.selectedSport) {
-        if (soccer) footballTabs(model.football)
+    // Enrich only EPG-linked cards. Public scores must never invent a stream.
+    val resolvedFootball = remember(model.football,model.footballFeed) {
+        enrichBrazilianFootballCompetitions(model.football,model.footballFeed)
+    }
+    val tabs = remember(resolvedFootball,model.sports,model.selectedSport) {
+        if (soccer) footballTabs(resolvedFootball)
         else sportsCategories(model.sports,model.selectedSport).let { categories ->
             if(model.selectedSport==SportKind.MOTORSPORT && categories.none { it.id=="f1" })
                 categories+SportsCategory("f1","Fórmula 1",10) else categories
@@ -77,8 +81,8 @@ import java.util.Locale
             if (soccer) model.footballTab=FOOTBALL_GAMES else model.sportsCategory=SPORTS_GAMES
         }
     }
-    val footballMatches = remember(model.football,model.footballFeed,activeTab,model.footballSearch,displayTime,soccer) {
-        if(soccer) filterFootball(model.football,activeTab,model.footballSearch,displayTime,model.footballFeed)
+    val footballMatches = remember(resolvedFootball,model.footballFeed,activeTab,model.footballSearch,displayTime,soccer) {
+        if(soccer) filterFootball(resolvedFootball,activeTab,model.footballSearch,displayTime,model.footballFeed)
         else emptyList()
     }
     val otherEvents = remember(model.sports,model.selectedSport,activeTab,model.footballSearch,displayTime) {
@@ -151,8 +155,8 @@ import java.util.Locale
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(tabs,key={it.key}) { tab ->
                     val selected=activeTab==tab.key
-                    val leagueLogo=remember(tab.key,tab.title,model.football,model.sports,model.selectedSport) {
-                        if(soccer) footballLeagueTabLogo(tab,model.football)
+                    val leagueLogo=remember(tab.key,tab.title,resolvedFootball,model.sports,model.selectedSport) {
+                        if(soccer) footballLeagueTabLogo(tab,resolvedFootball)
                         else if(tab.key==SPORTS_LIVE || tab.key==SPORTS_GAMES) ""
                         else sportsLeagueLogo(tab.title,model.sports
                             .filter {it.sport==model.selectedSport && it.competitionId==tab.key}
@@ -341,8 +345,10 @@ import java.util.Locale
 
 @Composable private fun FootballCard(model: AuroraViewModel, match: FootballMatch, now: Long) {
     val colors = LocalAuroraColors.current
-    var artwork by remember(match.id) { mutableStateOf(initialFootballArtwork(match.details)) }
-    LaunchedEffect(match.id) { artwork = model.footballArtwork(match.details) }
+    // An EPG-only card can gain a verified league after scores arrive. Its ID is
+    // unchanged, but artwork must refresh when the resolved competition changes.
+    var artwork by remember(match.id,match.details) { mutableStateOf(initialFootballArtwork(match.details)) }
+    LaunchedEffect(match.id,match.details) { artwork = model.footballArtwork(match.details) }
     val matched = remember(match, model.footballFeed) { matchFootballScore(match, model.footballFeed) }
     val event = matched?.event
     val country = nationalMatch(match.details) != null

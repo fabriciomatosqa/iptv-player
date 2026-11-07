@@ -37,7 +37,20 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         nationalMatch(details)?.let { (home,away) ->
             return@withLock FootballArtwork(FIFA_BADGE,federationBadge(home),federationBadge(away))
         }
-        val slug=footballScoreLeagues(details).singleOrNull() ?: return@withLock FootballArtwork()
+        val slug=footballScoreLeagues(details).singleOrNull()
+        if(slug==null) {
+            // An EPG headed just "Futebol" has no league to query. Nevertheless,
+            // an exact, country-verified Brazilian club badge is still useful.
+            // Do not imply Série A membership from a badge, and never reuse a
+            // senior club crest as evidence of a women's/youth competition.
+            if(details.competition.isNotBlank() || details.ageGroup.isNotBlank() ||
+                details.gender in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) ||
+                (details.country.isNotBlank() && normalized(details.country) !in setOf("brasil","brazil","bra")))
+                return@withLock FootballArtwork()
+            return@withLock FootballArtwork(
+                home=brazilianFootballBadge(details.home),
+                away=brazilianFootballBadge(details.away))
+        }
         val cacheKey="football:$slug"
         val cached=withContext(Dispatchers.IO) { repository.cachedArtwork(cacheKey) }
         val bundle=if(cached!=null) JSONObject(cached) else try {
@@ -52,7 +65,9 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         val teams=bundle.optJSONArray("teams") ?: JSONArray()
         var home=selectTeamBadge(details.home,teams)
         var away=selectTeamBadge(details.away,teams)
-        if(slug=="bra.2") {
+        // Both Brazilian national divisions need the same safe exact-club fallback.
+        // A generic EPG label used to skip badge lookup entirely.
+        if(slug=="bra.1" || slug=="bra.2") {
             if(home.isBlank())home=brazilianFootballBadge(details.home)
             if(away.isBlank())away=brazilianFootballBadge(details.away)
         }
