@@ -345,8 +345,10 @@ import java.util.Locale
 
 @Composable private fun FootballCard(model: AuroraViewModel, match: FootballMatch, now: Long) {
     val colors = LocalAuroraColors.current
-    var artwork by remember(match.id) { mutableStateOf(initialFootballArtwork(match.details)) }
-    LaunchedEffect(match.id) { artwork = model.footballArtwork(match.details) }
+    // An EPG-only card can gain a verified league after scores arrive. Its ID is
+    // unchanged, but artwork must refresh when the resolved competition changes.
+    var artwork by remember(match.id,match.details) { mutableStateOf(initialFootballArtwork(match.details)) }
+    LaunchedEffect(match.id,match.details) { artwork = model.footballArtwork(match.details) }
     val matched = remember(match, model.footballFeed) { matchFootballScore(match, model.footballFeed) }
     val event = matched?.event
     val country = nationalMatch(match.details) != null
