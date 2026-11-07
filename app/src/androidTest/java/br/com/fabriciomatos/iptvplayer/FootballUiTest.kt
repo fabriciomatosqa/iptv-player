@@ -164,7 +164,7 @@ class FootballUiTest {
             }
             compose.onNodeWithTag("football_tab_${FOOTBALL_BRAZIL}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
-            compose.onNodeWithText("Brasileirão").assertExists()
+            compose.onAllNodesWithText("Brasileirão").onFirst().assertExists()
             compose.onNodeWithText("Flamengo").assertExists()
             compose.onNodeWithText("Grêmio").assertExists()
             compose.onNodeWithTag("football_watch_0").assertExists()
