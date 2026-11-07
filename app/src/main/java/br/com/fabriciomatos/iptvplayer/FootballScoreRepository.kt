@@ -99,9 +99,9 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
         val cached=repository.cachedArtwork(key,now)?.let {runCatching {decodeFootballFeed(JSONObject(it))}.getOrNull()}
         if(!force && cached!=null && now-cached.checked in 0 until age)return cached
         return try {
+            val limit=if(dates.length==4)500 else 100
             val address=if(league=="fotmob")"https://www.fotmob.com/api/data/matches?date=$dates&timezone=UTC"
-                else "https://site.api.espn.com/apis/site/v2/sports/soccer/$league/scoreboard?dates=$dates&limit="+
-                    if(dates.length==4) "500" else "100"
+                else "https://site.api.espn.com/apis/site/v2/sports/soccer/$league/scoreboard?dates=$dates&limit=$limit"
             val json=readJson(address)
             coroutineContext.ensureActive()
             val events=if(league=="fotmob")parseFotMobScores(json,now)else {
@@ -109,7 +109,10 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
                 parseFootballScoreboard(json,league,now)
             }
             val feed=FootballFeed(events,now)
-            repository.saveArtwork(key,encodeFootballFeed(feed).toString(),7*86400000L)
+            // Keep the full season safe through extended offline periods; stale
+            // responses are still actively revalidated after six hours.
+            repository.saveArtwork(key,encodeFootballFeed(feed).toString(),
+                if(dates.length==4)400*86400000L else 7*86400000L)
             feed
         } catch(e: CancellationException) {throw e} catch(_: Exception) {
             (cached ?: FootballFeed()).copy(failed=true)
