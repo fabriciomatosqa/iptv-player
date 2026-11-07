@@ -35,6 +35,7 @@ private fun scoreRank(event: FootballScore) = when(event.state) {
 fun brazilianSerieAFixtures(feed: FootballFeed): List<FootballScore> {
     val events=feed.events.filter {
         it.league=="bra.1" && it.kickoff>0 &&
+            (footballCompetitionRule(it.competition)?.id in listOf(null,"bra.1")) &&
             it.gender !in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) &&
             it.home.names.isNotEmpty() && it.away.names.isNotEmpty() &&
             it.home.names.any { name -> footballScoreTeamKey(name).isNotBlank() } &&
