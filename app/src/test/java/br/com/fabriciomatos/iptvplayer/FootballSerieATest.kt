@@ -29,6 +29,17 @@ class FootballSerieATest {
         assertEquals(0,footballListings(emptyList(),all,FOOTBALL_LIVE,"",now).size)
     }
 
+    @Test fun complete380MatchSeasonIsNotLimitedToEpgOrCurrentWeek() {
+        val season=FootballFeed((0 until 380).map { index ->
+            score("season-"+index,"Home "+index,"Away "+index,
+                now + index*86400000L/5)
+        },now)
+        assertEquals(380,brazilianSerieAFixtures(season).size)
+        val matches=footballListings(emptyList(),season,FOOTBALL_BRAZIL,"",now)
+        assertEquals(380,matches.size)
+        assertTrue(matches.all {it.broadcast==null && it.fixture!=null})
+    }
+
     @Test fun originalBroadcastRetainsEveryChannelAndUnlinkedFixturesStillAppear() {
         val first=score("fixture-a","Flamengo","Grêmio",now+3600000L)
         val next=score("fixture-b","Santos","Palmeiras",now+2*3600000L)
