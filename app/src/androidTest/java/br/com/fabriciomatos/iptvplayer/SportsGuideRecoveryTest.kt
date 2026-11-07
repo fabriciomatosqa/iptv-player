@@ -167,6 +167,28 @@ class SportsGuideRecoveryTest {
         assertTrue(footballMatches(recovered.guide,channels,now).isEmpty())
     }
 
+    @Test fun blankTvgIdKeepsProviderGuideAliasWhenAlternateFillsOpenSlot() {
+        val blank=channels.first().copy(name="ESPN 5 FHD",tvgId="")
+        val providerId="provider-guide-espn5"
+        val publicId="aurora-epgshare-br:espn5"
+        val alias=guideChannelName(blank.name)
+        val news=Programme("Noticiário esportivo",now,now+3600000L)
+        val provider=Guide(programmes=mapOf(providerId to listOf(news)),
+            names=mapOf(alias to providerId))
+        val game=Programme("Flamengo x Grêmio - Campeonato Brasileiro Série A",
+            now+3600000L,now+10800000L,metadata=FootballMetadata(guideSource="epgshare-br"))
+        val public=Guide(programmes=mapOf(publicId to listOf(game)),
+            names=mapOf(alias to publicId),matches=listOf(GuideMatch(publicId,game)))
+        val merged=mergeProviderGuide(provider,Guide(),
+            unoccupiedBrazilianGuide(provider,public,listOf(blank)),now)
+        assertEquals(providerId,merged.channelId(blank))
+        assertTrue(merged.forChannel(blank).contains(news))
+        assertTrue(merged.forChannel(blank).contains(game))
+        val match=footballMatches(merged,listOf(blank),now).single()
+        assertEquals(listOf(blank),match.channels)
+        assertEquals("bra.1",footballCompetitionRule(match.details)?.id)
+    }
+
     @Test fun emptyAndPartialSourcesKeepUnexpiredChannelGuideSlots() {
         val p=Programme("Futebol: Porto x Estoril",now,now+3600000L)
         val previous=Guide(programmes=mapOf("espn.5.br" to listOf(p)),matches=listOf(GuideMatch("espn.5.br",p)))
