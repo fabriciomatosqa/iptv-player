@@ -52,7 +52,8 @@ class FootballUiTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(15000) {model.initialized && model.football.size==4}
             compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
-            compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
+            compose.waitUntil(10000) {model.footballFeed.events.any {it.id=="live-test"} &&
+                model.footballFeed.events.any {it.league=="afc.champions"} && !model.footballScoresLoading}
             compose.waitUntil(15000) { compose.onAllNodesWithText("83:21").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("83:21").assertExists()
             compose.onNodeWithTag("football_live_details_toggle").assertExists().performClick()
