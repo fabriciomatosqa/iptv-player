@@ -135,6 +135,39 @@ class OrganizationAndroidTest {
         val offline=ArtworkResolver(reopened) {error("Saved crests must work offline")}
         assertEquals(badges,offline.football(details));reopened.close()
     }
+    @Test fun verifiedBrasileiraoSerieACrestsUseExactBrazilianTeamFallbackAndSurviveReopen() = runBlocking {
+        val repository=PlaylistRepository(context)
+        val details=FootballDetails("Brasileirão","Flamengo","Grêmio")
+        val images=mapOf(
+            "Flamengo" to "https://example.test/escudos/flamengo.png",
+            "Grêmio" to "https://example.test/escudos/gremio.png")
+        var lookups=0
+        val resolver=ArtworkResolver(repository) {url ->
+            if(!url.contains("searchteams.php"))JSONObject() else {
+                lookups++
+                val requested=java.net.URLDecoder.decode(url.substringAfter("t="),"UTF-8")
+                JSONObject().put("teams",org.json.JSONArray().put(
+                    JSONObject().put("strTeam",requested)
+                        .put("strCountry","Brazil").put("strSport","Soccer")
+                        .put("strBadge",images.getValue(requested))))
+            }
+        }
+        try {
+            assertEquals(listOf("bra.1"),footballScoreLeagues(details))
+            val badges=resolver.football(details)
+            assertEquals(images.getValue("Flamengo"),badges.home)
+            assertEquals(images.getValue("Grêmio"),badges.away)
+            assertEquals(2,lookups)
+        } finally {repository.close()}
+        val reopened=PlaylistRepository(context)
+        try {
+            val offline=ArtworkResolver(reopened) {error("Crests must be cached for offline reopening")}
+            val badges=offline.football(details)
+            assertEquals(images.getValue("Flamengo"),badges.home)
+            assertEquals(images.getValue("Grêmio"),badges.away)
+        } finally {reopened.close()}
+    }
+
     @Test fun nationalMatchesUseFifaFederationsAndSavedExactCountryMatches() = runBlocking {
         val repository=PlaylistRepository(context)
         var calls=0
