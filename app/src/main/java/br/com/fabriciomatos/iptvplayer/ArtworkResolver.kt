@@ -52,7 +52,9 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         val teams=bundle.optJSONArray("teams") ?: JSONArray()
         var home=selectTeamBadge(details.home,teams)
         var away=selectTeamBadge(details.away,teams)
-        if(slug=="bra.2") {
+        // Both Brazilian national divisions need the same safe exact-club fallback.
+        // A generic EPG label used to skip badge lookup entirely.
+        if(slug=="bra.1" || slug=="bra.2") {
             if(home.isBlank())home=brazilianFootballBadge(details.home)
             if(away.isBlank())away=brazilianFootballBadge(details.away)
         }
