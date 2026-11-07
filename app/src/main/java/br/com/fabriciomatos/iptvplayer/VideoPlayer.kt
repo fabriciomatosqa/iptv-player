@@ -86,7 +86,7 @@ internal fun VideoPane(model: AuroraViewModel, modifier: Modifier, fullscreen: B
     Box(modifier.then(remoteControls).testTag("video_surface").clip(RoundedCornerShape(if(fullscreen)0.dp else 12.dp)).background(Color.Black)
         .pointerInput(player) {detectTapGestures(onTap={reveal()})}) {
         if(player!=null) AndroidView(factory={context->PlayerView(context).apply {
-            this.player=player;keepScreenOn=false;useController=false
+            this.player=player;keepScreenOn=true;useController=false
             resizeMode=AspectRatioFrameLayout.RESIZE_MODE_FIT
             setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
         }},update={it.player=player},onRelease={it.player=null;it.keepScreenOn=false},modifier=Modifier.fillMaxSize())

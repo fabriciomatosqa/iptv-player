@@ -1,7 +1,6 @@
 package br.com.fabriciomatos.iptvplayer
 
 import android.content.pm.ActivityInfo
-import android.view.WindowManager
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -76,63 +75,5 @@ class VideoControlsTest {
             } finally {compose.mainClock.autoAdvance=true}
         }
     }
-    @Test fun playbackPreventsScreenTimeoutInInlineAndFullscreenAndReleasesOnPauseOrStop() {
-        val instrumentation=InstrumentationRegistry.getInstrumentation()
-        val context=instrumentation.targetContext
-        resetCatalog(context)
-        val fixture=File(context.cacheDir,"screen-awake-tracks.mp4")
-        instrumentation.context.assets.open("tracks.mp4").use {input ->
-            fixture.outputStream().use {input.copyTo(it)}
-        }
-        val source="https://example.test/screen-awake.m3u"
-        val movie=Channel("Filme para teste de tela ligada",fixture.toURI().toString(),
-            "Filmes",typeHint="movie")
-        PlaylistRepository(context).also { repo ->
-            repo.saveSource(source,"Lista teste")
-            repo.appendCache(source,Download(Playlist(listOf(movie)),"",""))
-            repo.close()
-        }
-        val keep=WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            lateinit var model:AuroraViewModel
-            scenario.onActivity { model=ViewModelProvider(it)[AuroraViewModel::class.java] }
-            compose.waitUntil(15000) { model.initialized && model.catalog.total==1 }
-            scenario.onActivity {
-                model.play(movie)
-                model.player!!.repeatMode=Player.REPEAT_MODE_ONE
-            }
-            compose.waitUntil(20000) {
-                var awake=false
-                scenario.onActivity { awake=model.isPlaying && (it.window.attributes.flags and keep)!=0 }
-                awake
-            }
-            scenario.onActivity { model.fullscreen=true }
-            compose.waitUntil(5000) {
-                var awake=false
-                scenario.onActivity { awake=model.fullscreen && (it.window.attributes.flags and keep)!=0 }
-                awake
-            }
-            scenario.onActivity { model.player!!.pause() }
-            compose.waitUntil(5000) {
-                var asleep=false
-                scenario.onActivity { asleep=!model.isPlaying && !model.buffering &&
-                    (it.window.attributes.flags and keep)==0 }
-                asleep
-            }
-            scenario.onActivity { model.player!!.play() }
-            compose.waitUntil(10000) {
-                var awake=false
-                scenario.onActivity { awake=model.isPlaying && (it.window.attributes.flags and keep)!=0 }
-                awake
-            }
-            scenario.onActivity { model.stop() }
-            compose.waitUntil(5000) {
-                var released=false
-                scenario.onActivity { released=model.current==null && (it.window.attributes.flags and keep)==0 }
-                released
-            }
-        }
-    }
-
     private fun reveal()=compose.onNodeWithTag("video_surface").performTouchInput {click(Offset(center.x,center.y*.44f))}
 }

@@ -1,7 +1,6 @@
 package br.com.fabriciomatos.iptvplayer
 
 import android.os.Bundle
-import android.view.WindowManager
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -107,20 +106,6 @@ class MainActivity : AppCompatActivity() {
 @Composable
 internal fun AuroraApp(model: AuroraViewModel) {
     val context = LocalContext.current
-    // Keep the activity bright for active playback (including buffering) regardless of
-    // which Compose player surface is currently mounted or whether it is fullscreen.
-    // Pausing, stopping and leaving the composition restore the normal screen timeout.
-    val activity = context as? ComponentActivity
-    val keepPlaybackAwake = model.current != null && model.playbackError == null &&
-        (model.isPlaying || model.buffering)
-    DisposableEffect(activity, keepPlaybackAwake) {
-        val window = activity?.window
-        if (keepPlaybackAwake) window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        else window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            if (keepPlaybackAwake) window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
     DisposableEffect(model.fullscreen) {
         val window = (context as? ComponentActivity)?.window
         val controller = window?.let { WindowInsetsControllerCompat(it, it.decorView) }
