@@ -32,6 +32,9 @@ class FootballScoresTest {
             score("b","bra.2","Vila Nova","Novorizontino")),now)
         val result=enrichBrazilianFootballCompetitions(listOf(serieA,serieB,outside),feed)
         assertEquals("Brasileirão",result[0].details.competition)
+        assertEquals("Brasileirão",enrichBrazilianFootballCompetitions(
+            listOf(serieA.copy(details=serieA.details.copy(country="Brasil"))),feed
+        ).single().details.competition)
         assertEquals(FOOTBALL_BRAZIL,footballTabKey(result[0].details))
         assertEquals(listOf("bra.1"),footballScoreLeagues(result[0].details))
         assertEquals(2,result[0].channels.size)
