@@ -116,7 +116,9 @@ class SportsGuideRecoveryTest {
             xml={_,_,_->GuideRead(current,GuideAttempt(GuideSource.XMLTV,GuideStatus.NO_GAMES,GuideCounts(1,1,1)))},
             api={_,_,_->GuideRead(attempt=GuideAttempt(GuideSource.PROVIDER_API,GuideStatus.EMPTY))},
             brazil={_,_->alternateCalled=true;linked})
-        assertTrue("Fallback may inspect unoccupied slots even with current non-sports EPG",alternateCalled)
+        // A still-valid, previously recovered football slot already supplies real games.
+        // The recovery must not fetch a second alternate in that case.
+        assertFalse(alternateCalled)
         assertTrue(result.guide.forChannel(channels.first()).contains(active))
         assertTrue("Alternate games must not override a provider slot",result.guide.matches.none {
             it.channelId==channels.first().tvgId && it.programme.start<active.end && active.start<it.programme.end
