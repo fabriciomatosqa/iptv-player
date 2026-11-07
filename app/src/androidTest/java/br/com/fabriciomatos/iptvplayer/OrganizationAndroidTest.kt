@@ -158,6 +158,15 @@ class OrganizationAndroidTest {
             assertEquals(images.getValue("Flamengo"),badges.home)
             assertEquals(images.getValue("Grêmio"),badges.away)
             assertEquals(2,lookups)
+            val generic=resolver.football(FootballDetails("","Flamengo","Grêmio"))
+            assertEquals(badges.home,generic.home)
+            assertEquals(badges.away,generic.away)
+            assertEquals(2,lookups)
+            assertEquals(FootballArtwork(),resolver.football(
+                FootballDetails("","Flamengo","Grêmio",country="Portugal")))
+            assertEquals(FootballArtwork(),resolver.football(
+                FootballDetails("","Flamengo","Grêmio",gender=FootballGender.WOMEN)))
+            assertEquals(2,lookups)
         } finally {repository.close()}
         val reopened=PlaylistRepository(context)
         try {
