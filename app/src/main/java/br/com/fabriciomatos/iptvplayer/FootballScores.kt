@@ -123,6 +123,47 @@ fun footballScoreTeamKey(name: String): String {
         else->key
     }
 }
+/**
+ * A provider EPG may say only "Futebol: Flamengo x Grêmio". Link a Brazilian
+ * league ONLY if a public scoreboard independently verifies the exact fixture
+ * (both team identities and the scheduled kick-off). This enriches an existing
+ * channel-linked card; it never generates a new fixture or a stream.
+ *
+ * No team-membership inference: a Brazilian club can play Série A, Série B,
+ * Copa do Brasil or international competitions in the same season.
+ */
+fun enrichBrazilianFootballCompetitions(
+    matches: List<FootballMatch>,
+    feed: FootballFeed
+): List<FootballMatch> {
+    if(matches.isEmpty() || feed.events.isEmpty())return matches
+    val leagues=mapOf("bra.1" to "Brasileirão", "bra.2" to "Brasileirão — Série B")
+    // Bucket scores by the exact, order-independent pair to avoid repeatedly
+    // scanning a full FotMob date feed for every card in a large EPG.
+    fun pair(home:String,away:String):String {
+        val names=listOf(footballScoreTeamKey(home),footballScoreTeamKey(away)).sorted()
+        return names.joinToString(":")
+    }
+    val eligible=feed.events.asSequence().filter {event ->
+        event.league in leagues && event.gender !in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) &&
+            event.state !in listOf(MatchState.CANCELLED,MatchState.POSTPONED,MatchState.UNKNOWN) &&
+            event.kickoff>0L && event.home.names.isNotEmpty() && event.away.names.isNotEmpty()
+    }.groupBy { pair(it.home.names.first(),it.away.names.first()) }
+    return matches.map {match ->
+        val details=match.details
+        if(match.channels.isEmpty() || details.gender in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) ||
+            details.ageGroup.isNotBlank() || details.country.isNotBlank() ||
+            isCompetitionValue(details.competition) || footballExplicitReplay(match.programme)) return@map match
+        val candidates=eligible[pair(details.home,details.away)].orEmpty()
+            .filter {kotlin.math.abs(it.kickoff-match.programme.start)<=90*60000L}
+        // Multiple score providers can report one game. If they disagree on
+        // the league, the UI must remain generic rather than choosing one.
+        val ids=candidates.map {it.league}.distinct()
+        val league=ids.singleOrNull() ?: return@map match
+        match.copy(details=details.copy(competition=leagues.getValue(league)))
+    }
+}
+
 private fun matchesScoreTeam(name: String, team: ScoreTeam): Boolean = team.names.any {footballScoreTeamKey(it)==footballScoreTeamKey(name)}
 
 /** Exact teams, a compatible competition and a bounded date window; never guess from a partial name. */
