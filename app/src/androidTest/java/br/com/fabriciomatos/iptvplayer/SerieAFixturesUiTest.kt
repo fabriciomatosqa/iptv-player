@@ -51,8 +51,8 @@ class SerieAFixturesUiTest {
             compose.onNodeWithTag("football_tab_"+FOOTBALL_BRAZIL).assertExists()
             assertTrue("Both fixture-only cards must remain visible without EPG",
                 compose.onAllNodesWithTag("football_fixture_only").fetchSemanticsNodes().size >= 2)
-            compose.onNodeWithText("Partida do calendário sem transmissão vinculada à sua lista.",
-                substring=true).assertExists()
+            compose.onAllNodesWithText("Partida do calendário sem transmissão vinculada à sua lista.",
+                substring=true).onFirst().assertExists()
             assertEquals(2,footballListings(emptyList(),model.footballFeed,
                 FOOTBALL_BRAZIL,"",System.currentTimeMillis()).size)
             compose.onAllNodesWithTag("football_watch_0").assertCountEquals(0)
