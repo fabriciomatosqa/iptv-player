@@ -116,13 +116,55 @@ class SportsGuideRecoveryTest {
             xml={_,_,_->GuideRead(current,GuideAttempt(GuideSource.XMLTV,GuideStatus.NO_GAMES,GuideCounts(1,1,1)))},
             api={_,_,_->GuideRead(attempt=GuideAttempt(GuideSource.PROVIDER_API,GuideStatus.EMPTY))},
             brazil={_,_->alternateCalled=true;linked})
-        assertFalse(alternateCalled)
-        assertEquals(active,result.guide.forChannel(channels.first()).first())
+        assertTrue("Fallback may inspect unoccupied slots even with current non-sports EPG",alternateCalled)
+        assertTrue(result.guide.forChannel(channels.first()).contains(active))
+        assertTrue("Alternate games must not override a provider slot",result.guide.matches.none {
+            it.channelId==channels.first().tvgId && it.programme.start<active.end && active.start<it.programme.end
+        })
         val disabled=recoverSportsGuide(source,"",channels,linked.guide,false,now,
             xml={_,_,_->GuideRead(attempt=GuideAttempt(GuideSource.XMLTV,GuideStatus.EMPTY))},
             api={_,_,_->GuideRead(attempt=GuideAttempt(GuideSource.PROVIDER_API,GuideStatus.EMPTY))},
             brazil={_,_->fail("Disabled fallback must not fetch");linked})
         assertTrue(disabled.guide.matches.isEmpty())
+    }
+
+    @Test fun currentNonSportsEpgDoesNotBlockRealSerieAOnUnoccupiedChannel()=runBlocking {
+        val news=Programme("Noticiário esportivo",now,now+3600000L)
+        val provider=Guide(programmes=mapOf(channels.last().tvgId to listOf(news)))
+        val game=Programme("Flamengo x Grêmio - Campeonato Brasileiro Série A",
+            now+3600000L,now+10800000L,metadata=FootballMetadata(guideSource="epgshare-br"))
+        val public=Guide(programmes=mapOf("espn.5.br" to listOf(game)),
+            matches=listOf(GuideMatch("espn.5.br",game)))
+        var publicCalls=0
+        val recovered=recoverSportsGuide(source,"https://fixture.test/xmltv",channels,Guide(),true,now,
+            xml={_,_,_->GuideRead(provider,GuideAttempt(GuideSource.XMLTV,GuideStatus.NO_GAMES,
+                GuideCounts(1,1,1)))},
+            api={_,_,_->GuideRead(attempt=GuideAttempt(GuideSource.PROVIDER_API,GuideStatus.EMPTY))},
+            brazil={_,_->publicCalls++;GuideRead(public,GuideAttempt(GuideSource.EPGSHARE_BR,
+                GuideStatus.READY,GuideCounts(1,1,1,1)))})
+        assertEquals(1,publicCalls)
+        assertEquals(listOf(news),recovered.guide.forChannel(channels.last()))
+        val matches=footballMatches(recovered.guide,channels,now)
+        assertEquals(1,matches.size)
+        assertEquals("bra.1",footballCompetitionRule(matches.single().details)?.id)
+        assertTrue(matches.single().channels.all { it in channels })
+        assertTrue(recovered.diagnostics.alternate)
+    }
+
+    @Test fun providerNewsSlotCannotBeReplacedByOverlappingSerieAGame()=runBlocking {
+        val news=Programme("Noticiário esportivo",now,now+3600000L)
+        val provider=Guide(programmes=mapOf(channels.first().tvgId to listOf(news)))
+        val game=Programme("Flamengo x Grêmio - Campeonato Brasileiro Série A",now,now+3600000L)
+        val public=Guide(programmes=mapOf(channels.first().tvgId to listOf(game)),
+            matches=listOf(GuideMatch(channels.first().tvgId,game)))
+        val recovered=recoverSportsGuide(source,"",channels,Guide(),true,now,
+            xml={_,_,_->GuideRead(provider,GuideAttempt(GuideSource.XMLTV,GuideStatus.NO_GAMES,
+                GuideCounts(1,1,1)))},
+            api={_,_,_->GuideRead(attempt=GuideAttempt(GuideSource.PROVIDER_API,GuideStatus.EMPTY))},
+            brazil={_,_->GuideRead(public,GuideAttempt(GuideSource.EPGSHARE_BR,GuideStatus.READY,
+                GuideCounts(1,1,1,1)))})
+        assertEquals(listOf(news),recovered.guide.forChannel(channels.first()))
+        assertTrue(footballMatches(recovered.guide,channels,now).isEmpty())
     }
 
     @Test fun emptyAndPartialSourcesKeepUnexpiredChannelGuideSlots() {
