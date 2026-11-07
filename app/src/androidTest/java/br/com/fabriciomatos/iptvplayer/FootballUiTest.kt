@@ -68,7 +68,7 @@ class FootballUiTest {
             compose.onNodeWithTag("football_tab_${FOOTBALL_GAMES}").performClick()
             compose.onNodeWithTag("football_search").performTextInput("Fluminense")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
-            compose.onNodeWithText("Brasileirão").performClick()
+            compose.onNodeWithTag("football_tab_${FOOTBALL_BRAZIL}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithTag("football_home_goals",useUnmergedTree=true).assertTextEquals("2")
             compose.onNodeWithTag("football_away_goals",useUnmergedTree=true).assertTextEquals("1")
