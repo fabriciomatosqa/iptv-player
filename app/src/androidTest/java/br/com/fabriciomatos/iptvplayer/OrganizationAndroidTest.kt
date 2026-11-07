@@ -161,6 +161,9 @@ class OrganizationAndroidTest {
             val generic=resolver.football(FootballDetails("","Flamengo","Grêmio"))
             assertEquals(badges.home,generic.home)
             assertEquals(badges.away,generic.away)
+            val brazilCountry=resolver.football(FootballDetails("","Flamengo","Grêmio",country="Brazil"))
+            assertEquals(badges.home,brazilCountry.home)
+            assertEquals(badges.away,brazilCountry.away)
             assertEquals(2,lookups)
             assertEquals(FootballArtwork(),resolver.football(
                 FootballDetails("","Flamengo","Grêmio",country="Portugal")))
