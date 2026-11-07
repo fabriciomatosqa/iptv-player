@@ -1,10 +1,8 @@
-AURORA IPTV Android 1.12.36 — Tela acesa durante reprodução e recuperação da Série A
+AURORA IPTV Android 1.12.37 — reversão de emergência da 1.12.36
 
-- Enquanto um canal, filme ou episódio está reproduzindo ou carregando, o Android mantém a tela ligada inclusive na janela do player e no modo de tela cheia.
-- Ao pausar, encerrar a reprodução ou ocorrer erro, o tempo normal de bloqueio da tela é restaurado; controles de vídeo continuam desaparecendo automaticamente, sem escurecer o conteúdo.
-- Recupera eventos vinculados a canais da própria playlist quando o guia do provedor contém programas atuais, mas não contém nenhum jogo futuro, consultando a programação brasileira alternativa somente quando habilitada.
-- O guia alternativo preenche apenas horários livres; eventos ou noticiários do provedor preservam prioridade, sem sobrescrita de programação confiável.
-- Mantém os IDs/aliases de programação dos canais com identificador em branco, sem misturar emissoras ou criar streams a partir de placares públicos.
-- Preserva versão instalada sobre a anterior, identidade, assinatura original, catálogo incremental, filmes, séries, favoritos, controles parentais e atualização online.
+- Reverte integralmente as alterações da PR #52 referentes à tela ligada e ao mecanismo alternativo de recuperação de jogos do Brasileirão Série A.
+- Restaura o comportamento do Android 1.12.35 para player, programação de esportes e seus testes, em resposta ao relato de desaparecimento de jogos na Série A.
+- Mantém o identificador do aplicativo, a chave de assinatura existente, os catálogos e favoritos, o progresso de reprodução, os dados de séries e a compatibilidade de atualização sem downgrade de versionCode.
+- Não cria canais, transmissões ou partidas fictícias e não promete corrigir a classificação da Série A neste rollback.
 
-A presença de jogos e escudos depende do guia de programação e de fontes externas com evidência adequada. Os testes automatizados usam dados sintéticos e emulador Android; não substituem validação em aparelho físico com o provedor real.
+Esta versão desfaz a atualização problemática; a investigação dos jogos da Série A deverá ocorrer separadamente com evidências e testes adicionais.
