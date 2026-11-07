@@ -45,7 +45,8 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
             // senior club crest as evidence of a women's/youth competition.
             if(details.competition.isNotBlank() || details.ageGroup.isNotBlank() ||
                 details.gender in listOf(FootballGender.WOMEN,FootballGender.CONFLICT) ||
-                details.country.isNotBlank())return@withLock FootballArtwork()
+                (details.country.isNotBlank() && normalized(details.country) !in setOf("brasil","brazil","bra")))
+                return@withLock FootballArtwork()
             return@withLock FootballArtwork(
                 home=brazilianFootballBadge(details.home),
                 away=brazilianFootballBadge(details.away))
