@@ -123,6 +123,56 @@ class FootballUiTest {
             screenshot("football-aurora-long-name")
         }
     }
+    @Test fun genericSportvGameBecomesBrasileiraoTabWithoutLosingTheWatchChannel() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        val context=instrumentation.targetContext
+        resetCatalog(context)
+        val now=System.currentTimeMillis()
+        val start=now+3600000L
+        val source="https://example.test/seriea-generic.m3u"
+        val channel=Channel("SPORTV 1 FHD","https://example.test/live/sportv1","Esportes",tvgId="sportv1")
+        val programme=Programme("Flamengo x Grêmio",start,start+2*3600000L,category="Futebol")
+        val guide=Guide(matches=listOf(GuideMatch("sportv1",programme)))
+        val score=FootballScore("fixture-bra1","bra.1","Brasileirão",start,
+            ScoreTeam("flamengo",listOf("Flamengo")),ScoreTeam("gremio",listOf("Grêmio")),
+            null,null,MatchState.SCHEDULED,checked=now)
+        val repository=PlaylistRepository(context)
+        try {
+            repository.saveSource(source,"Lista esportiva")
+            repository.appendCache(source,Download(Playlist(listOf(channel),"https://example.test/guide.xml"),"",""))
+            repository.saveGuide(source,guide)
+            val matches=footballMatches(guide,listOf(channel),now)
+            assertEquals("",matches.single().details.competition)
+            footballRequestDays(matches,now).forEach {day ->
+                repository.saveArtwork(footballScoreCacheKey("fotmob",day),
+                    encodeFootballFeed(FootballFeed(listOf(score),now)).toString())
+            }
+            val teams=org.json.JSONArray().put(JSONObject().put("names",org.json.JSONArray().put("Flamengo"))
+                .put("badge","https://example.test/flamengo.png"))
+                .put(JSONObject().put("names",org.json.JSONArray().put("Grêmio"))
+                    .put("badge","https://example.test/gremio.png"))
+            repository.saveArtwork("football:bra.1",JSONObject().put("teams",teams).toString())
+        } finally {repository.close()}
+        ActivityScenario.launch(MainActivity::class.java).use {scenario ->
+            lateinit var model:AuroraViewModel
+            scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
+            compose.waitUntil(15000) {model.initialized && model.football.size==1}
+            compose.onNodeWithTag("home_football").performClick()
+            compose.waitUntil(15000) {model.footballFeed.events.any {it.league=="bra.1"}}
+            compose.waitUntil(15000) {
+                compose.onAllNodesWithTag("football_tab_${FOOTBALL_BRAZIL}").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("football_tab_${FOOTBALL_BRAZIL}").performClick()
+            compose.onAllNodesWithTag("football_match").assertCountEquals(1)
+            compose.onNodeWithText("Brasileirão").assertExists()
+            compose.onNodeWithText("Flamengo").assertExists()
+            compose.onNodeWithText("Grêmio").assertExists()
+            compose.onNodeWithTag("football_watch_0").assertExists()
+            assertEquals("",model.football.single().details.competition)
+            assertEquals(channel.url,model.football.single().channels.single().url)
+        }
+    }
+
     private fun screenshot(name: String) {
         val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
