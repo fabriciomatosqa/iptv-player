@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">لا يوجد محتوى جديد</string>
     <string name="catalog_refreshed">تم تحديث الكتالوج</string>
     <string name="sports_no_linked_channel">لا توجد قناة في قائمة التشغيل مرتبطة بهذه المباراة.</string>
+    <string name="brasileirao_serie_a">الدوري البرازيلي — الدرجة الأولى</string>
+    <string name="football_no_linked_channel">لا توجد قناة بث مرتبطة بهذه المباراة في قائمتك.</string>
 </resources>

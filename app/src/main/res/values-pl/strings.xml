@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">Brak nowych treści</string>
     <string name="catalog_refreshed">Katalog zaktualizowany</string>
     <string name="sports_no_linked_channel">Żaden kanał z listy nie jest powiązany z tym meczem.</string>
+    <string name="brasileirao_serie_a">Brazylijska Série A</string>
+    <string name="football_no_linked_channel">Do tego meczu nie przypisano kanału z Twojej listy.</string>
 </resources>
