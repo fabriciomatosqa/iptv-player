@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">新しいコンテンツはありません</string>
     <string name="catalog_refreshed">カタログを更新しました</string>
     <string name="sports_no_linked_channel">この試合に関連付けられたプレイリストのチャンネルはありません。</string>
+    <string name="brasileirao_serie_a">ブラジル・セリエA</string>
+    <string name="football_no_linked_channel">この試合に紐づく視聴チャンネルはリストにありません。</string>
 </resources>

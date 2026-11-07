@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">Sin contenido nuevo</string>
     <string name="catalog_refreshed">Catálogo actualizado</string>
     <string name="sports_no_linked_channel">Ningún canal de la lista está vinculado a este partido.</string>
+    <string name="brasileirao_serie_a">Brasileirão — Serie A</string>
+    <string name="football_no_linked_channel">Este partido no tiene ningún canal vinculado en tu lista.</string>
 </resources>

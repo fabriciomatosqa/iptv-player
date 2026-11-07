@@ -61,7 +61,7 @@ import java.util.Locale
         enrichBrazilianFootballCompetitions(model.football,model.footballFeed)
     }
     val tabs = remember(resolvedFootball,model.sports,model.selectedSport) {
-        if (soccer) footballTabs(resolvedFootball)
+        if (soccer) footballVisibleTabs(resolvedFootball)
         else sportsCategories(model.sports,model.selectedSport).let { categories ->
             if(model.selectedSport==SportKind.MOTORSPORT && categories.none { it.id=="f1" })
                 categories+SportsCategory("f1","Fórmula 1",10) else categories
@@ -81,15 +81,15 @@ import java.util.Locale
             if (soccer) model.footballTab=FOOTBALL_GAMES else model.sportsCategory=SPORTS_GAMES
         }
     }
-    val footballMatches = remember(resolvedFootball,model.footballFeed,activeTab,model.footballSearch,displayTime,soccer) {
-        if(soccer) filterFootball(resolvedFootball,activeTab,model.footballSearch,displayTime,model.footballFeed)
+    val listedFootball = remember(resolvedFootball,model.footballFeed,activeTab,model.footballSearch,displayTime,soccer) {
+        if(soccer) footballListings(resolvedFootball,model.footballFeed,activeTab,model.footballSearch,displayTime)
         else emptyList()
     }
     val otherEvents = remember(model.sports,model.selectedSport,activeTab,model.footballSearch,displayTime) {
         if (soccer) emptyList()
         else sportsFilter(model.sports,model.selectedSport,activeTab,model.footballSearch,displayTime)
     }
-    val gameCount = if(soccer) footballMatches.size else otherEvents.size
+    val gameCount = if(soccer) listedFootball.size else otherEvents.size
     val key = (model.selectedSport.name + ":" + activeTab) to model.footballSearch
     val scroll = remember(key) {
         model.footballPosition.takeIf { it?.first == key }?.second
@@ -155,8 +155,12 @@ import java.util.Locale
                 horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(tabs,key={it.key}) { tab ->
                     val selected=activeTab==tab.key
-                    val leagueLogo=remember(tab.key,tab.title,resolvedFootball,model.sports,model.selectedSport) {
-                        if(soccer) footballLeagueTabLogo(tab,resolvedFootball)
+                    val leagueLogo=remember(tab.key,tab.title,resolvedFootball,model.footballFeed,model.sports,model.selectedSport) {
+                        if(soccer) footballLeagueTabLogo(tab,resolvedFootball).ifBlank {
+                            if(tab.key==FOOTBALL_BRAZIL)
+                                brazilianSerieAFixtures(model.footballFeed).firstOrNull {it.badge.isNotBlank()}?.badge.orEmpty()
+                            else ""
+                        }
                         else if(tab.key==SPORTS_LIVE || tab.key==SPORTS_GAMES) ""
                         else sportsLeagueLogo(tab.title,model.sports
                             .filter {it.sport==model.selectedSport && it.competitionId==tab.key}
@@ -227,8 +231,9 @@ import java.util.Locale
             } else LazyColumn(Modifier.weight(1f).testTag("football_list"),state=scroll,
                 contentPadding=PaddingValues(start=16.dp,end=16.dp,top=8.dp,bottom=24.dp),
                 verticalArrangement=Arrangement.spacedBy(18.dp)) {
-                if(soccer) items(footballMatches,key={it.id}) { match ->
-                    FootballCard(model,match,displayTime)
+                if(soccer) items(listedFootball,key={it.id}) { listing ->
+                    listing.broadcast?.let { FootballCard(model,it,displayTime) }
+                        ?: listing.fixture?.let { BrazilianSerieAFixtureCard(model,it,displayTime) }
                 } else items(otherEvents,key={it.id}) { event ->
                     if(event.sport==SportKind.MOTORSPORT) MotorsportEventCard(model,event,displayTime)
                     else SportsEventCard(model,event,displayTime)
@@ -336,11 +341,53 @@ import java.util.Locale
     FOOTBALL_LIVE -> tr(R.string.live_score)
     FOOTBALL_GAMES -> tr(R.string.games)
     FOOTBALL_FIFA -> "FIFA / Seleções"
-    FOOTBALL_BRAZIL -> tr(R.string.brasileirao)
+    FOOTBALL_BRAZIL -> tr(R.string.brasileirao_serie_a)
     FOOTBALL_LIBERTADORES -> tr(R.string.libertadores)
     FOOTBALL_WOMEN -> tr(R.string.womens_games)
     FOOTBALL_SUDAMERICANA -> tr(R.string.sudamericana)
     else -> tab.title
+}
+
+/** Verified calendar fixture with no corresponding stream. Never make this card clickable. */
+@Composable private fun BrazilianSerieAFixtureCard(model: AuroraViewModel, fixture: FootballScore, now: Long) {
+    val colors=LocalAuroraColors.current
+    val home=fixture.home.names.first()
+    val away=fixture.away.names.first()
+    val details=remember(home,away) { FootballDetails("Brasileirão",home,away) }
+    var artwork by remember(details) { mutableStateOf(initialFootballArtwork(details)) }
+    LaunchedEffect(details) { artwork=model.footballArtwork(details) }
+    val homeBadge=fixture.home.badge.ifBlank { artwork.home }
+    val awayBadge=fixture.away.badge.ifBlank { artwork.away }
+    val matched=MatchedScore(fixture,fixture.home,fixture.away,fixture.homeGoals,fixture.awayGoals)
+    val locale=Locale.forLanguageTag(model.language)
+    Card(modifier=Modifier.fillMaxWidth().testTag("football_fixture_only"),
+        shape=RoundedCornerShape(22.dp),
+        colors=CardDefaults.cardColors(containerColor=colors.panel),
+        border=BorderStroke(1.dp,colors.mint.copy(alpha=.24f))) {
+        Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                FootballBadge(fixture.badge.ifBlank { artwork.competition },
+                    tr(R.string.brasileirao_serie_a),Modifier.size(34.dp),colors.cyan,competition=true)
+                Text(tr(R.string.brasileirao_serie_a),
+                    Modifier.weight(1f),fontSize=12.sp,fontWeight=FontWeight.Bold,color=colors.muted)
+                if(fixture.state in listOf(MatchState.LIVE,MatchState.HALFTIME) && scoreIsFresh(fixture,now))
+                    FootballStatus(tr(R.string.now),Icons.Default.Sensors,colors.mint)
+            }
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                FootballTeam(home,homeBadge,Modifier.weight(1f),false)
+                FootballScoreboard(matched,now,Modifier.width(100.dp),true)
+                FootballTeam(away,awayBadge,Modifier.weight(1f),false)
+            }
+            Text(footballDay(fixture.kickoff,locale)+" · "+footballTime(fixture.kickoff,locale),
+                fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=colors.mint)
+            HorizontalDivider(color=colors.muted.copy(alpha=.12f))
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                Icon(Icons.Default.Info,null,Modifier.size(16.dp),tint=colors.muted)
+                Text(tr(R.string.football_no_linked_channel),fontSize=11.sp,color=colors.muted)
+            }
+        }
+    }
 }
 
 @Composable private fun FootballCard(model: AuroraViewModel, match: FootballMatch, now: Long) {

@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">Geen nieuwe inhoud</string>
     <string name="catalog_refreshed">Catalogus bijgewerkt</string>
     <string name="sports_no_linked_channel">Geen kanaal uit de afspeellijst is aan deze wedstrijd gekoppeld.</string>
+    <string name="brasileirao_serie_a">Braziliaanse Série A</string>
+    <string name="football_no_linked_channel">Aan deze wedstrijd is geen zender uit je lijst gekoppeld.</string>
 </resources>

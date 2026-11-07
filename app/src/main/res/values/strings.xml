@@ -98,6 +98,8 @@
     <string name="no_matching_games">Nenhum jogo corresponde ao filtro.</string>
     <string name="games">Jogos</string>
     <string name="brasileirao">Brasileirão</string>
+    <string name="brasileirao_serie_a">Brasileirão — Série A</string>
+    <string name="football_no_linked_channel">Partida do calendário sem transmissão vinculada à sua lista.</string>
     <string name="libertadores">Libertadores</string>
     <string name="sudamericana">Sul-americana</string>
     <string name="live_score">Ao vivo</string>

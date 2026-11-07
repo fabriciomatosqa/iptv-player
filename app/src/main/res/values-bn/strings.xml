@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">নতুন বিষয়বস্তু নেই</string>
     <string name="catalog_refreshed">ক্যাটালগ আপডেট হয়েছে</string>
     <string name="sports_no_linked_channel">প্লেলিস্টের কোনো চ্যানেল এই ম্যাচের সঙ্গে যুক্ত নেই।</string>
+    <string name="brasileirao_serie_a">ব্রাজিলিয়ান সিরি এ</string>
+    <string name="football_no_linked_channel">আপনার তালিকায় এই ম্যাচের জন্য কোনো সম্প্রচার চ্যানেল যুক্ত নেই।</string>
 </resources>

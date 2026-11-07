@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">कोई नई सामग्री नहीं</string>
     <string name="catalog_refreshed">कैटलॉग अपडेट हुआ</string>
     <string name="sports_no_linked_channel">प्लेलिस्ट का कोई चैनल इस मैच से जुड़ा नहीं है।</string>
+    <string name="brasileirao_serie_a">ब्राज़ीलियाई सीरी ए</string>
+    <string name="football_no_linked_channel">इस मैच के लिए आपकी सूची में कोई प्रसारण चैनल नहीं जुड़ा है।</string>
 </resources>

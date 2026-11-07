@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">Нових матеріалів немає</string>
     <string name="catalog_refreshed">Каталог оновлено</string>
     <string name="sports_no_linked_channel">Жоден канал плейлиста не пов’язаний із цим матчем.</string>
+    <string name="brasileirao_serie_a">Бразильська Серія A</string>
+    <string name="football_no_linked_channel">У вашому списку немає каналу, пов’язаного з цим матчем.</string>
 </resources>

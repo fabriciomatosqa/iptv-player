@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">No new content</string>
     <string name="catalog_refreshed">Catalog updated</string>
     <string name="sports_no_linked_channel">No playlist channel is linked to this match.</string>
+    <string name="brasileirao_serie_a">Brazilian Série A</string>
+    <string name="football_no_linked_channel">No channel in your playlist is linked to this fixture.</string>
 </resources>
