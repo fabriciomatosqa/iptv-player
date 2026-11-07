@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">Yeni içerik yok</string>
     <string name="catalog_refreshed">Katalog güncellendi</string>
     <string name="sports_no_linked_channel">Oynatma listesindeki hiçbir kanal bu maçla ilişkilendirilmedi.</string>
+    <string name="brasileirao_serie_a">Brezilya Série A</string>
+    <string name="football_no_linked_channel">Bu maç için listenizde eşleştirilmiş yayın kanalı yok.</string>
 </resources>

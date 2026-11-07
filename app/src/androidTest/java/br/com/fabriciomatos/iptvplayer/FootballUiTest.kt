@@ -42,9 +42,11 @@ class FootballUiTest {
         val live=FootballScore("live-test","bra.1","Campeonato Brasileiro",programmes.first().start,ScoreTeam("flu",listOf("Fluminense")),
             ScoreTeam("bot",listOf("Botafogo")),2,1,MatchState.LIVE,"83:21",now)
         val games=footballMatches(guide,channels,now)
-        footballRequestDays(games,now).forEach {day->
+        (footballRequestDays(games,now)+footballDateKey(now+86400000L)).distinct().forEach {day->
             repository.saveArtwork(footballScoreCacheKey("fotmob",day),encodeFootballFeed(FootballFeed(listOf(live,final),now)).toString())
         }
+        repository.saveArtwork(footballScoreCacheKey("bra.1",footballDateKey(now).take(4)),
+            encodeFootballFeed(FootballFeed(listOf(live),now)).toString())
         for(league in games.flatMap {footballScoreLeagues(it.details)}.distinct())repository.saveArtwork("football:$league","{}")
         repository.close()
         ActivityScenario.launch(MainActivity::class.java).use {scenario->
@@ -52,7 +54,8 @@ class FootballUiTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(15000) {model.initialized && model.football.size==4}
             compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
-            compose.waitUntil(10000) {model.footballFeed.events.size==2 && !model.footballScoresLoading}
+            compose.waitUntil(10000) {model.footballFeed.events.any {it.id=="live-test"} &&
+                model.footballFeed.events.any {it.league=="afc.champions"} && !model.footballScoresLoading}
             compose.waitUntil(15000) { compose.onAllNodesWithText("83:21").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("83:21").assertExists()
             compose.onNodeWithTag("football_live_details_toggle").assertExists().performClick()
@@ -67,7 +70,7 @@ class FootballUiTest {
             compose.onNodeWithTag("football_tab_${FOOTBALL_GAMES}").performClick()
             compose.onNodeWithTag("football_search").performTextInput("Fluminense")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
-            compose.onNodeWithText("Brasileirão").performClick()
+            compose.onNodeWithTag("football_tab_${FOOTBALL_BRAZIL}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithTag("football_home_goals",useUnmergedTree=true).assertTextEquals("2")
             compose.onNodeWithTag("football_away_goals",useUnmergedTree=true).assertTextEquals("1")
@@ -143,10 +146,12 @@ class FootballUiTest {
             repository.saveGuide(source,guide)
             val matches=footballMatches(guide,listOf(channel),now)
             assertEquals("",matches.single().details.competition)
-            footballRequestDays(matches,now).forEach {day ->
+            (footballRequestDays(matches,now)+footballDateKey(now+86400000L)).distinct().forEach {day ->
                 repository.saveArtwork(footballScoreCacheKey("fotmob",day),
                     encodeFootballFeed(FootballFeed(listOf(score),now)).toString())
             }
+            repository.saveArtwork(footballScoreCacheKey("bra.1",footballDateKey(now).take(4)),
+                encodeFootballFeed(FootballFeed(listOf(score),now)).toString())
             val teams=org.json.JSONArray().put(JSONObject().put("names",org.json.JSONArray().put("Flamengo"))
                 .put("badge","https://example.test/flamengo.png"))
                 .put(JSONObject().put("names",org.json.JSONArray().put("Grêmio"))

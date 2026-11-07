@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">새 콘텐츠 없음</string>
     <string name="catalog_refreshed">카탈로그 업데이트됨</string>
     <string name="sports_no_linked_channel">이 경기에 연결된 재생목록 채널이 없습니다.</string>
+    <string name="brasileirao_serie_a">브라질 세리에 A</string>
+    <string name="football_no_linked_channel">이 경기에 연결된 방송 채널이 목록에 없습니다.</string>
 </resources>

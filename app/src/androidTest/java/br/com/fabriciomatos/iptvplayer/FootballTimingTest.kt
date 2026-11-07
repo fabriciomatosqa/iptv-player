@@ -28,9 +28,14 @@ class FootballTimingTest {
             repo.saveGuide(source,guide)
             repo.saveArtwork(legacyKey,JSONObject().put("start",live.kickoff).put("duration",7200000L)
                 .put("finished",0L).put("observed_live",true).toString())
-            footballRequestDays(listOf(match),now).forEach { day ->
+            (footballRequestDays(listOf(match),now)+footballDateKey(now+86400000L)).distinct().forEach { day ->
                 repo.saveArtwork(footballScoreCacheKey("fotmob",day),encodeFootballFeed(FootballFeed(listOf(live),now)).toString())
             }
+            val serieA=FootballScore("year-fixture","bra.1","Brasileirão",now+86400000L,
+                ScoreTeam("fla",listOf("Flamengo")),ScoreTeam("gre",listOf("Grêmio")),
+                null,null,MatchState.SCHEDULED,checked=now)
+            repo.saveArtwork(footballScoreCacheKey("bra.1",footballDateKey(now).take(4)),
+                encodeFootballFeed(FootballFeed(listOf(serieA),now)).toString())
             repo.close()
         }
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->

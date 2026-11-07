@@ -218,4 +218,6 @@
     <string name="catalog_unchanged">沒有新內容</string>
     <string name="catalog_refreshed">目錄已更新</string>
     <string name="sports_no_linked_channel">播放清單中沒有與這場比賽關聯的頻道。</string>
+    <string name="brasileirao_serie_a">巴西足球甲級聯賽</string>
+    <string name="football_no_linked_channel">您的清單中沒有與這場比賽關聯的轉播頻道。</string>
 </resources>
