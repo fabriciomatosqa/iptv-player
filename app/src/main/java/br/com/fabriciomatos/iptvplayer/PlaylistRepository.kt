@@ -359,6 +359,18 @@ class PlaylistRepository(context: Context) {
             cursor.getString(10), knownAnimePoster(cursor.getString(10)) ?: cursor.getString(11), cursor.getInt(12), cursor.getInt(13), kind, cursor.getInt(15).let { if(it<0)isAdultGroup(cursor.getString(2)) else it!=0 })
     }
 
+    /** Import needs only the small category map, not every series poster/ID.
+     * Loading the entire series metadata map on each daily check is expensive
+     * on 2 GB Android devices and unnecessary for a cached M3U catalog. */
+    fun catalogImportMetadata(source: String): ProviderMetadata {
+        val kinds=HashMap<String,MediaKind>()
+        helper.readableDatabase.rawQuery(
+            "SELECT group_name,kind FROM provider_categories WHERE source_key=?",
+            arrayOf(digest(source))).use { cursor ->
+            while(cursor.moveToNext())kinds[cursor.getString(0)]=MediaKind.entries[cursor.getInt(1)]
+        }
+        return ProviderMetadata(categories=kinds)
+    }
     fun metadata(source: String): ProviderMetadata {
         val key = digest(source); val db = helper.readableDatabase
         val kinds = HashMap<String, MediaKind>(); val posters = HashMap<String, SeriesPoster>()
