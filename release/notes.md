@@ -1,14 +1,10 @@
-AURORA IPTV Android 1.12.38 — Calendário completo do Brasileirão Série A
+AURORA IPTV Android 1.12.39 — sincronização otimizada para catálogos grandes e dispositivos de pouca memória
 
-- Mantém a aba "Brasileirão — Série A" visível mesmo quando o provedor IPTV não oferece EPG ou programação esportiva.
-- Busca o calendário independente da temporada do Brasileirão Série A por identificador da competição em fonte pública, incluindo partidas futuras, em andamento e encerradas; não remove jogos por falta de transmissão.
-- Mantém os cards originais de canais/EPG e apenas mescla partidas quando ambos os clubes e o horário real correspondem; preserva reprises e campeonatos distintos.
-- Quando o jogo não possui canal confirmado na lista, exibe confronto, data, placar e escudos, SEM botão de assistir fictício.
-- A aba Jogos também apresenta os confrontos da Série A que não estão na grade do provedor; novas partidas não apagam as já existentes.
-- Usa cache da temporada e atualizações diárias de placar, com preservação dos dados em falhas de rede.
-- Preserva identidade e assinatura original, dados do usuário, histórico, catálogo incremental, favoritos, filmes, séries, player e atualização online.
-- Esta melhoria parte da reversão da 1.12.36: não reintroduz o mecanismo de substituição do EPG que foi rejeitado.
+- Faz a verificação HTTP da playlist antes de carregar metadados do provedor; respostas 304 e catálogos idênticos evitam a consulta de séries e a reconciliação integral desnecessária.
+- Em listas alteradas, lê do SQLite apenas identificador, assinatura compacta e estado de cada registro; carrega os muitos campos antigos somente para itens efetivamente diferentes.
+- Preserva a comparação completa para registros migrados ou com assinaturas diferentes, impedindo perda de mudanças nas URLs, legendas, headers, arte, tipo de conteúdo, episódios ou classificação parental.
+- Inclui migração de banco aditiva (v11) e gradual: a abertura do catálogo não reescreve milhões de registros para calcular assinaturas.
+- Mantém atualização incremental, cache de catálogo, telas paginadas, acesso à reprodução durante atualização, listas múltiplas, escudos, esportes, séries, filmes, favoritos, progresso, identidade e assinatura original.
+- Mantém confirmação transacional do catálogo, proteção contra arquivos parciais e recuperação após force-stop.
 
-Fontes públicas de calendário e placar são sujeitas à disponibilidade da rede. Os testes automatizados utilizam fixtures sintéticas; a disponibilidade de transmissão do provedor real requer validação no aparelho.
-
-A correção 1.12.38 foi integrada sobre a versão de rollback 1.12.37 publicada, preservando o estado de código revertido antes de introduzir o calendário independente da Série A.
+A comparação de listas remotas M3U ainda precisa ler os novos bytes quando o provedor não fornece um serviço incremental. Os resultados de benchmarks do Android não equivalem a medições em equipamentos físicos de 2 GB de RAM.
