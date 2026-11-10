@@ -28,9 +28,8 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
         val available=matches.filter {it.broadcastEnd>now-FOOTBALL_RETENTION_MS ||
             it.programme.broadcast==BroadcastHint.LIVE && it.programme.start in (now-6*3600000L)..now}
         val leagues=available.flatMap {footballScoreLeagues(it.details)}.distinct()
-        // The Brazilian Serie A calendar is independent of the IPTV EPG.
-        // A missing provider guide must never suppress the real season fixtures.
-        val season=footballDateKey(now).take(4)
+        // Fetch scores only for matches actually linked to the EPG.
+        if(available.isEmpty()) return@withContext FootballFeed()
         val days=(if(available.isEmpty())listOf(footballDateKey(now-86400000L),footballDateKey(now))
             else footballRequestDays(available,now)).plus(footballDateKey(now+86400000L)).distinct()
         val current=setOf(footballDateKey(now),footballDateKey(now-86400000L))
@@ -42,17 +41,8 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
                 runCatching {decodeFootballFeed(JSONObject(raw))}.getOrNull()?.let {results[key(league,day)]=it}
             }
         }}
-        repository.cachedArtwork(footballScoreCacheKey("bra.1",season),now)?.let {raw->
-            runCatching {decodeFootballFeed(JSONObject(raw))}.getOrNull()?.let {results[key("bra.1",season)]=it}
-        }
         withTimeoutOrNull(40000L) {
             coroutineScope {
-                // One season request (limit 500) contains the complete Brazilian league
-                // schedule. It is cached for six hours; daily sources refresh live scores.
-                val seasonJob=async {requests.withPermit {
-                    dayScores("bra.1",season,6*3600000L,force,now)
-                        .also {results[key("bra.1",season)]=it}
-                }}
                 val ordered=days.sortedByDescending {it in current}
                 val primary=ordered.map {day->async {requests.withPermit {
                     dayScores("fotmob",day,if(day in current)FOOTBALL_REFRESH_MS else 6*3600000L,force,now)
@@ -65,16 +55,13 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
                     dayScores(league,day,if(day in current)FOOTBALL_REFRESH_MS else 6*3600000L,force,now)
                         .also {results[key(league,day)]=it}
                 }}}}.awaitAll()
-                seasonJob.await()
             }
         }
         val responses=results.values.toList()
         val events=responses.flatMap {it.events}.groupBy {it.league+":"+it.id}.values.map {it.maxBy(FootballScore::checked)}
         val currentFailed=(listOf("fotmob")+leagues).flatMap {league->current.mapNotNull {day->results[key(league,day)]}}
             .none {!it.failed && !footballRefreshDue(it.checked,now)}
-        val calendar=results[key("bra.1",season)]
-        val calendarMissing=calendar==null || calendar.failed || calendar.events.none { it.league=="bra.1" }
-        FootballFeed(events,responses.maxOfOrNull {it.checked} ?: 0L,currentFailed || calendarMissing)
+        FootballFeed(events,responses.maxOfOrNull {it.checked} ?: 0L,currentFailed)
     }
     /** Fetch incidents only when a user expands a card, never while scrolling the match list. */
     suspend fun incidents(score: FootballScore): List<FootballIncident>? = withContext(Dispatchers.IO) {
