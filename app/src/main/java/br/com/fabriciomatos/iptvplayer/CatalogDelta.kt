@@ -37,21 +37,19 @@ internal data class CatalogImportRow(
     fun signature(): ByteArray {
         cachedImportSignature?.let { return it }
         val digest = importSignatureDigest.get().apply { reset() }
-        fun part(value: String) {
-            val data=value.toByteArray(Charsets.UTF_8)
-            digest.update((data.size ushr 24).toByte())
-            digest.update((data.size ushr 16).toByte())
-            digest.update((data.size ushr 8).toByte())
-            digest.update(data.size.toByte())
-            digest.update(data)
-        }
+        // One UTF-8 encoding per row rather than 17 small byte arrays and
+        // dozens of native MessageDigest calls (important on 2 GB devices).
+        // Length-prefixed fields keep the encoding unambiguous.
         val c=channel
-        part(c.kind.ordinal.toString());part(if(c.adult)"1" else "0")
-        part(seriesKey);part(norm);part(title);part(c.seriesImageUrl)
-        part(season.toString());part(episode.toString());part(episodeTitle)
-        part(c.typeHint);part(c.url);part(c.userAgent);part(c.referrer);part(c.mimeType)
-        part(c.tvgId);part(c.imageUrl);part(search)
-        return digest.digest().copyOf(16).also { cachedImportSignature=it }
+        val data=buildString(256) {
+            fun part(value:String) {append(value.length);append(':');append(value)}
+            part(c.kind.ordinal.toString());part(if(c.adult)"1" else "0")
+            part(seriesKey);part(norm);part(title);part(c.seriesImageUrl)
+            part(season.toString());part(episode.toString());part(episodeTitle)
+            part(c.typeHint);part(c.url);part(c.userAgent);part(c.referrer);part(c.mimeType)
+            part(c.tvgId);part(c.imageUrl);part(search)
+        }.toByteArray(Charsets.UTF_8)
+        return digest.digest(data).copyOf(16).also { cachedImportSignature=it }
     }
     companion object {
         // ThreadLocal.initialValue is supported back to Android API 24; do not
