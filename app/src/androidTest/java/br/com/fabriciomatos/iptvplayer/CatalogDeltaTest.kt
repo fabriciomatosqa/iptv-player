@@ -100,6 +100,44 @@ class CatalogDeltaTest {
         } finally {repository.close()}
     }
 
+    @Test fun fingerprintMigrationIsLazyAndSubsequentLargeCatalogComparisonsNeverRewriteUnchangedRows() {
+        val repository=PlaylistRepository(context)
+        try {
+            val original=episodes(40)
+            repository.importReader(source,m3u(original).reader())
+            repository.saveLast(original[0])
+            repository.savePlaybackProgress(source,original[0].url,PlaybackProgress(63000,120000))
+            database().use { db ->
+                val initial=db.rawQuery("SELECT COUNT(*) FROM channels WHERE import_sig IS NOT NULL AND source_key=?",
+                    arrayOf(PlaylistRepository.digest(source))).use { it.moveToFirst();it.getInt(0) }
+                assertEquals(40,initial)
+                // Simulate rows upgraded from schema v10; no eager full-catalog rewrite.
+                db.execSQL("UPDATE channels SET import_sig=NULL WHERE source_key=?",
+                    arrayOf(PlaylistRepository.digest(source)))
+                audit(db)
+                val seeded=repository.importReader(source,m3u(original).reader(),etag="seeded")
+                assertEquals(0,seeded.added);assertEquals(0,seeded.changed)
+                assertEquals(0,writes(db,"channels","INSERT"))
+                assertEquals(40,writes(db,"channels","UPDATE"))
+                val missing=db.rawQuery("SELECT COUNT(*) FROM channels WHERE import_sig IS NULL AND source_key=?",
+                    arrayOf(PlaylistRepository.digest(source))).use {it.moveToFirst();it.getInt(0)}
+                assertEquals(0,missing)
+                db.execSQL("DELETE FROM delta_audit")
+                val identical=repository.importReader(source,m3u(original).reader(),etag="identical")
+                assertEquals(0,identical.added);assertEquals(0,identical.changed)
+                assertEquals(0,allWrites(db))
+                val changed=original.toMutableList()
+                changed[5]=changed[5].copy(url=url(6,"other-cdn.example.test"))
+                val delta=repository.importReader(source,m3u(changed).reader(),etag="changed")
+                assertEquals(0,delta.added);assertEquals(1,delta.changed)
+                assertEquals(1,writes(db,"channels","UPDATE"))
+                assertEquals(0,writes(db,"channels","INSERT"))
+                assertEquals(original[0].url,repository.lastUrl(source))
+                assertEquals(63000L,repository.playbackProgress(source,original[0].url)!!.positionMs)
+            }
+        } finally {repository.close()}
+    }
+
     @Test fun interruptedDeltaLeavesOriginalRowsCountsBookmarksAndValidatorsIntact() {
         val repository=PlaylistRepository(context)
         try {
