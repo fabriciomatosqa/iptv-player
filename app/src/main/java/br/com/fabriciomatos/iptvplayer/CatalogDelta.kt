@@ -54,7 +54,11 @@ internal data class CatalogImportRow(
         return digest.digest().copyOf(16).also { cachedImportSignature=it }
     }
     companion object {
-        private val importSignatureDigest=ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
+        // ThreadLocal.initialValue is supported back to Android API 24; do not
+        // require the Java 8 withInitial factory on older car/projector devices.
+        private val importSignatureDigest=object: ThreadLocal<MessageDigest>() {
+            override fun initialValue(): MessageDigest = MessageDigest.getInstance("SHA-256")
+        }
         fun prepare(c: Channel, generation: Int): CatalogImportRow {
             val identity=if(c.kind==MediaKind.SERIES)seriesIdentity(c) else null
             return CatalogImportRow(c,catalogContentKey(c.url),identity?.id.orEmpty(),
