@@ -30,10 +30,12 @@ internal data class CatalogImportRow(
         group=old.channel.group,tvgId=channel.tvgId.ifBlank {old.channel.tvgId},seriesId=old.channel.seriesId,
         imageUrl=channel.imageUrl.ifBlank {old.channel.imageUrl}),search=old.search.ifBlank {search})
 
+    private var cachedImportSignature: ByteArray? = null
     /** Provider-side content fingerprint. An identical signature means the existing
      * row needs no hydration, comparison, write or directory rebuild. A mismatch
      * is ALWAYS checked against the full saved row before an update. */
     fun signature(): ByteArray {
+        cachedImportSignature?.let { return it }
         val digest = importSignatureDigest.get().apply { reset() }
         fun part(value: String) {
             val data=value.toByteArray(Charsets.UTF_8)
@@ -49,7 +51,7 @@ internal data class CatalogImportRow(
         part(season.toString());part(episode.toString());part(episodeTitle)
         part(c.typeHint);part(c.url);part(c.userAgent);part(c.referrer);part(c.mimeType)
         part(c.tvgId);part(c.imageUrl);part(search)
-        return digest.digest().copyOf(16)
+        return digest.digest().copyOf(16).also { cachedImportSignature=it }
     }
     companion object {
         private val importSignatureDigest=ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
