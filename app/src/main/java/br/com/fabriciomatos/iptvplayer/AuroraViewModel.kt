@@ -385,15 +385,31 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 updating=true;progressPercent=if(pending)50 else 0;progressText=preferences.text(R.string.loading)+" · ${progressPercent}%"
                 if (catalog.total==0) loading = true
                 if (!quiet) message = null
-                val metadata = withContext(Dispatchers.IO) {
-                    if(pending) repository.metadata(source) else repository.fetchMetadata(source)
+                // Always perform the inexpensive HTTP validator/body check first.
+                // Formerly even HTTP 304 caused get_series (and all poster metadata)
+                // to be downloaded and materialized before checking the playlist.
+                val downloaded = pending || withContext(Dispatchers.IO) {
+                    repository.downloadFile(source,!force && catalog.total>0,progress,compareBody=!force)
                 }
-                val downloaded = pending || withContext(Dispatchers.IO) { repository.downloadFile(source,!force && catalog.total>0,progress,compareBody=!force) }
-                val result=if (downloaded) {
-                    withContext(NonCancellable + Dispatchers.IO) { repository.importPending(source,metadata,progress,reusePrefix=!force) }
-                } else {
-                    withContext(NonCancellable + Dispatchers.IO) { repository.repairMetadata(source,metadata) }
-                    ImportResult(0,catalog.total)
+                if(!downloaded) {
+                    // Existing SQLite pages remain available and no database-wide
+                    // metadata reconciliation is needed for an unchanged source.
+                    showProgress(CatalogProgress(CatalogStage.COMPLETE,100,entries=catalog.total))
+                    return@launch
+                }
+                // On a large cached catalog use the small category map only.
+                // First import (or missing provider categories) still obtains
+                // metadata normally, preserving series images and classifications.
+                val metadata = withContext(Dispatchers.IO) {
+                    val saved=repository.catalogImportMetadata(source)
+                    if(!pending && repository.needsMetadata(source) &&
+                        (catalog.total==0 || saved.categories.isEmpty())) {
+                        repository.fetchMetadata(source)
+                        repository.catalogImportMetadata(source)
+                    } else saved
+                }
+                val result=withContext(NonCancellable + Dispatchers.IO) {
+                    repository.importPending(source,metadata,progress,reusePrefix=!force)
                 }
                 coroutineContext.ensureActive()
                 if (playlistUrl == source) reloadOverview()
