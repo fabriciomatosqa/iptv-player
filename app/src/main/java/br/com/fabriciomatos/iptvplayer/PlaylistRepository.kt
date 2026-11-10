@@ -867,7 +867,16 @@ private class CatalogDatabase(context: Context): SQLiteOpenHelper(context,"auror
     /** Nullable on older installations: the first delta comparison lazily seeds
      * signatures without a blocking million-row migration at app startup. */
     private fun upgradeImportSignature(db: SQLiteDatabase) {
-        db.execSQL("ALTER TABLE channels ADD COLUMN import_sig BLOB")
+        // Some older/restored databases can already contain a column from a
+        // partial schema upgrade. SQLite lacks ADD COLUMN IF NOT EXISTS.
+        // Detect it explicitly so migrations remain idempotent without
+        // rewriting existing rows or dropping user data.
+        val present=db.rawQuery("PRAGMA table_info(channels)",null).use { cursor ->
+            var found=false
+            while(cursor.moveToNext())if(cursor.getString(1)=="import_sig")found=true
+            found
+        }
+        if(!present)db.execSQL("ALTER TABLE channels ADD COLUMN import_sig BLOB")
     }
     private fun upgradeFootballMetadata(db: SQLiteDatabase) {
         val exists=db.rawQuery("PRAGMA table_info(guide_programmes)",null).use { cursor ->
