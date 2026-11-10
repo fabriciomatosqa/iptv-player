@@ -86,18 +86,10 @@ fun footballListings(
     search: String, now: Long
 ): List<FootballListing> {
     val originals=filterFootball(broadcasts,tab,search,now,feed)
-    val listings=originals.map { FootballListing(broadcast=it) }
-    if(tab!=FOOTBALL_BRAZIL && tab!=FOOTBALL_GAMES)return listings
-    val words=normalized(search).split(Regex("\\s+")).filter(String::isNotBlank)
-    val added=brazilianSerieAFixtures(feed).asSequence().filter { fixture ->
-        words.all { word -> normalized(fixture.home.names.joinToString(" ")+" "+
-            fixture.away.names.joinToString(" ")).contains(word) } &&
-            originals.none { linkedSerieAFixture(it,fixture) }
-    }.map { FootballListing(fixture=it) }.toList()
-    // Next fixtures first; older results remain accessible, newest to oldest.
-    return (listings+added).sortedWith(compareBy<FootballListing> {
-        if(it.kickoff>=now-2*3600000L) 0 else 1
-    }.thenBy { if(it.kickoff>=now-2*3600000L)it.kickoff else -it.kickoff }.thenBy { it.id })
+    // Only EPG matches linked to playable live channels may become cards.
+    // Public score feeds enrich these cards but never create independent fixtures.
+    return originals.filter { it.channels.isNotEmpty() }.map { FootballListing(broadcast=it) }
+
 }
 
 fun footballVisibleTabs(broadcasts: List<FootballMatch>): List<FootballTab> {
