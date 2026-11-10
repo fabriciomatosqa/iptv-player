@@ -3,6 +3,7 @@ package br.com.fabriciomatos.iptvplayer
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import java.io.Closeable
+import java.security.MessageDigest
 
 /** Comparison is bounded to one page; unchanged contents never reach a write statement. */
 internal data class CatalogImportRow(
@@ -29,7 +30,33 @@ internal data class CatalogImportRow(
         group=old.channel.group,tvgId=channel.tvgId.ifBlank {old.channel.tvgId},seriesId=old.channel.seriesId,
         imageUrl=channel.imageUrl.ifBlank {old.channel.imageUrl}),search=old.search.ifBlank {search})
 
+    private var cachedImportSignature: ByteArray? = null
+    /** Provider-side content fingerprint. An identical signature means the existing
+     * row needs no hydration, comparison, write or directory rebuild. A mismatch
+     * is ALWAYS checked against the full saved row before an update. */
+    fun signature(): ByteArray {
+        cachedImportSignature?.let { return it }
+        val digest = importSignatureDigest.get().apply { reset() }
+        // One UTF-8 encoding per row rather than 17 small byte arrays and
+        // dozens of native MessageDigest calls (important on 2 GB devices).
+        // Length-prefixed fields keep the encoding unambiguous.
+        val c=channel
+        val data=buildString(256) {
+            fun part(value:String) {append(value.length);append(':');append(value)}
+            part(c.kind.ordinal.toString());part(if(c.adult)"1" else "0")
+            part(seriesKey);part(norm);part(title);part(c.seriesImageUrl)
+            part(season.toString());part(episode.toString());part(episodeTitle)
+            part(c.typeHint);part(c.url);part(c.userAgent);part(c.referrer);part(c.mimeType)
+            part(c.tvgId);part(c.imageUrl);part(search)
+        }.toByteArray(Charsets.UTF_8)
+        return digest.digest(data).copyOf(16).also { cachedImportSignature=it }
+    }
     companion object {
+        // ThreadLocal.initialValue is supported back to Android API 24; do not
+        // require the Java 8 withInitial factory on older car/projector devices.
+        private val importSignatureDigest=object: ThreadLocal<MessageDigest>() {
+            override fun initialValue(): MessageDigest = MessageDigest.getInstance("SHA-256")
+        }
         fun prepare(c: Channel, generation: Int): CatalogImportRow {
             val identity=if(c.kind==MediaKind.SERIES)seriesIdentity(c) else null
             return CatalogImportRow(c,catalogContentKey(c.url),identity?.id.orEmpty(),
@@ -55,8 +82,11 @@ internal class CatalogBatchWriter(
     private val changed: (CatalogImportRow?,CatalogImportRow)->Unit
 ): Closeable {
     private val batch=ArrayList<CatalogImportRow>(BATCH_SIZE)
-    private val insert=db.compileStatement("INSERT INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key) VALUES("+List(25){"?"}.joinToString(",")+")")
-    private val update=db.compileStatement("UPDATE channels SET kind=?,search_text=?,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=?,user_agent=?,referrer=?,mime_type=?,tvg_id=? WHERE source_key=? AND content_key=?")
+    private val insert=db.compileStatement("INSERT INTO channels(source_key,url,position,name,group_name,image_url,tvg_id,user_agent,referrer,mime_type,type_hint,series_id,series_title,series_image,season,episode,kind,search_text,series_key,series_norm,episode_title,seen_generation,adult,first_added,content_key,import_sig) VALUES("+List(26){"?"}.joinToString(",")+")")
+    private val update=db.compileStatement("UPDATE channels SET kind=?,search_text=?,series_key=?,series_norm=?,series_title=?,series_image=?,season=?,episode=?,episode_title=?,type_hint=?,seen_generation=?,adult=?,url=?,image_url=?,user_agent=?,referrer=?,mime_type=?,tvg_id=?,import_sig=? WHERE source_key=? AND content_key=?")
+    // Existing v10 devices have no signatures. Seed them only when the row is
+    // encountered, avoiding any catalog-wide migration on first launch.
+    private val seedSignature=db.compileStatement("UPDATE channels SET import_sig=? WHERE source_key=? AND content_key=?")
     var added=0;private set
     var updated=0;private set
     fun accept(channel: Channel) {
@@ -66,13 +96,30 @@ internal class CatalogBatchWriter(
     fun flush() {
         if(batch.isEmpty())return
         val keys=batch.map {it.key}.distinct()
-        val saved=db.rawQuery("SELECT "+CatalogImportRow.COLUMNS+" FROM channels WHERE source_key=? AND content_key IN ("+
+        data class State(val signature: ByteArray?,val generation: Int,val needsIndex: Boolean)
+        // Read five compact columns instead of constructing 400 full Channel
+        // objects for every batch. Hydrate the rare changed rows only.
+        val saved=db.rawQuery("SELECT content_key,import_sig,seen_generation,kind,adult FROM channels WHERE source_key=? AND content_key IN ("+
             keys.joinToString(","){"?"}+")",arrayOf(source,*keys.toTypedArray())).use {cursor ->
-            buildMap {while(cursor.moveToNext())CatalogImportRow.read(cursor).let {put(it.key,it)}}.toMutableMap()
+            buildMap {while(cursor.moveToNext())put(cursor.getString(0),State(
+                if(cursor.isNull(1))null else cursor.getBlob(1),cursor.getInt(2),
+                cursor.getInt(3) !in 0..3 || cursor.getInt(4)<0))}.toMutableMap()
+        }
+        val hydrated=HashMap<String,CatalogImportRow>()
+        val changedKeys=batch.mapNotNull { incoming ->
+            val old=saved[incoming.key]
+            if(old!=null && old.generation!=generation &&
+                (old.signature==null || old.needsIndex || !old.signature.contentEquals(incoming.signature())))
+                incoming.key else null
+        }.distinct()
+        if(changedKeys.isNotEmpty()) db.rawQuery("SELECT "+CatalogImportRow.COLUMNS+
+            " FROM channels WHERE source_key=? AND content_key IN ("+changedKeys.joinToString(","){"?"}+")",
+            arrayOf(source,*changedKeys.toTypedArray())).use {cursor ->
+            while(cursor.moveToNext())CatalogImportRow.read(cursor).let {hydrated[it.key]=it}
         }
         batch.forEach { incoming ->
-            val old=saved[incoming.key]
-            if(old==null) {
+            val state=saved[incoming.key]
+            if(state==null) {
                 val c=incoming.channel
                 insert.clearBindings();insert.bindString(1,source);insert.bindString(2,c.url);insert.bindLong(3,position)
                 listOf(c.name,c.group,c.imageUrl,c.tvgId,c.userAgent,c.referrer,c.mimeType,c.typeHint,c.seriesId,incoming.title,c.seriesImageUrl)
@@ -80,22 +127,34 @@ internal class CatalogBatchWriter(
                 insert.bindLong(15,incoming.season.toLong());insert.bindLong(16,incoming.episode.toLong());insert.bindLong(17,c.kind.ordinal.toLong())
                 insert.bindString(18,incoming.search);insert.bindString(19,incoming.seriesKey);insert.bindString(20,incoming.norm)
                 insert.bindString(21,incoming.episodeTitle);insert.bindLong(22,generation.toLong());insert.bindLong(23,if(c.adult)1L else 0L)
-                insert.bindLong(24,firstAdded);insert.bindString(25,incoming.key)
-                insert.executeInsert();added++;position++;saved[incoming.key]=incoming;changed(null,incoming)
-            } else if(old.generation!=generation && incoming.differsFrom(old)) {
-                val fresh=incoming.preserving(old);val c=fresh.channel
-                update.clearBindings();update.bindLong(1,c.kind.ordinal.toLong());update.bindString(2,fresh.search)
-                update.bindString(3,fresh.seriesKey);update.bindString(4,fresh.norm);update.bindString(5,fresh.title);update.bindString(6,c.seriesImageUrl)
-                update.bindLong(7,fresh.season.toLong());update.bindLong(8,fresh.episode.toLong());update.bindString(9,fresh.episodeTitle)
-                update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L)
-                update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.userAgent)
-                update.bindString(16,c.referrer);update.bindString(17,c.mimeType);update.bindString(18,c.tvgId);update.bindString(19,source);update.bindString(20,fresh.key)
-                updated+=update.executeUpdateDelete();saved[fresh.key]=fresh;changed(old,fresh)
+                insert.bindLong(24,firstAdded);insert.bindString(25,incoming.key);insert.bindBlob(26,incoming.signature())
+                insert.executeInsert();added++;position++
+                saved[incoming.key]=State(incoming.signature(),generation,false);changed(null,incoming)
+            } else if(state.generation!=generation) {
+                val old=hydrated[incoming.key] ?: return@forEach
+                if(incoming.differsFrom(old)) {
+                    val fresh=incoming.preserving(old);val c=fresh.channel
+                    update.clearBindings();update.bindLong(1,c.kind.ordinal.toLong());update.bindString(2,fresh.search)
+                    update.bindString(3,fresh.seriesKey);update.bindString(4,fresh.norm);update.bindString(5,fresh.title);update.bindString(6,c.seriesImageUrl)
+                    update.bindLong(7,fresh.season.toLong());update.bindLong(8,fresh.episode.toLong());update.bindString(9,fresh.episodeTitle)
+                    update.bindString(10,c.typeHint);update.bindLong(11,generation.toLong());update.bindLong(12,if(c.adult)1L else 0L)
+                    update.bindString(13,c.url);update.bindString(14,c.imageUrl);update.bindString(15,c.userAgent)
+                    update.bindString(16,c.referrer);update.bindString(17,c.mimeType);update.bindString(18,c.tvgId)
+                    update.bindBlob(19,incoming.signature());update.bindString(20,source);update.bindString(21,fresh.key)
+                    updated+=update.executeUpdateDelete();changed(old,fresh)
+                } else if(state.signature==null) {
+                    // One-time lazy signature migration. This does not alter
+                    // existing identity, stream URL, favorites or series rows.
+                    seedSignature.clearBindings();seedSignature.bindBlob(1,incoming.signature())
+                    seedSignature.bindString(2,source);seedSignature.bindString(3,incoming.key)
+                    seedSignature.executeUpdateDelete()
+                }
+                saved[incoming.key]=State(incoming.signature(),generation,false)
             }
         }
         batch.clear()
     }
-    override fun close() {insert.close();update.close()}
+    override fun close() {insert.close();update.close();seedSignature.close()}
     companion object { const val BATCH_SIZE=400 }
 }
 
