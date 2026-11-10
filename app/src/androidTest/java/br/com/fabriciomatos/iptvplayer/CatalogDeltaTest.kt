@@ -104,6 +104,7 @@ class CatalogDeltaTest {
         val repository=PlaylistRepository(context)
         try {
             val original=episodes(40)
+            repository.saveSource(source,"Fingerprint")
             repository.importReader(source,m3u(original).reader())
             repository.saveLast(original[0])
             repository.savePlaybackProgress(source,original[0].url,PlaybackProgress(63000,120000))
