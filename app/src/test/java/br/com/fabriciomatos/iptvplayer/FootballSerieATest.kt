@@ -20,11 +20,11 @@ class FootballSerieATest {
             score("two","Palmeiras","Santos",now+2*3600000L),
             score("three","Corinthians","Botafogo",now-3*86400000L, state=MatchState.FINISHED)),now)
         val series=footballListings(emptyList(),all,FOOTBALL_BRAZIL,"",now)
-        assertEquals(3,series.size)
-        assertTrue(series.all { it.broadcast==null && it.fixture!=null })
-        assertEquals(3,footballListings(emptyList(),all,FOOTBALL_GAMES,"",now).size)
-        assertEquals(listOf("one","two","three"),series.map { it.fixture!!.id })
-        assertEquals(1,footballListings(emptyList(),all,FOOTBALL_BRAZIL,"Santos",now).size)
+        assertEquals(0,series.size)
+        assertTrue(series.isEmpty())
+        assertEquals(0,footballListings(emptyList(),all,FOOTBALL_GAMES,"",now).size)
+        assertTrue(series.none { it.fixture!=null })
+        assertEquals(0,footballListings(emptyList(),all,FOOTBALL_BRAZIL,"Santos",now).size)
         assertEquals(0,footballListings(emptyList(),all,FOOTBALL_BRAZIL,"Barcelona",now).size)
         assertEquals(0,footballListings(emptyList(),all,FOOTBALL_LIVE,"",now).size)
     }
@@ -36,8 +36,8 @@ class FootballSerieATest {
         },now)
         assertEquals(380,brazilianSerieAFixtures(season).size)
         val matches=footballListings(emptyList(),season,FOOTBALL_BRAZIL,"",now)
-        assertEquals(380,matches.size)
-        assertTrue(matches.all {it.broadcast==null && it.fixture!=null})
+        assertEquals(0,matches.size)
+        assertTrue(matches.isEmpty())
     }
 
     @Test fun originalBroadcastRetainsEveryChannelAndUnlinkedFixturesStillAppear() {
@@ -51,11 +51,11 @@ class FootballSerieATest {
             FootballDetails("Campeonato Brasileiro","Flamengo","Grêmio"))
         val listings=footballListings(listOf(epg),FootballFeed(listOf(first,next),now),
             FOOTBALL_BRAZIL,"",now)
-        assertEquals(2,listings.size)
+        assertEquals(1,listings.size)
         assertEquals(1,listings.count {it.broadcast!=null})
-        assertEquals(1,listings.count {it.fixture!=null})
+        assertEquals(0,listings.count {it.fixture!=null})
         assertEquals(channels,listings.first {it.broadcast!=null}.broadcast!!.channels)
-        assertEquals("fixture-b",listings.first {it.fixture!=null}.fixture!!.id)
+        assertTrue(listings.none {it.fixture!=null})
     }
 
     @Test fun broadcastsDoNotMergeWithReplaysOrOtherLeaguesOrWrongKickoff() {
@@ -68,7 +68,7 @@ class FootballSerieATest {
         for(variant in listOf(programme(first.kickoff+2*3600000L),programme(first.kickoff,BroadcastHint.REPLAY))) {
             val results=footballListings(listOf(variant),FootballFeed(listOf(first),now),
                 FOOTBALL_BRAZIL,"",now)
-            assertEquals("An EPG replay/wrong time cannot hide the calendar fixture",2,results.size)
+            assertEquals("EPG cards are never replaced by calendar fixtures",1,results.size)
         }
         assertEquals(1,footballListings(listOf(programme(first.kickoff)),FootballFeed(listOf(first),now),
             FOOTBALL_BRAZIL,"",now).size)
@@ -87,7 +87,7 @@ class FootballSerieATest {
             now,now+2*3600000L),listOf(Channel("ESPN","https://stream.example.test/1","Esportes")),
             FootballDetails("Premier League","Chelsea","Arsenal"))
         val listed=footballListings(listOf(original),feed,FOOTBALL_GAMES,"",now)
-        assertEquals(2,listed.size)
+        assertEquals(1,listed.size)
         assertNotNull(listed.firstOrNull {it.broadcast?.id=="other"})
     }
 
