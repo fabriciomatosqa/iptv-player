@@ -63,6 +63,11 @@ class SportsHubUiTest {
             compose.onNode(inPicker and hasText("Aurora HD")).assertExists()
             compose.onNode(inPicker and hasText("Aurora FHD")).assertExists()
             UiDevice.getInstance(instrumentation).pressBack()
+            // Wait for the platform Dialog to finish dismissing before sending
+            // another hardware Back; otherwise both events may hit the Dialog.
+            compose.waitUntil(10000) {
+                compose.onAllNodesWithTag("football_channel_picker").fetchSemanticsNodes().isEmpty()
+            }
             // Background preview must not disable the Android Back hierarchy.
             UiDevice.getInstance(instrumentation).pressBack()
             compose.waitUntil(10000) {model.page==Page.FOOTBALL && model.sportsCompetitionId==null}
@@ -89,6 +94,9 @@ class SportsHubUiTest {
             compose.openSportsDiscipline("tennis");compose.openSportsCompetition("tennis.wta")
             compose.onNodeWithText("Alpha").assertDoesNotExist()
             compose.onNodeWithText("Aline").assertExists()
+            // Ensure the retained Activity ViewModel closes its SQLite handles
+            // before this test reopens the repository to check persistence.
+            scenario.onActivity { it.viewModelStore.clear() }
         }
         PlaylistRepository(context).also { repo ->
             assertEquals(channels.size,repo.overview(first).total)

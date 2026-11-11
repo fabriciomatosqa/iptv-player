@@ -120,6 +120,9 @@ internal fun AuroraApp(model: AuroraViewModel) {
             model.fullscreen -> model.fullscreen = false
             model.page == Page.LIBRARY && model.seriesDetails.forSource(model.playlistUrl) != null -> model.backFromSeriesDetails()
             model.page == Page.LIBRARY -> model.backFromLibrary()
+            // Respect the sports hierarchy even if this outer BackHandler wins
+            // over the SportsHubScreen handler (e.g. with a background preview).
+            model.page == Page.FOOTBALL -> model.backFromSports()
             model.page != Page.HOME -> model.page = Page.HOME
             else -> model.stop() }
     }
