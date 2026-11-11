@@ -53,7 +53,7 @@ class ScoreSourcesTest {
         league.put("primaryId",268).put("name","Brasileirão Femenino").put("ccode","BRA")
         assertTrue(parseFotMobScores(JSONObject().put("leagues",JSONArray().put(league)),1).all {it.league!="bra.1"})
     }
-    @Test fun missingSerieASeasonIsFlaggedEvenWhenCurrentDayFeedRefreshes() = runBlocking {
+    @Test fun missingSeasonDoesNotInvalidateCurrentEpgScores() = runBlocking {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         resetCatalog(context);val repository=PlaylistRepository(context)
         try {
@@ -62,9 +62,8 @@ class ScoreSourcesTest {
             val source=FootballScoreRepository(repository) {url->
                 if(url.contains("date="+footballDateKey(now)))JSONObject().put("leagues",JSONArray())else error("An old date is unavailable")
             }
-            // A refreshed current day is not a complete season: report the missing
-            // annual source so the user knows the calendar is incomplete.
-            assertTrue(source.load(listOf(game),now=now).failed)
+            // A season-wide feed is no longer required; only the EPG day matters.
+            assertFalse(source.load(listOf(game),now=now).failed)
         } finally {repository.close()}
     }
 }
