@@ -37,6 +37,9 @@ class FootballUiTest {
         val guide=Guide(matches=programmes.mapIndexed {i,p->GuideMatch("sport$i",p)})
         val repository=PlaylistRepository(context)
         repository.saveSource(source,"Agenda de teste");repository.appendCache(source,Download(Playlist(channels,"https://example.test/guide.xml"),"",""));repository.saveGuide(source,guide)
+        // This is an offline UI fixture. Prevent its fake example.test URL from
+        // starting a real background catalog refresh and retaining SQLite.
+        repository.recordAttempt(source,now)
         val json=JSONObject(instrumentation.context.assets.open("scores-afc-final.json").bufferedReader().use {it.readText()})
         val final=parseFootballScoreboard(json,"afc.champions",now).single().copy(kickoff=now-4*3600000L)
         val live=FootballScore("live-test","bra.1","Campeonato Brasileiro",programmes.first().start,ScoreTeam("flu",listOf("Fluminense")),
@@ -157,6 +160,7 @@ class FootballUiTest {
             repository.saveSource(source,"Lista esportiva")
             repository.appendCache(source,Download(Playlist(listOf(channel),"https://example.test/guide.xml"),"",""))
             repository.saveGuide(source,guide)
+            repository.recordAttempt(source,now)
             val matches=footballMatches(guide,listOf(channel),now)
             assertEquals("",matches.single().details.competition)
             (footballRequestDays(matches,now)+footballDateKey(now+86400000L)).distinct().forEach {day ->
