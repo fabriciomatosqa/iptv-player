@@ -1,10 +1,12 @@
-AURORA IPTV Android 1.12.40 — correção da Central Esportiva / Futebol
+AURORA IPTV Android 1.12.41 — Central Esportiva Aurora
 
-- Exibe no Futebol somente partidas identificadas no EPG e vinculadas a canais Ao Vivo presentes na playlist IPTV; resultados externos não criam cards sem transmissão.
-- Impede que o calendário completo do Brasileirão Série A seja exibido sem vínculo com os canais do usuário.
-- Remove a consulta automática ao calendário anual da Série A, reduzindo carregamento e processamento desnecessários na Central Esportiva.
-- Mantém ESPN e FotMob como fontes complementares de placares, horários, resultados e escudos para partidas identificadas.
-- Atualiza testes de regressão, navegação e tela para a regra de partidas associadas às transmissões disponíveis.
-- Mantém as melhorias anteriores de sincronização incremental de catálogos, cache local, playlists, favoritos, reprodução e configurações.
+- Nova navegação por modalidade, campeonato e eventos organizados por data, com busca e filtros de transmissões ao vivo e próximas.
+- Somente eventos identificados no EPG e ligados aos canais da playlist ativa aparecem como transmissões disponíveis. Placares e calendários externos não criam partidas nem canais.
+- Consolida variantes HD/FHD e emissoras do mesmo evento, preservando os horários individuais e o acesso ao player existente.
+- Corrige associações por nomes com identificadores conflitantes, reprises inferidas apenas por resultados antigos e categorias vazias.
+- Automobilismo organizado por etapas e sessões, preservando classificações, pilotos, construtores e calendário complementar da Fórmula 1.
+- Consultas de placares restritas aos cards visíveis, cache limitado, processamento assíncrono e cancelamento ao sair da tela.
+- Seleção de horário do aparelho ou de Brasília, layout compacto em paisagem e novos textos nos 20 idiomas suportados.
+- Preserva catálogo, playlists, favoritos, preferências, assinatura original e atualização online.
 
-Os testes automatizados não substituem a validação de desempenho em aparelhos físicos com 2 GB de RAM.
+Validação local: 153 testes unitários aprovados, lint sem erros e fontes Debug/testes Android compilados. A publicação depende também das verificações do workflow Android, incluindo emulador e assinatura original. Os testes automatizados não substituem a validação de desempenho em aparelhos físicos com cerca de 2 GB de RAM.

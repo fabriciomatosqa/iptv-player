@@ -97,7 +97,7 @@ fun filterFootball(matches: List<FootballMatch>, tab: String, search: String, no
         // Cheap filters first: most games do not need a scoreboard lookup during scrolling.
         if (tab != FOOTBALL_GAMES && tab != FOOTBALL_LIVE && footballTabKey(match.details) != canonicalFootballTab(tab)) return@filter false
         if (words.isNotEmpty()) {
-            val teams = normalized("${match.details.home} ${match.details.away}")
+            val teams = normalized("${match.details.home} ${match.details.away} ${footballCompetitionTitle(match.details)}")
             if (!words.all(teams::contains)) return@filter false
         }
         if (tab != FOOTBALL_LIVE && match.broadcastEnd > now - FOOTBALL_RETENTION_MS) return@filter true
@@ -182,10 +182,13 @@ fun matchFootballScore(match: FootballMatch, feed: FootballFeed): MatchedScore? 
         val gender=event.gender
         if(gender == FootballGender.CONFLICT || gender == FootballGender.WOMEN && match.details.gender != FootballGender.WOMEN ||
             gender == FootballGender.MEN && match.details.gender == FootballGender.WOMEN) return@filter false
-        event.league in leagues && event.kickoff in (match.programme.start-7*86400000L)..(match.programme.start+90*60000L) &&
+        event.league in leagues &&
+            (if(footballExplicitReplay(match.programme))
+                event.state==MatchState.FINISHED && match.programme.start-event.kickoff in 0..7*86400000L
+            else abs(event.kickoff-match.programme.start)<=90*60000L) &&
             ((matchesScoreTeam(match.details.home,event.home) && matchesScoreTeam(match.details.away,event.away)) ||
                 (matchesScoreTeam(match.details.home,event.away) && matchesScoreTeam(match.details.away,event.home))) &&
-            (match.programme.broadcast!=BroadcastHint.REPLAY || event.state==MatchState.FINISHED && event.kickoff<=match.programme.start)
+            (!footballExplicitReplay(match.programme) || event.state==MatchState.FINISHED && event.kickoff<=match.programme.start)
     }.distinctBy {it.league+":"+it.id}
     // Prefer the new source without treating two providers' IDs as two different matches.
     val preferred=compatible.filter {it.id.startsWith("fotmob:") && scoreIsFresh(it,feed.checked)}
@@ -205,11 +208,6 @@ fun compactFootballMatch(match: FootballMatch, score: FootballScore?, now: Long)
 fun broadcastMode(programme: Programme, score: FootballScore?): BroadcastMode {
     if(footballExplicitReplay(programme))return BroadcastMode.REPLAY
     if(programme.broadcast==BroadcastHint.LIVE)return BroadcastMode.LIVE
-    // The caller supplies an exact-team, league-compatible score. A confirmed final
-    // with an original kickoff several hours before this EPG slot is a repeat.
-    // Never infer replay from a finished score at the same kickoff.
-    if(score?.state==MatchState.FINISHED && score.kickoff>0L &&
-        programme.start-score.kickoff in 3*3600000L..7*86400000L)return BroadcastMode.REPLAY
     if(score!=null && score.state in listOf(MatchState.LIVE,MatchState.HALFTIME) &&
         score.kickoff in (programme.start-15*60000L)..minOf(programme.end-1,programme.start+90*60000L))return BroadcastMode.LIVE
     return BroadcastMode.UNCONFIRMED

@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -24,20 +26,18 @@ import java.util.Locale
  */
 @Composable internal fun MotorsportEventCard(model: AuroraViewModel, event: SportsEvent, now: Long) {
     val colors=LocalAuroraColors.current
-    val details=motorsportCardDetails(event.programme,event.competition)
-    val programme=event.programme
+    val details=androidx.compose.runtime.remember(event.programme,event.competition) {
+        motorsportCardDetails(event.programme,event.competition)
+    }
+    val programme=event.displayProgramme(now)
+    val zone=sportsDisplayZone(model.sportsTimeZone)
+    val logo=androidx.compose.runtime.remember(event.competition,event.channels) {sportsLeagueLogo(event.competition,event.channels)}
     val started=now>=programme.start
-    val ended=now>=programme.end
-    val replay=programme.broadcast==BroadcastHint.REPLAY
+    val ended=now>=event.broadcastEnd
+    val replay=footballExplicitReplay(programme)
     val live=!replay && started && !ended && programme.broadcast==BroadcastHint.LIVE
     val showing=!replay && started && !ended && !live
-    val label=when {
-        ended -> "ENCERRADO"
-        replay -> "REPRISE"
-        live -> "AO VIVO"
-        showing -> "NA GRADE"
-        else -> "EM BREVE"
-    }
+    val label=tr(sportsStateResource(sportsBroadcastState(programme,now)))
     val accent=when {
         replay && !ended -> colors.violet
         live -> colors.mint
@@ -62,8 +62,8 @@ import java.util.Locale
                             .background(colors.mint.copy(alpha=.13f)),
                         contentAlignment=Alignment.Center
                     ) {
-                        Icon(Icons.Default.SportsMotorsports,null,tint=colors.mint,
-                            modifier=Modifier.size(26.dp))
+                        if(logo.isNotBlank())AsyncImage(catalogImage(logo),null,Modifier.size(32.dp),contentScale=ContentScale.Fit)
+                        else Icon(Icons.Default.SportsMotorsports,null,tint=colors.mint,modifier=Modifier.size(26.dp))
                     }
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
                         Text(event.competition,fontSize=13.sp,color=colors.text,
@@ -77,7 +77,8 @@ import java.util.Locale
                             verticalAlignment=Alignment.CenterVertically,
                             horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                             if(live) Icon(Icons.Default.Sensors,null,Modifier.size(13.dp),tint=accent)
-                            Text(label,fontSize=10.sp,color=accent,fontWeight=FontWeight.Bold)
+                        Text(label,fontSize=10.sp,color=accent,fontWeight=FontWeight.Bold,
+                            maxLines=2,modifier=Modifier.widthIn(max=120.dp))
                         }
                     }
                 }
@@ -88,7 +89,7 @@ import java.util.Locale
                     Row(verticalAlignment=Alignment.CenterVertically,
                         horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                         Icon(Icons.Default.Flag,null,tint=colors.mint,modifier=Modifier.size(17.dp))
-                        Text(details.session,fontSize=14.sp,color=colors.mint,
+                        Text(if(details.sessionId=="unspecified")tr(R.string.sports_session_unknown) else details.session,fontSize=14.sp,color=colors.mint,
                             fontWeight=FontWeight.SemiBold,
                             modifier=Modifier.testTag("motorsport_session"))
                     }
@@ -101,25 +102,26 @@ import java.util.Locale
                         horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Default.CalendarToday,null,tint=colors.muted,
                             modifier=Modifier.size(15.dp))
-                        Text(footballDay(programme.start,Locale.forLanguageTag(model.language)),
+                        Text(footballDay(programme.start,Locale.forLanguageTag(model.language),zone),
                             fontSize=12.sp,color=colors.text,maxLines=2)
                     }
                     Row(verticalAlignment=Alignment.CenterVertically,
                         horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Default.Schedule,null,tint=colors.mint,
                             modifier=Modifier.size(15.dp))
-                        Text(footballTime(programme.start,Locale.forLanguageTag(model.language)),
+                        Text(footballTime(programme.start,Locale.forLanguageTag(model.language),zone),
                             fontSize=15.sp,fontWeight=FontWeight.Bold,color=colors.mint)
-                        Text("horário do aparelho",fontSize=10.sp,color=colors.muted)
+                        Text(tr(if(model.sportsTimeZone=="device")R.string.sports_device_time else R.string.sports_brasilia_time),fontSize=10.sp,color=colors.muted)
                     }
                     if(showing) Text("No horário da grade; transmissão ao vivo não confirmada.",
                         color=colors.muted,fontSize=11.sp)
-                    if(replay && !ended) Text("Reexibição identificada na programação do canal.",
+                    if(replay && !ended) Text(tr(R.string.sports_replay_evidence),
                         color=colors.muted,fontSize=11.sp)
                 }
                 if(!ended) {
                     HorizontalDivider(color=colors.muted.copy(alpha=.14f))
-                    FootballChannelActions(model,event.channels)
+                    FootballChannelActions(model,event.channels,programmes=event.channelProgrammes,
+                        featuredChannels=sportsLiveChannels(event,now).ifEmpty {event.channels})
                 } else {
                     Text("A faixa da grade terminou. Resultados e posições não foram informados.",
                         color=colors.muted,fontSize=11.sp)

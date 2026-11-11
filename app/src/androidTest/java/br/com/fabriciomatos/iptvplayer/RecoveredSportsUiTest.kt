@@ -40,10 +40,11 @@ class RecoveredSportsUiTest {
             compose.waitUntil(15000) {model.initialized && model.football.size==1}
             // Opening the existing recovered cache must not need public fixture generation.
             scenario.onActivity {model.page=Page.FOOTBALL}
+            compose.openSportsDiscipline()
+            compose.openSportsCompetition("unknown")
             compose.onNodeWithTag("football_match").assertExists()
             compose.onNodeWithText("Porto × Estoril").assertExists()
-            // The original 1.12.18 screen does not display the optional guide-source banner.
-            // Guide provenance remains available from Settings > Programação.
+            compose.onNodeWithTag("sports_guide_source").assertExists()
             // Replays intentionally start compact; expand the existing card before checking its actions.
             compose.onNodeWithTag("football_match").performClick()
             compose.onNodeWithText("Porto",useUnmergedTree=true).assertExists()

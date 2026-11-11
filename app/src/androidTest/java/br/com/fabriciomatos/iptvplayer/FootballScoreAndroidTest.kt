@@ -17,6 +17,10 @@ class FootballScoreAndroidTest {
     @Test fun actualScoreboardParsesFinalAndLiveStatesAndCachesRefreshesAtTwoMinutes() = runBlocking {
         val json=JSONObject(instrumentation.context.assets.open("scores-afc-final.json").bufferedReader().use {it.readText()})
         val now=System.currentTimeMillis()/86400000L*86400000L+12*3600000L
+        json.getJSONArray("events").getJSONObject(0).put("date",
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",java.util.Locale.ROOT).apply {
+                timeZone=java.util.TimeZone.getTimeZone("UTC")
+            }.format(java.util.Date(now-4*3600000L)))
         val parsed=parseFootballScoreboard(json,"afc.champions",now).single()
         assertEquals(MatchState.FINISHED,parsed.state);assertEquals(3,parsed.homeGoals);assertEquals(1,parsed.awayGoals)
         assertEquals("Al Nassr",parsed.home.names.first());assertEquals("Neftchi Fergana",parsed.away.names.first())
@@ -30,8 +34,9 @@ class FootballScoreAndroidTest {
         scheduled.getJSONArray("events").getJSONObject(0).getJSONObject("status").put("type",JSONObject().put("state","pre").put("name","STATUS_SCHEDULED"))
         assertNull(parseFootballScoreboard(scheduled,"afc.champions",now).single().homeGoals)
         assertEquals(listOf(liveResult),decodeFootballFeed(encodeFootballFeed(FootballFeed(listOf(liveResult),now))).events)
-        val match=FootballMatch("replay",Programme("Al Nassr x Neftchi Fergana - AFC Champions League Elite",parsed.kickoff+4*3600000L,now+2*86400000L),
-            emptyList(),FootballDetails("AFC Champions League Elite","Al Nassr","Neftchi Fergana"))
+        val match=FootballMatch("replay",Programme("Al Nassr x Neftchi Fergana - AFC Champions League Elite",parsed.kickoff+4*3600000L,now+2*3600000L,broadcast=BroadcastHint.REPLAY),
+            listOf(Channel("Example TV","https://example.test/live/a","Esportes",typeHint="live")),
+            FootballDetails("AFC Champions League Elite","Al Nassr","Neftchi Fergana"))
         val repository=PlaylistRepository(context);val calls=java.util.concurrent.atomic.AtomicInteger()
         val loader=FootballScoreRepository(repository) {address->assertTrue(address.startsWith("https://www.fotmob.com/") || address.startsWith("https://site.api.espn.com/"));assertFalse(address.contains("username"));assertTrue(Regex("[?&](?:date|dates)=[0-9]{4}(?:[0-9]{4})?(?:&|$)").containsMatchIn(address));calls.incrementAndGet();if(address.contains("fotmob"))error("Primary offline")else json}
         val first=loader.load(listOf(match),now=now);val firstCalls=calls.get();assertTrue(firstCalls>0)

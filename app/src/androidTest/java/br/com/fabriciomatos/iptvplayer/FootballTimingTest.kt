@@ -42,14 +42,17 @@ class FootballTimingTest {
             lateinit var model: AuroraViewModel
             scenario.onActivity { model=ViewModelProvider(it)[AuroraViewModel::class.java] }
             await { model.initialized && model.football.size==1 }
-            scenario.onActivity { model.showFootball() }
-            await { model.footballFeed.events.isNotEmpty() && !model.footballScoresLoading }
+            scenario.onActivity {
+                model.showFootball();model.openSportsDiscipline("FOOTBALL");model.openSportsCompetition("bra.2")
+                model.visibleSportsEvents(setOf("football:"+match.id))
+            }
+            await { model.footballFeed.checked>0 && !model.footballScoresLoading }
             scenario.onActivity {
                 val restored=model.football.single()
                 assertEquals(p,restored.programme)
                 assertEquals(p,restored.programmeFor(channel))
                 assertTrue(filterFootball(listOf(restored),FOOTBALL_LIVE,"",now,model.footballFeed).isEmpty())
-                assertEquals(0,matchFootballScore(restored,model.footballFeed)?.homeGoals)
+                assertNull(matchFootballScore(restored,model.footballFeed))
             }
         }
         PlaylistRepository(context).also { repo ->

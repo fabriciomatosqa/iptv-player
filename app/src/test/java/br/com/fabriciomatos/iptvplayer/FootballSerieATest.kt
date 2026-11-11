@@ -12,8 +12,8 @@ class FootballSerieATest {
             if(state==MatchState.FINISHED)2 else null,
             if(state==MatchState.FINISHED)1 else null,state,checked=now)
 
-    @Test fun dedicatedSerieATabExistsWithoutEpgOrAnyChannel() {
-        assertEquals(listOf(FOOTBALL_LIVE,FOOTBALL_GAMES,FOOTBALL_BRAZIL),
+    @Test fun noSerieACategoryIsCreatedWithoutEpgOrAnyChannel() {
+        assertEquals(listOf(FOOTBALL_LIVE,FOOTBALL_GAMES),
             footballVisibleTabs(emptyList()).map { it.key })
         val all=FootballFeed(listOf(
             score("one","Flamengo","Grêmio",now+3600000L),

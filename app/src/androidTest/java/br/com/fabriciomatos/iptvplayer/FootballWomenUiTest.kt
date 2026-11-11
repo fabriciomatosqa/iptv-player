@@ -14,7 +14,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class FootballWomenUiTest {
     @get:Rule val compose=createEmptyComposeRule()
-    @Test fun aggregatedWomenTabSearchAndGeneralLiveFilterUseTheSameGames() {
+    @Test fun separateWomenCompetitionsSearchAndLiveFilterKeepTheSameStreams() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext;resetCatalog(context)
         val now=System.currentTimeMillis();val source="https://example.test/women.m3u"
         val channels=(0..2).map { Channel("ESPN $it HD","https://example.test/live/$it","Futebol",tvgId="sport$it") }
@@ -32,14 +32,14 @@ class FootballWomenUiTest {
             scenario.onActivity { model=ViewModelProvider(it)[AuroraViewModel::class.java] }
             compose.waitUntil(15000) { model.initialized && model.football.size==2 }
             compose.onNodeWithTag("home_football").performClick()
-            compose.onNodeWithTag("football_tab_$FOOTBALL_WOMEN").performScrollTo().performClick()
-            assertEquals(2,filterFootball(model.football,model.footballTab,"",now).size)
-            assertEquals(1,footballTabs(model.football).count { it.key==FOOTBALL_WOMEN })
+            compose.openSportsDiscipline()
+            assertEquals(2,model.sportsHub.disciplines.single().competitions.size)
+            compose.openSportsCompetition("conmebol.libertadores:women")
             compose.onNodeWithTag("football_search").performTextInput("Palmeiras")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             compose.onNodeWithText("Belgrano").assertExists()
             compose.onNodeWithText("Corinthians").assertDoesNotExist()
-            compose.onNodeWithTag("football_tab_$FOOTBALL_LIVE").performScrollTo().performClick()
+            compose.onNodeWithTag("sports_filter_live").performClick()
             compose.onNodeWithText("Belgrano").assertExists()
             assertEquals("Palmeiras",model.footballSearch)
             assertEquals(2,model.football.first { it.details.home=="Belgrano" }.channels.size)

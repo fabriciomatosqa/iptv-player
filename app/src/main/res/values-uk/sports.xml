@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Спортивний центр Aurora</string>
+    <string name="sports_choose_discipline">Виберіть вид спорту з трансляціями в телепрограмі</string>
+    <string name="sports_search">Пошук виду спорту, турніру, команди або події</string>
+    <string name="sports_all_broadcasts">Усі</string>
+    <string name="sports_upcoming">Незабаром</string>
+    <string name="sports_device_time">Час пристрою</string>
+    <string name="sports_brasilia_time">Час Бразиліа</string>
+    <string name="sports_competition_count">Турнірів у програмі: %1$d</string>
+    <string name="sports_epg_confirmed">Трансляції знайдено в телепрограмі</string>
+    <string name="sports_broadcasts">трансляції</string>
+    <string name="sports_empty_epg">У цьому періоді трансляцій не знайдено. Телепрограма може бути недоступною або неповною.</string>
+    <string name="sports_f1_reference">Формула-1 · Заліки та календар</string>
+    <string name="sports_today">Сьогодні</string>
+    <string name="sports_tomorrow">Завтра</string>
+    <string name="sports_on_schedule">У програмі · прямий ефір не підтверджено</string>
+    <string name="sports_ended">Час трансляції завершено</string>
+    <string name="sports_session_unknown">Сесію не вказано</string>
+    <string name="sports_replay_evidence">Повтор зазначено в програмі каналу.</string>
+    <string name="sports_reference_only">Додаткові відомості · не підтверджують доступність трансляції</string>
+    <string name="sports_back">Назад</string>
+    <string name="sports_source_epgshare">Додаткова програма: EPGShare Бразилія</string>
+</resources>

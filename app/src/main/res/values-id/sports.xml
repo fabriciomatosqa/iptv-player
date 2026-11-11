@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Pusat Olahraga Aurora</string>
+    <string name="sports_choose_discipline">Pilih olahraga dengan siaran di panduan TV</string>
+    <string name="sports_search">Cari olahraga, kompetisi, tim, atau acara</string>
+    <string name="sports_all_broadcasts">Semua</string>
+    <string name="sports_upcoming">Segera</string>
+    <string name="sports_device_time">Waktu perangkat</string>
+    <string name="sports_brasilia_time">Waktu Brasília</string>
+    <string name="sports_competition_count">Jumlah kompetisi di panduan: %1$d</string>
+    <string name="sports_epg_confirmed">Siaran yang ditemukan di panduan TV</string>
+    <string name="sports_broadcasts">siaran</string>
+    <string name="sports_empty_epg">Tidak ada siaran yang ditemukan untuk periode ini. Panduan TV mungkin tidak tersedia atau belum lengkap.</string>
+    <string name="sports_f1_reference">Formula 1 · Klasemen dan kalender</string>
+    <string name="sports_today">Hari ini</string>
+    <string name="sports_tomorrow">Besok</string>
+    <string name="sports_on_schedule">Terjadwal · siaran langsung belum dikonfirmasi</string>
+    <string name="sports_ended">Waktu siaran berakhir</string>
+    <string name="sports_session_unknown">Sesi belum disebutkan</string>
+    <string name="sports_replay_evidence">Siaran ulang ditemukan di jadwal saluran.</string>
+    <string name="sports_reference_only">Informasi tambahan · tidak menunjukkan ketersediaan siaran</string>
+    <string name="sports_back">Kembali</string>
+    <string name="sports_source_epgshare">Panduan TV tambahan: EPGShare Brasil</string>
+</resources>

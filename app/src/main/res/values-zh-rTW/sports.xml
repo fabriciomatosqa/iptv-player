@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora 體育中心</string>
+    <string name="sports_choose_discipline">選擇節目指南中有轉播的運動項目</string>
+    <string name="sports_search">搜尋運動、賽事、球隊或活動</string>
+    <string name="sports_all_broadcasts">全部</string>
+    <string name="sports_upcoming">即將開始</string>
+    <string name="sports_device_time">裝置時間</string>
+    <string name="sports_brasilia_time">巴西利亞時間</string>
+    <string name="sports_competition_count">節目指南中的賽事：%1$d</string>
+    <string name="sports_epg_confirmed">節目指南中已識別的轉播</string>
+    <string name="sports_broadcasts">轉播</string>
+    <string name="sports_empty_epg">此時段未識別到轉播。節目指南可能無法使用或不完整。</string>
+    <string name="sports_f1_reference">一級方程式 · 積分榜與賽曆</string>
+    <string name="sports_today">今天</string>
+    <string name="sports_tomorrow">明天</string>
+    <string name="sports_on_schedule">節目已安排 · 尚未確認直播</string>
+    <string name="sports_ended">轉播時段已結束</string>
+    <string name="sports_session_unknown">未提供場次資訊</string>
+    <string name="sports_replay_evidence">頻道節目指南中已標示重播。</string>
+    <string name="sports_reference_only">補充資訊 · 不代表有可用轉播</string>
+    <string name="sports_back">返回</string>
+    <string name="sports_source_epgshare">補充節目指南：EPGShare 巴西</string>
+</resources>

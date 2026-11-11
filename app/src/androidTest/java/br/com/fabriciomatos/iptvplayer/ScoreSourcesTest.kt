@@ -21,11 +21,12 @@ class ScoreSourcesTest {
         assertTrue(live.clock.contains(':'));assertNotNull(live.homeGoals)
         val match=FootballMatch("nassr",Programme("Al Nassr x Neftchi Fergana",final.kickoff+4*3600000,final.kickoff+8*3600000),
             emptyList(),FootballDetails("AFC Champions League Elite","Al Nassr","Neftchi Fergana"))
-        assertEquals(3,matchFootballScore(match,FootballFeed(scores))?.homeGoals)
-        // A confirmed finished fixture several hours before the same named EPG slot qualifies as a replay.
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme,final))
-        // Replays remain compact even before the rebroadcast starts; scheduled time stays intact.
-        assertTrue(compactFootballMatch(match,final,match.programme.start-1))
+        assertNull(matchFootballScore(match,FootballFeed(scores)))
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(match.programme,final))
+        assertFalse(compactFootballMatch(match,final,match.programme.start-1))
+        val repeat=match.copy(programme=match.programme.copy(broadcast=BroadcastHint.REPLAY))
+        assertEquals(3,matchFootballScore(repeat,FootballFeed(scores))?.homeGoals)
+        assertTrue(compactFootballMatch(repeat,final,repeat.programme.start-1))
         assertEquals(final.kickoff+4*3600000,match.programme.start)
         assertFalse(transmissionIsLive(match.programme,final,match.programme.start))
         assertEquals(BroadcastMode.REPLAY,broadcastMode(match.programme.copy(broadcast=BroadcastHint.REPLAY),final))
@@ -58,7 +59,9 @@ class ScoreSourcesTest {
         resetCatalog(context);val repository=PlaylistRepository(context)
         try {
             val now=System.currentTimeMillis()
-            val game=FootballMatch("test",Programme("Fluminense x Botafogo",now-1000,now+3600000),emptyList(),FootballDetails("Campeonato Brasileiro","Fluminense","Botafogo"))
+            val game=FootballMatch("test",Programme("Fluminense x Botafogo",now-1000,now+3600000),
+                listOf(Channel("Example TV","https://example.test/live/a","Esportes",typeHint="live")),
+                FootballDetails("Campeonato Brasileiro","Fluminense","Botafogo"))
             val source=FootballScoreRepository(repository) {url->
                 if(url.contains("date="+footballDateKey(now)))JSONObject().put("leagues",JSONArray())else error("An old date is unavailable")
             }

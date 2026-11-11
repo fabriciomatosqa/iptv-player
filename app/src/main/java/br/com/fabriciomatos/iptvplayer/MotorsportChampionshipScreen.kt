@@ -27,6 +27,10 @@ import kotlinx.coroutines.CancellationException
 import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
+
+private val LocalChampionshipZone=staticCompositionLocalOf {TimeZone.getDefault()}
+private val LocalChampionshipTimeLabel=staticCompositionLocalOf {R.string.sports_device_time}
 
 @Composable internal fun MotorsportChampionshipScreen(model: AuroraViewModel, onBack: () -> Unit) {
     BackHandler(enabled=!model.settingsOpen && !model.fullscreen,onBack=onBack)
@@ -43,9 +47,12 @@ import java.util.Locale
         catch(_: Exception) { season=season?.copy(partial=true) }
         finally { loading=false }
     }
-    ChampionshipContent(season,loading,section,{ section=it },locale,onBack,{ attempt++ },
-        model.sports, { race -> model.motorsportChampionship.results(year,race.round) },
-        { events -> events.forEach { MotorsportEventCard(model,it,System.currentTimeMillis()) } })
+    CompositionLocalProvider(LocalChampionshipZone provides sportsDisplayZone(model.sportsTimeZone),
+        LocalChampionshipTimeLabel provides if(model.sportsTimeZone=="device")R.string.sports_device_time else R.string.sports_brasilia_time) {
+        ChampionshipContent(season,loading,section,{ section=it },locale,onBack,{ attempt++ },
+            model.sports, { race -> model.motorsportChampionship.results(year,race.round) },
+            { events -> events.forEach { MotorsportEventCard(model,it,System.currentTimeMillis()) } })
+    }
 }
 
 /** Stateless entry point also lets UI tests use fixtures without network or player initialization. */
@@ -72,6 +79,7 @@ import java.util.Locale
         TextButton(onClick=onBack,modifier=Modifier.padding(horizontal=12.dp).testTag("championship_broadcasts")) {
             Text("Ver transmissões da Fórmula 1")
         }
+        Text(tr(R.string.sports_reference_only),Modifier.padding(horizontal=16.dp),fontSize=10.sp,color=colors.muted)
         LazyRow(modifier=Modifier.testTag("championship_sections"),
             contentPadding=PaddingValues(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             items(sections.indices.toList()) { index ->
@@ -121,7 +129,7 @@ import java.util.Locale
                         2 -> item { ChampionshipStandings(season.teams,false,locale,season.year) }
                         3 -> item { NextChampionshipRace(next,locale,now,events,broadcasts) }
                         4 -> {
-                            item { Text("Calendário da temporada · horários do aparelho",color=colors.muted,fontSize=12.sp) }
+                            item { Text("Calendário da temporada · "+tr(LocalChampionshipTimeLabel.current),color=colors.muted,fontSize=12.sp) }
                             items(season.races,key={it.round}) { race ->
                                 ChampionshipRaceItem(race,race.round==next?.round,locale,now,results,events,broadcasts)
                             }
@@ -156,8 +164,9 @@ internal fun championshipNumber(value: Double, locale: Locale): String = NumberF
     maximumFractionDigits=3
 }.format(value)
 
-private fun championshipDateTime(time: Long, locale: Locale) = footballDay(time,locale)+" · "+footballTime(time,locale)
-private fun sessionTime(session: ChampionshipSession, locale: Locale) = session.start?.let {
+@Composable private fun championshipDateTime(time: Long, locale: Locale) =
+    footballDay(time,locale,LocalChampionshipZone.current)+" · "+footballTime(time,locale,LocalChampionshipZone.current)
+@Composable private fun sessionTime(session: ChampionshipSession, locale: Locale) = session.start?.let {
     championshipDateTime(it,locale)
 } ?: "${session.date} · horário não informado"
 
@@ -227,7 +236,7 @@ private fun sessionTime(session: ChampionshipSession, locale: Locale) = session.
 }
 
 @Composable private fun RaceSessions(race: ChampionshipRace, locale: Locale, now: Long) {
-    Text("Programação · horário do aparelho",fontWeight=FontWeight.SemiBold,fontSize=13.sp)
+    Text("Programação · "+tr(LocalChampionshipTimeLabel.current),fontWeight=FontWeight.SemiBold,fontSize=13.sp)
     race.sessions.forEach { session ->
         val status=when {
             session.id=="race" && race.completed -> "Finalizada"

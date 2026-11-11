@@ -67,6 +67,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     )
     private val synopses = SynopsisRepository(repository)
     private val scoreRefresh = Mutex()
+    private var sportsScoreRequest by mutableStateOf(0L)
     private val coverRequests = mutableMapOf<String,Deferred<String?>>()
     private val preferences = AppSettings(application)
     var language by mutableStateOf(preferences.language()); private set
@@ -88,7 +89,17 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     var sports by mutableStateOf(emptyList<SportsEvent>()); private set
     var selectedSport by mutableStateOf(SportKind.FOOTBALL)
     var sportsCategory by mutableStateOf(SPORTS_GAMES)
-    private var sportsGuideBootstrapped = false
+    var sportsHub by mutableStateOf(SportsHubCatalog()); private set
+    var sportsDisciplineId by mutableStateOf<String?>(null)
+    var sportsCompetitionId by mutableStateOf<String?>(null)
+    var sportsHubFilter by mutableStateOf(SportsHubFilter.ALL)
+    var sportsTimeZone by mutableStateOf(preferences.sportsTimeZone()); private set
+    var sportsScores by mutableStateOf(emptyMap<String,MatchedScore>()); private set
+    private var visibleSportsEvents by mutableStateOf(emptySet<String>())
+    // A home preview may keep playing while the sports navigation itself is visible.
+    val sportsActive: Boolean get() = foreground && page==Page.FOOTBALL && !settingsOpen && !fullscreen
+    private var sportsGuideLoadedAt = 0L
+    private var sportsGuideAttemptAt = 0L
     var footballFeed by mutableStateOf(FootballFeed()); private set
     var footballScoresLoading by mutableStateOf(false); private set
     var footballSearch by mutableStateOf("")
@@ -194,11 +205,14 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch { while(true) { delay(5000L); checkpointPlayback() } }
         viewModelScope.launch {
-            snapshotFlow {if(initialized && foreground && page==Page.FOOTBALL &&
-                    selectedSport==SportKind.FOOTBALL && !settingsOpen)football else null}.collectLatest {matches->
-                if(matches!=null)while(true) {
+            var handledRequest=0L
+            snapshotFlow {if(initialized && sportsActive && sportsCompetitionId!=null &&
+                    selectedSport==SportKind.FOOTBALL) Triple(visibleSportsEvents,football,sportsScoreRequest) else null}.collectLatest {matches->
+                if(matches!=null && matches.first.isNotEmpty())while(true) {
                     val next=System.currentTimeMillis()+FOOTBALL_REFRESH_MS
-                    updateFootballScores()
+                    val force=matches.third>handledRequest
+                    handledRequest=matches.third
+                    updateFootballScores(force)
                     delay((next-System.currentTimeMillis()).coerceAtLeast(1000L))
                 }
             }
@@ -299,7 +313,10 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                     catalogAnchors.clear();seriesOrigin=null;playbackOrigin=null
                     footballFeed=FootballFeed();footballSearch="";footballTab=FOOTBALL_GAMES
                     selectedSport=SportKind.FOOTBALL;sportsCategory=SPORTS_GAMES
-                    sportsGuideBootstrapped=false
+                    sportsHub=SportsHubCatalog();sportsScores=emptyMap();visibleSportsEvents=emptySet()
+                    sportsDisciplineId=null;sportsCompetitionId=null;sportsHubFilter=SportsHubFilter.ALL
+                    sportsGuideLoadedAt=0L
+                    sportsGuideAttemptAt=0L
                     footballPosition=null;fromFootball=false
                     football=emptyList();sports=emptyList();recent=null
                 }
@@ -507,9 +524,8 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         }
         return request.await()
     }
-    suspend fun footballArtwork(details: FootballDetails): FootballArtwork = viewModelScope.async {artwork.football(details)}.await()
-    suspend fun sportsArtwork(event: SportsEvent): FootballArtwork =
-        viewModelScope.async { artwork.teamSport(event) }.await()
+    suspend fun footballArtwork(details: FootballDetails): FootballArtwork = artwork.football(details)
+    suspend fun sportsArtwork(event: SportsEvent): FootballArtwork = artwork.teamSport(event)
     suspend fun synopsis(channel: Channel?, series: SeriesEntry?, force: Boolean = false): Synopsis {
         if(channel?.adult==true && !adultUnlocked || series?.adult==true && !adultUnlocked)return Synopsis()
         return synopses.load(playlistUrl,channel,series,force)
@@ -579,25 +595,82 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         page=Page.FOOTBALL
         // Recover a missing/expired guide once, while honouring a usable cache's six-hour TTL.
         val now=System.currentTimeMillis()
-        val recover = !sportsGuideBootstrapped && football.none {it.broadcastEnd>now} &&
-            sports.none {it.programme.end>now}
-        sportsGuideBootstrapped=true
-        refreshGuide(recover)
+        val recover = football.none {it.broadcastEnd>now} && sports.none {it.broadcastEnd>now} &&
+            now-sportsGuideAttemptAt>=15*60000L
+        if(guideJob?.isActive==true)return
+        if(recover || now-sportsGuideLoadedAt>=6*3600000L && now-sportsGuideAttemptAt>=15*60000L)
+            refreshGuide(recover)
     }
-    fun refreshFootball() {refreshGuide(true);if(selectedSport==SportKind.FOOTBALL)
-        viewModelScope.launch {updateFootballScores(force=true)}}
+    fun openSportsDiscipline(id:String) {
+        val discipline=sportsHub.disciplines.firstOrNull {it.id==id} ?: return
+        sportsDisciplineId=id;sportsCompetitionId=null;selectedSport=discipline.sport
+        visibleSportsEvents=emptySet()
+    }
+    fun openSportsCompetition(id:String) {
+        sportsCompetitionId=id;visibleSportsEvents=emptySet()
+        val competition=sportsHub.disciplines.firstOrNull {it.id==sportsDisciplineId}
+            ?.competitions?.firstOrNull {it.id==id}
+        if(selectedSport==SportKind.FOOTBALL)competition?.events?.firstOrNull()?.football?.let {
+            footballTab=footballTabKey(it.details)
+        } else sportsCategory=id
+    }
+    fun backFromSports() {
+        visibleSportsEvents=emptySet()
+        when {
+            sportsCompetitionId!=null -> sportsCompetitionId=null
+            sportsDisciplineId!=null -> sportsDisciplineId=null
+            else -> page=Page.HOME
+        }
+    }
+    fun visibleSportsEvents(ids:Set<String>) { if(visibleSportsEvents!=ids)visibleSportsEvents=ids }
+    fun chooseSportsTimeZone(value:String) {
+        if(value !in setOf("device","America/Sao_Paulo"))return
+        viewModelScope.launch {
+            if(withContext(Dispatchers.IO) {preferences.saveSportsTimeZone(value)})sportsTimeZone=value
+        }
+    }
+    private suspend fun rebuildSportsHub() {
+        val source=playlistUrl;val matches=football;val others=sports;val feed=footballFeed
+        val presentation=withContext(Dispatchers.Default) {
+            val resolved=enrichBrazilianFootballCompetitions(matches,feed)
+            sportsHubCatalog(resolved,others,System.currentTimeMillis()) to resolved.mapNotNull { match ->
+                matchFootballScore(match,feed)?.let {match.id to it}
+            }.toMap()
+        }
+        if(source!=playlistUrl || matches!==football || others!==sports || feed!==footballFeed)return
+        val discipline=presentation.first.disciplines.firstOrNull {it.id==sportsDisciplineId}
+        if(sportsCompetitionId!=null && discipline?.competitions?.none {it.id==sportsCompetitionId}==true) {
+            // A verified score can name a previously unspecified EPG competition.
+            discipline.competitions.firstOrNull { competition ->
+                competition.events.any {it.id in visibleSportsEvents}
+            }?.let {sportsCompetitionId=it.id}
+        }
+        sportsHub=presentation.first;sportsScores=presentation.second
+    }
+    fun refreshFootball() {refreshGuide(true);sportsScoreRequest++}
     fun playFootball(channel: Channel) {play(channel);fromFootball=true}
     suspend fun footballIncidents(score: FootballScore): List<FootballIncident>? = scores.incidents(score)
     private suspend fun updateFootballScores(force: Boolean = false) = scoreRefresh.withLock {
-        if(!foreground || page!=Page.FOOTBALL)return@withLock
+        if(!sportsActive || sportsCompetitionId==null || selectedSport!=SportKind.FOOTBALL)return@withLock
         val source=playlistUrl
         footballScoresLoading=true
         try {
-            val matches=football
+            val matches=football.filter {"football:"+it.id in visibleSportsEvents}
+            if(matches.isEmpty())return@withLock
             val feed=scores.load(matches,force)
             // Scores describe the match, never the channel schedule (including legacy timing caches).
-            if(source==playlistUrl) footballFeed=feed
-        } catch(e: CancellationException) {throw e} catch(_: Exception) {footballFeed=footballFeed.copy(failed=true)}
+            if(source==playlistUrl) {
+                val previous=footballFeed
+                val scopeMatches=football
+                val combined=withContext(Dispatchers.Default) {
+                    feed.copy(events=footballRelevantScores(scopeMatches,previous.events+feed.events)
+                        .sortedByDescending {it.checked}.take(128))
+                }
+                if(source==playlistUrl && scopeMatches===football) {footballFeed=combined;rebuildSportsHub()}
+            }
+        } catch(e: CancellationException) {throw e} catch(_: Exception) {
+            if(source==playlistUrl)footballFeed=footballFeed.copy(failed=true)
+        }
         finally {footballScoresLoading=false}
     }
     fun isFavorite(channel: Channel) = favorites.any {catalogContentKey(it)==catalogContentKey(channel.url)}
@@ -658,6 +731,7 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
         val playlist=playlistUrl;val useAlternate=alternateGuide
         guideJob=viewModelScope.launch {
             previous?.cancelAndJoin()
+            sportsGuideAttemptAt=System.currentTimeMillis()
             guideLoading=true
             try {
                 val key="guide-diagnostic:"+PlaylistRepository.digest(playlist)
@@ -668,11 +742,12 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 val saved=if(useAlternate)cached.first else cached.first.withoutAlternate()
                 guide=saved;guideDiagnostics=cached.second ?: GuideDiagnostics()
                 val channels=withContext(Dispatchers.IO) {repository.liveChannels(playlist)}
-                val cachedEvents=withContext(Dispatchers.Default) {footballMatches(saved,channels) to sportsEvents(saved,channels)}
+                val cachedEvents=withContext(Dispatchers.Default) {buildSportsSchedule(saved,channels,System.currentTimeMillis())}
                 if(playlistUrl!=playlist || request!=guideRequestNumber)return@launch
-                football=cachedEvents.first;sports=cachedEvents.second
+                football=cachedEvents.football;sports=cachedEvents.other;rebuildSportsHub()
                 guideError=guideDiagnostics.status !in listOf(GuideStatus.READY,GuideStatus.NO_GAMES)
                 val checked=withContext(Dispatchers.IO) {repository.guideChecked(playlist)}
+                sportsGuideLoadedAt=checked
                 if(force || checked==0L || System.currentTimeMillis()-checked>=6*3600000L) {
                     val result=withContext(Dispatchers.IO) {recoverSportsGuide(playlist,address,channels,saved,useAlternate)}
                     ensureActive()
@@ -682,10 +757,11 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                         repository.saveArtwork(key,result.diagnostics.encode())
                         if(result.received)repository.savedGuide(playlist) else result.guide
                     }
-                    val events=withContext(Dispatchers.Default) {footballMatches(merged,channels) to sportsEvents(merged,channels)}
+                    val events=withContext(Dispatchers.Default) {buildSportsSchedule(merged,channels,System.currentTimeMillis())}
                     if(playlistUrl==playlist && request==guideRequestNumber) {
-                        guide=merged;football=events.first;sports=events.second
+                        guide=merged;football=events.football;sports=events.other;rebuildSportsHub()
                         guideDiagnostics=result.diagnostics
+                        sportsGuideLoadedAt=System.currentTimeMillis()
                         guideError=result.diagnostics.status !in listOf(GuideStatus.READY,GuideStatus.NO_GAMES)
                     }
                 }

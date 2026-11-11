@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora खेल केंद्र</string>
+    <string name="sports_choose_discipline">टीवी गाइड में प्रसारण वाला खेल चुनें</string>
+    <string name="sports_search">खेल, प्रतियोगिता, टीम या इवेंट खोजें</string>
+    <string name="sports_all_broadcasts">सभी</string>
+    <string name="sports_upcoming">जल्द शुरू</string>
+    <string name="sports_device_time">डिवाइस का समय</string>
+    <string name="sports_brasilia_time">ब्रासीलिया का समय</string>
+    <string name="sports_competition_count">गाइड में प्रतियोगिताएँ: %1$d</string>
+    <string name="sports_epg_confirmed">टीवी गाइड में पहचाने गए प्रसारण</string>
+    <string name="sports_broadcasts">प्रसारण</string>
+    <string name="sports_empty_epg">इस अवधि के लिए कोई प्रसारण नहीं मिला। टीवी गाइड अनुपलब्ध या अधूरी हो सकती है।</string>
+    <string name="sports_f1_reference">फ़ॉर्मूला 1 · अंक तालिका और कैलेंडर</string>
+    <string name="sports_today">आज</string>
+    <string name="sports_tomorrow">कल</string>
+    <string name="sports_on_schedule">कार्यक्रम में · लाइव प्रसारण की पुष्टि नहीं</string>
+    <string name="sports_ended">प्रसारण का समय समाप्त</string>
+    <string name="sports_session_unknown">सत्र की जानकारी नहीं</string>
+    <string name="sports_replay_evidence">चैनल के कार्यक्रम में पुनः प्रसारण की पहचान हुई।</string>
+    <string name="sports_reference_only">अतिरिक्त जानकारी · प्रसारण की उपलब्धता की पुष्टि नहीं करती</string>
+    <string name="sports_back">वापस</string>
+    <string name="sports_source_epgshare">अतिरिक्त टीवी गाइड: EPGShare ब्राज़ील</string>
+</resources>

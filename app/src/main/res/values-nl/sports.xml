@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora Sportcentrum</string>
+    <string name="sports_choose_discipline">Kies een sport met uitzendingen in de tv-gids</string>
+    <string name="sports_search">Zoek sport, competitie, team of evenement</string>
+    <string name="sports_all_broadcasts">Alles</string>
+    <string name="sports_upcoming">Binnenkort</string>
+    <string name="sports_device_time">Apparaattijd</string>
+    <string name="sports_brasilia_time">Tijd in Brasília</string>
+    <string name="sports_competition_count">%1$d competities in de gids</string>
+    <string name="sports_epg_confirmed">Uitzendingen gevonden in de tv-gids</string>
+    <string name="sports_broadcasts">uitzendingen</string>
+    <string name="sports_empty_epg">Geen uitzendingen gevonden voor deze periode. De tv-gids is mogelijk onvolledig of niet beschikbaar.</string>
+    <string name="sports_f1_reference">Formule 1 · Standen en kalender</string>
+    <string name="sports_today">Vandaag</string>
+    <string name="sports_tomorrow">Morgen</string>
+    <string name="sports_on_schedule">In de gids · live niet bevestigd</string>
+    <string name="sports_ended">Uitzendtijd afgelopen</string>
+    <string name="sports_session_unknown">Sessie niet opgegeven</string>
+    <string name="sports_replay_evidence">Herhaling gevonden in het uitzendschema van de zender.</string>
+    <string name="sports_reference_only">Aanvullende informatie · geeft geen beschikbaarheid van uitzendingen aan</string>
+    <string name="sports_back">Terug</string>
+    <string name="sports_source_epgshare">Aanvullende tv-gids: EPGShare Brazilië</string>
+</resources>

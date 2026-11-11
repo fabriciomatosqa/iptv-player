@@ -8,7 +8,7 @@ class FootballScoresTest {
     private fun game(comp: String, home: String, away: String, start: Long = now, hint: BroadcastHint = BroadcastHint.UNKNOWN) =
         FootballMatch("$comp:$home:$away:$start",Programme("$home x $away - $comp",start,start+3*3600000L,broadcast=hint),
             listOf(Channel("TV Esportes","https://example.test/live/1","Esportes")),FootballDetails(comp,home,away))
-    private fun score(home: String = "Al Nassr", away: String = "Neftchi Fergana", kickoff: Long = now-4*3600000L,
+    private fun score(home: String = "Al Nassr", away: String = "Neftchi Fergana", kickoff: Long = now,
         state: MatchState = MatchState.FINISHED, league: String = "afc.champions") =
         FootballScore("1",league,"AFC Champions League Elite",kickoff,ScoreTeam("1",listOf(home)),ScoreTeam("2",listOf(away)),3,1,state,"83:21",now)
 
@@ -76,11 +76,14 @@ class FootballScoresTest {
         assertEquals("",inferred(original,FootballFeed(listOf(regular.copy(state=MatchState.POSTPONED)),now)).details.competition)
     }
 
-    @Test fun confirmedFinalFromHoursEarlierMarksFutureRebroadcast() {
+    @Test fun confirmedFinalFromHoursEarlierDoesNotProveFutureRebroadcast() {
         val game=game("AFC Champions League Elite","Al Nassr","Neftchi Fergana",now+2*3600000L)
-        val result=matchFootballScore(game,FootballFeed(listOf(score())))!!
+        val earlier=score(kickoff=now-4*3600000L)
+        assertNull(matchFootballScore(game,FootballFeed(listOf(earlier))))
+        val repeat=game.copy(programme=game.programme.copy(broadcast=BroadcastHint.REPLAY))
+        val result=matchFootballScore(repeat,FootballFeed(listOf(earlier)))!!
         assertEquals(3,result.homeGoals);assertEquals(1,result.awayGoals)
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(game.programme,result.event))
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(game.programme,result.event))
         assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(game.programme,null))
     }
     @Test fun liveClockComesFromTheScoreSourceAndStaleScoresLoseLiveStatus() {
@@ -98,7 +101,7 @@ class FootballScoresTest {
         assertNull(matchFootballScore(game,FootballFeed(listOf(score(home="Al Hilal")))))
         assertNull(matchFootballScore(game,FootballFeed(listOf(score(league="eng.1")))))
         assertNull(matchFootballScore(game,FootballFeed(listOf(score(kickoff=now-9*86400000L)))))
-        assertNull(matchFootballScore(game,FootballFeed(listOf(score(),score().copy(id="2",kickoff=now-4*3600000L+60000L)))))
+        assertNull(matchFootballScore(game,FootballFeed(listOf(score(),score().copy(id="2",kickoff=now+60000L)))))
         val reversed=matchFootballScore(game,FootballFeed(listOf(score(home="Neftchi Fergana",away="Al Nassr"))))!!
         assertEquals(1,reversed.homeGoals);assertEquals(3,reversed.awayGoals)
         assertTrue(footballScoreLeagues(FootballDetails("Campeonato Espanhol Feminino","Barcelona","Real Madrid")).isEmpty())
@@ -167,11 +170,11 @@ class FootballScoresTest {
         assertTrue(filterFootball(matches,FOOTBALL_FIFA,"Fluminense",now).isEmpty())
     }
 
-    @Test fun explicitEpgSubtitleOrVerifiedFinishedScoreMarksReplay() {
+    @Test fun explicitEpgSubtitleMarksReplayButFinishedScoreAloneDoesNot() {
         val slot=Programme("Sport x Fortaleza",now,now+2*3600000L,
             metadata=FootballMetadata(subtitle="Reprise da partida"))
         assertEquals(BroadcastMode.REPLAY,broadcastMode(slot,null))
-        assertEquals(BroadcastMode.REPLAY,broadcastMode(slot.copy(metadata=FootballMetadata()),score()))
+        assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(slot.copy(metadata=FootballMetadata()),score()))
         assertEquals(BroadcastMode.UNCONFIRMED,broadcastMode(slot.copy(start=score().kickoff,metadata=FootballMetadata()),score()))
     }
 

@@ -1,7 +1,9 @@
 # Página do campeonato de Automobilismo
 
 Navegação: Esportes → Automobilismo → Fórmula 1 → Página do Campeonato.
-A Fórmula 1 permanece acessível mesmo sem eventos no EPG. Voltar (inclusive pelo Android)
+A página de classificação da Fórmula 1 permanece acessível pelo botão de conteúdo complementar
+na Central, mesmo sem eventos no EPG. Não são criadas categorias de transmissão vazias.
+Consulte a [organização atual da Central Esportiva](sports-central.md). Voltar (inclusive pelo Android)
 retorna à mesma competição e às transmissões existentes.
 
 As seis abas mostram resumo, pilotos, construtores, próxima corrida, calendário e estatísticas.

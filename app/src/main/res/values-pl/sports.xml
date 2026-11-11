@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Centrum sportowe Aurora</string>
+    <string name="sports_choose_discipline">Wybierz sport z transmisjami w programie TV</string>
+    <string name="sports_search">Szukaj sportu, rozgrywek, drużyny lub wydarzenia</string>
+    <string name="sports_all_broadcasts">Wszystkie</string>
+    <string name="sports_upcoming">Wkrótce</string>
+    <string name="sports_device_time">Czas urządzenia</string>
+    <string name="sports_brasilia_time">Czas w Brasílii</string>
+    <string name="sports_competition_count">Rozgrywki w programie: %1$d</string>
+    <string name="sports_epg_confirmed">Transmisje rozpoznane w programie TV</string>
+    <string name="sports_broadcasts">transmisje</string>
+    <string name="sports_empty_epg">Nie znaleziono transmisji w tym okresie. Program może być niedostępny lub niekompletny.</string>
+    <string name="sports_f1_reference">Formuła 1 · Klasyfikacje i kalendarz</string>
+    <string name="sports_today">Dzisiaj</string>
+    <string name="sports_tomorrow">Jutro</string>
+    <string name="sports_on_schedule">W programie · transmisja na żywo niepotwierdzona</string>
+    <string name="sports_ended">Przedział transmisji zakończony</string>
+    <string name="sports_session_unknown">Nie podano sesji</string>
+    <string name="sports_replay_evidence">Powtórka rozpoznana w programie kanału.</string>
+    <string name="sports_reference_only">Informacje dodatkowe · nie potwierdzają dostępności transmisji</string>
+    <string name="sports_back">Wstecz</string>
+    <string name="sports_source_epgshare">Dodatkowy program: EPGShare Brazylia</string>
+</resources>

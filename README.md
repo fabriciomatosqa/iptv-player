@@ -1,3 +1,12 @@
+## Central Esportiva Aurora
+
+A programação dos canais da playlist ativa determina as transmissões disponíveis:
+**Esportes → modalidade → campeonato → eventos por data → canais**. A Central inclui busca,
+filtros de ao vivo/próximas transmissões, variantes de qualidade e horários por canal, além
+de sessões de automobilismo. Placares e classificações complementam o EPG; não criam partidas.
+
+[Arquitetura, desempenho, testes e limitações da reformulação](docs/sports-central.md).
+
 ## Versão 1.12.28
 
 ## Android 1.12.32 — recuperação do guia de Esportes

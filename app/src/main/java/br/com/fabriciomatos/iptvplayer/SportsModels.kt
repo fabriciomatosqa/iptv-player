@@ -15,7 +15,8 @@ enum class SportKind(val displayName: String) {
     HOCKEY("Hóquei"),
     TENNIS("Tênis"),
     VOLLEYBALL("Vôlei"),
-    HANDBALL("Handebol")
+    HANDBALL("Handebol"),
+    OTHER("Outras modalidades")
 }
 
 data class SportsCompetitionRule(
@@ -61,7 +62,33 @@ val sportsCompetitionRules = listOf(
 private val compiledSportsRules=sportsCompetitionRules.map { rule ->
     rule to rule.patterns.map { Regex("(?<![a-z0-9])(?:$it)(?![a-z0-9])") }
 }
-private val headToHead = Regex("(?i)\\s+(?:x|vs\\.?|v\\.?|versus)\\s+")
+private val headToHead = Regex("(?i)\\s+(?:x|×|vs\\.?|v\\.?|versus)\\s+")
+private val sportsEditorial = Regex("\\b(debate|resenha|mesa redonda|noticias|news|jornal|sportscenter|sportcenter|melhores momentos|highlights|resumo|documentario|revista|magazine|boletim|preview|review|entrevista|bastidores|pre jogo|pos jogo|pre game|post game)\\b")
+private val otherSports = listOf(
+    "Boxe" to Regex("\\b(boxe|boxing)\\b"),
+    "MMA" to Regex("\\b(mma|ufc|artes marciais)\\b"),
+    "Rugby" to Regex("\\b(rugby|rugbi)\\b"),
+    "Futsal" to Regex("\\b(futsal)\\b"),
+    "Ciclismo" to Regex("\\b(ciclismo|cycling|tour de france|giro d italia)\\b"),
+    "Atletismo" to Regex("\\b(atletismo|athletics)\\b"),
+    "Natação" to Regex("\\b(natacao|swimming)\\b"),
+    "Críquete" to Regex("\\b(criquete|cricket)\\b"),
+    "Golfe" to Regex("\\b(golfe|golf|pga tour)\\b"),
+    "Surfe" to Regex("\\b(surfe|surf|surfing|wsl)\\b")
+)
+private fun otherSportName(programme: Programme): String? {
+    val explicit=programme.metadata.sport.trim()
+    otherSports.firstOrNull {it.second.containsMatchIn(normalized(explicit))}?.let {return it.first}
+    if(explicit.length in 3..40 && normalized(explicit) !in setOf("sports","esportes","outros","futebol","soccer","football") &&
+        sportsMarkers.none {it.second.containsMatchIn(normalized(explicit))} && !sportsEditorial.containsMatchIn(normalized(explicit)))
+        return explicit
+    val sources=listOf(programme.metadata.sport,programme.metadata.competition,programme.title,programme.category)
+    for(source in sources) otherSports.firstOrNull { it.second.containsMatchIn(normalized(source)) }?.let {return it.first}
+    return programme.metadata.sport.trim().takeIf {
+        it.length in 3..40 && normalized(it) !in setOf("sports","esportes","outros","futebol","soccer","football") &&
+            !sportsEditorial.containsMatchIn(normalized(it)) && !headToHead.containsMatchIn(it)
+    }
+}
 // Do not concatenate all source fields into a single string: an unrelated word in a
 // long description may otherwise override a trustworthy football competition.
 private val footballSportMarker=Regex("""\b(futebol|soccer|football)\b""")
@@ -78,6 +105,12 @@ private val sportsMarkers = listOf(
     SportKind.HANDBALL to Regex("\\b(handebol|handball)\\b")
 )
 fun detectOtherSport(programme: Programme): SportKind? {
+    val explicit=normalized(programme.metadata.sport)
+    if(explicit.isNotBlank()) {
+        sportsMarkers.firstOrNull {it.second.containsMatchIn(explicit)}?.let {return it.first}
+        if(footballSportMarker.containsMatchIn(explicit))return null
+        otherSportName(programme.copy(title="",category="",metadata=programme.metadata.copy(competition="")))?.let {return SportKind.OTHER}
+    }
     // Strong evidence first, before free-form descriptions. A generic broadcaster
     // like "ESPN HD" or a team nickname is not sufficient to identify a sport.
     val primary=listOf(
@@ -95,10 +128,15 @@ fun detectOtherSport(programme: Programme): SportKind? {
     if(primary.any { footballSportMarker.containsMatchIn(normalized(it)) }) return null
     val description=normalized(programme.metadata.description)
     return sportsMarkers.firstOrNull { it.second.containsMatchIn(description) }?.first
+        ?: otherSportName(programme)?.let { SportKind.OTHER }
 }
 fun sportsProgrammeCandidate(programme: Programme): Boolean {
     val kind=detectOtherSport(programme) ?: return false
+    if(sportsEditorial.containsMatchIn(normalized(listOf(programme.title,programme.category,
+        programme.metadata.subtitle).joinToString(" "))))return false
     if(headToHead.containsMatchIn(programme.title)) return true
+    if(kind==SportKind.OTHER) return Regex("\\b(etapa|stage|final|semifinal|bateria|heat|prova|race|round|rodada|torneio|tournament)\\b")
+        .containsMatchIn(normalized(programme.title)) && programme.title.trim().length in 8..160
     if (kind != SportKind.MOTORSPORT) return false
     val title=normalized(programme.title)
     val strong=Regex("""\b(grand prix|grande premio|gp|formula ?[123e]|f[123]|indycar|indy 500|motogp|moto ?[23]|rally|rali|wrc|stock ?car|nascar|wec|endurance|24h|24 horas|le mans|porsche cup|dtm|super formula|worldsbk|superbike|dakar)\b""")
@@ -111,7 +149,9 @@ fun sportsProgrammeCandidate(programme: Programme): Boolean {
 
 data class SportsEvent(
     val id:String, val sport:SportKind, val competitionId:String, val competition:String,
-    val name:String, val home:String, val away:String, val programme:Programme, val channels:List<Channel>
+    val name:String, val home:String, val away:String, val programme:Programme, val channels:List<Channel>,
+    val channelProgrammes:Map<String,Programme> = emptyMap(),
+    val disciplineName:String = sport.displayName
 )
 data class SportsCategory(val id:String, val title:String, val priority:Int)
 const val SPORTS_LIVE="__live__"
@@ -119,6 +159,38 @@ const val SPORTS_GAMES="__games__"
 
 /** Known aliases win. Otherwise accept a short competition field, never free-form prose. */
 fun sportsCompetition(programme: Programme, sport: SportKind): Pair<String,String> {
+    fun identified(id:String,title:String):Pair<String,String> {
+        val evidence=listOf(programme.metadata.gender,programme.metadata.division,
+            programme.metadata.competition,programme.category,programme.title).joinToString(" ")
+        val gender=footballGender(evidence)
+        val age=footballAgeGroup(evidence)
+        val division=programme.metadata.division.trim().take(60)
+        val suffix=buildList {
+            if(id !in setOf("wnba","tennis.wta")) {
+                if(gender==FootballGender.WOMEN)add("Feminino")
+                if(gender==FootballGender.MEN)add("Masculino")
+                if(gender==FootballGender.CONFLICT)add("Categoria não confirmada")
+            }
+            if(age.isNotBlank())add("Sub-$age")
+            if(division.isNotBlank() && !normalized(title).contains(normalized(division)) &&
+                normalized(division)!=normalized(age))add(division)
+        }
+        return (id+suffix.joinToString("") { ":"+normalized(it) }) to
+            (title+suffix.filterNot { normalized(title).contains(normalized(it)) }.joinToString("") { " · $it" })
+    }
+    fun validLabel(raw:String):Boolean {
+        val key=normalized(raw)
+        return raw.length in 4..55 && !raw.contains(',') && !headToHead.containsMatchIn(raw) &&
+            key !in setOf("ao vivo","live","jogos","games","sports","esportes","outros eventos",
+                "filmes","series","movies","cinema",
+                normalized(sport.displayName),normalized(programme.metadata.sport)) &&
+            sportsMarkers.none {it.second.matches(key)} && otherSports.none {it.second.matches(key)} &&
+            !sportsEditorial.containsMatchIn(key)
+    }
+    val explicit=programme.metadata.competition.trim()
+    if(validLabel(explicit) && compiledSportsRules.none { (rule,patterns) ->
+        rule.sport==sport && patterns.any {it.containsMatchIn(normalized(explicit))}
+    }) return identified(sport.name.lowercase()+":"+normalized(explicit),explicit)
     val sources=listOf(programme.metadata.competition,programme.category,
         programme.title,programme.metadata.subtitle,programme.metadata.description)
     for(source in sources) {
@@ -126,54 +198,52 @@ fun sportsCompetition(programme: Programme, sport: SportKind): Pair<String,Strin
         val rule=compiledSportsRules.firstOrNull { (rule,patterns) ->
             rule.sport==sport && patterns.any { it.containsMatchIn(key) }
         }?.first
-        if(rule!=null) return rule.id to rule.displayName
+        if(rule!=null) return identified(rule.id,rule.displayName)
     }
-    val fallback=listOf(programme.metadata.competition,programme.category)
-        .map(String::trim).firstOrNull { raw ->
-            raw.length in 4..55 && !raw.contains(',') &&
-            !Regex("(?i)\\b(ao vivo|live|jogos|games|sports|esportes|filmes|series)\\b").matches(raw) &&
-            !headToHead.containsMatchIn(raw) &&
-            normalized(raw)!=normalized(sport.displayName) &&
-            normalized(raw)!="esportes" &&
-            normalized(raw)!="sports"
-        }
-    if(fallback!=null) return sport.name.lowercase()+":"+normalized(fallback) to fallback
-    return sport.name.lowercase()+":other" to "Outros eventos"
+    val titleLabels=programme.title.split(Regex("\\s+[-–—|·]\\s+|:\\s+"))
+        .map(String::trim).filter {isCompetitionLabel(it) && !headToHead.containsMatchIn(it)}
+    val fallback=(listOf(programme.metadata.competition,programme.category)+titleLabels)
+        .map(String::trim).firstOrNull(::validLabel)
+    if(fallback!=null) return identified(sport.name.lowercase()+":"+normalized(fallback),fallback)
+    return identified(sport.name.lowercase()+":other","Campeonato não informado")
 }
-fun sportsEvents(guide:Guide,channels:List<Channel>,now:Long=System.currentTimeMillis()):List<SportsEvent> {
-    val live=channels.filter { it.kind==MediaKind.LIVE && !it.adult }
-    val byId=live.filter { it.tvgId.isNotBlank() }.groupBy { guide.channelId(it) }
-    val byName=live.groupBy { guideChannelName(it.name) }
-    val aliases=guide.names.entries.groupBy({ it.value },{ guideChannelName(it.key) })
+fun sportsEvents(guide:Guide,channels:List<Channel>,now:Long=System.currentTimeMillis(),
+    index:SportsChannelIndex=SportsChannelIndex(guide,channels)):List<SportsEvent> {
     val merged=linkedMapOf<String,SportsEvent>()
     val lastByFixture=mutableMapOf<String,String>()
-    guide.matches.asSequence().filter { it.programme.end>now-FOOTBALL_RETENTION_MS }
+    guide.matches.asSequence().filter { sportsWindowContains(it.programme,now) }
         .sortedBy {it.programme.start}.forEach {entry ->
             val p=entry.programme
             val sport=detectOtherSport(p) ?: return@forEach
             if(!sportsProgrammeCandidate(p)) return@forEach
-            val linked=(byId[entry.channelId].orEmpty() +
-                aliases[entry.channelId].orEmpty().flatMap { byName[it].orEmpty() })
-                .distinctBy {it.url}
+            val linked=index[entry.channelId]
             if(linked.isEmpty()) return@forEach
             val league=sportsCompetition(p,sport)
             val matchup=headToHead.find(p.title)
-            val home=if(matchup!=null) p.title.substring(0,matchup.range.first).trim()
-                .substringAfterLast(": ").substringAfterLast(" - ").take(70) else ""
-            val away=if(matchup!=null) p.title.substring(matchup.range.last+1).trim()
-                .split(Regex("\\s+[-–—]\\s+|\\s+[║|]\\s+")).first().trim().take(70) else ""
+            fun participant(value:String)=value.trim().replace(Regex("(?i)\\s*[\\[(](?:ao vivo|live|reprise|replay)[\\])]"),"").trim()
+            val home=if(matchup!=null) participant(p.title.substring(0,matchup.range.first)
+                .substringAfterLast(": ").split(Regex("\\s+[-–—]\\s+")).last()) else ""
+            val away=if(matchup!=null) participant(p.title.substring(matchup.range.last+1)
+                .split(Regex("\\s+[-–—]\\s+|\\s+[║|·]\\s+")).first()) else ""
+            if(matchup!=null && (home.length !in 2..80 || away.length !in 2..80 ||
+                normalized(home)==normalized(away)))return@forEach
             val title=if(home.isNotBlank() && away.isNotBlank()) "$home × $away"
                 else p.title.trim().take(96)
+            val discipline=if(sport==SportKind.OTHER)otherSportName(p) ?: return@forEach else sport.displayName
             val fixture=if(sport==SportKind.MOTORSPORT) motorsportFixtureKey(p,league.first)
-                else listOf(sport.name,league.first,normalized(title),
-                    if(p.broadcast==BroadcastHint.REPLAY)"replay" else "event").joinToString(":")
+                else listOf(discipline,league.first,
+                    if(matchup!=null)listOf(teamKey(home),teamKey(away)).sorted().joinToString(":") else normalized(title),
+                    if(footballExplicitReplay(p))"replay" else "event").joinToString(":")
             val previous=lastByFixture[fixture]?.let(merged::get)?.takeIf {
-                abs(it.programme.start-p.start)<=90*60000L
+                abs(it.programme.start-p.start)<=90*60000L &&
+                    it.programme.start<p.end && p.start<it.broadcastEnd &&
+                    linked.none { channel -> it.channelProgrammes[channel.url]?.let { slot -> slot!=p }==true }
             }
-            val id=previous?.id ?: fixture+":"+p.start
+            val id=previous?.id ?: fixture+":"+p.start+":"+entry.channelId
             merged[id]=SportsEvent(id,sport,league.first,league.second,title,home,away,
                 previous?.programme ?: p,(previous?.channels.orEmpty()+linked).distinctBy {it.url}
-                    .sortedWith(compareByDescending<Channel>{footballChannelQuality(it.name)}.thenBy {it.name}))
+                    .sortedWith(compareByDescending<Channel>{footballChannelQuality(it.name)}.thenBy {it.name}),
+                previous?.channelProgrammes.orEmpty()+linked.associate {it.url to p},discipline)
             lastByFixture[fixture]=id
         }
     return merged.values.sortedWith(compareBy<SportsEvent>{it.programme.start}.thenBy {it.name})

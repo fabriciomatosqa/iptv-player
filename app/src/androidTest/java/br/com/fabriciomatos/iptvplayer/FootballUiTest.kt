@@ -54,8 +54,9 @@ class FootballUiTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java];it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(15000) {model.initialized && model.football.size==4}
             compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
-            compose.waitUntil(10000) {model.footballFeed.events.any {it.id=="live-test"} &&
-                model.footballFeed.events.any {it.league=="afc.champions"} && !model.footballScoresLoading}
+            compose.openSportsDiscipline()
+            compose.openSportsCompetition("bra.1")
+            compose.waitUntil(10000) {model.footballFeed.events.any {it.id=="live-test"} && !model.footballScoresLoading}
             compose.waitUntil(15000) { compose.onAllNodesWithText("83:21").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("83:21").assertExists()
             compose.onNodeWithTag("football_live_details_toggle").assertExists().performClick()
@@ -64,13 +65,12 @@ class FootballUiTest {
                     .fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithTag("football_live_details_toggle").performClick()
-            compose.onNodeWithTag("football_tab_${FOOTBALL_LIVE}").performClick()
+            compose.onNodeWithTag("sports_filter_live").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithText("Fluminense").assertExists()
-            compose.onNodeWithTag("football_tab_${FOOTBALL_GAMES}").performClick()
+            compose.onNodeWithTag("sports_filter_all").performClick()
             compose.onNodeWithTag("football_search").performTextInput("Fluminense")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
-            compose.onNodeWithTag("football_tab_${FOOTBALL_BRAZIL}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithTag("football_home_goals",useUnmergedTree=true).assertTextEquals("2")
             compose.onNodeWithTag("football_away_goals",useUnmergedTree=true).assertTextEquals("1")
@@ -91,7 +91,8 @@ class FootballUiTest {
             compose.waitUntil(10000) {model.page==Page.FOOTBALL && model.current==null}
             compose.onNodeWithTag("football_search").performTextClearance()
             androidx.test.espresso.Espresso.closeSoftKeyboard()
-            compose.onNodeWithText("Jogos").performClick()
+            compose.onNodeWithTag("sports_back").performClick()
+            compose.openSportsCompetition("afc.champions")
             compose.onNodeWithTag("football_list").performScrollToNode(hasText("Al Nassr", substring = true))
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).assertTextContains("Reprise",substring=true)
             compose.onNodeWithTag("football_compact_score", useUnmergedTree = true).assertTextContains("3", substring = true)
@@ -99,7 +100,8 @@ class FootballUiTest {
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).performClick()
             compose.onNodeWithTag("football_compact_watch").assertExists()
             compose.onNodeWithText("Ocultar detalhes").assertExists()
-            scenario.onActivity {model.footballTab=FOOTBALL_FIFA}
+            compose.onNodeWithTag("sports_back").performClick()
+            compose.openSportsCompetition("amistoso")
             compose.waitUntil(10000) {compose.onAllNodesWithText("Brasil").fetchSemanticsNodes().isNotEmpty()}
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onNodeWithText("Brasil").assertExists();compose.onNodeWithText("Argentina").assertExists()
@@ -121,7 +123,7 @@ class FootballUiTest {
             scenario.onActivity {model.chooseAppearance(AppAppearance.DARK)}
             compose.waitUntil(10000) {model.appearance==AppAppearance.DARK}
             compose.waitForIdle();screenshot("football-aurora-dark-landscape")
-            scenario.onActivity {model.footballTab="eng.1";it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
+            scenario.onActivity {model.openSportsCompetition("eng.1");it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_PORTRAIT && compose.onAllNodesWithText("Wolverhampton Wanderers").fetchSemanticsNodes().isNotEmpty()}
             screenshot("football-aurora-long-name")
         }
@@ -163,11 +165,12 @@ class FootballUiTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
             compose.waitUntil(15000) {model.initialized && model.football.size==1}
             compose.onNodeWithTag("home_football").performClick()
+            compose.openSportsDiscipline()
+            compose.openSportsCompetition("unknown")
             compose.waitUntil(15000) {model.footballFeed.events.any {it.league=="bra.1"}}
             compose.waitUntil(15000) {
-                compose.onAllNodesWithTag("football_tab_${FOOTBALL_BRAZIL}").fetchSemanticsNodes().isNotEmpty()
+                model.sportsCompetitionId=="bra.1"
             }
-            compose.onNodeWithTag("football_tab_${FOOTBALL_BRAZIL}").performClick()
             compose.onAllNodesWithTag("football_match").assertCountEquals(1)
             compose.onAllNodesWithText("Brasileirão").onFirst().assertExists()
             compose.onNodeWithText("Flamengo").assertExists()

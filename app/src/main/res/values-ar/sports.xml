@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">مركز أورورا الرياضي</string>
+    <string name="sports_choose_discipline">اختر رياضة لها بث في دليل البرامج</string>
+    <string name="sports_search">ابحث عن رياضة أو بطولة أو فريق أو حدث</string>
+    <string name="sports_all_broadcasts">الكل</string>
+    <string name="sports_upcoming">قريبًا</string>
+    <string name="sports_device_time">توقيت الجهاز</string>
+    <string name="sports_brasilia_time">توقيت برازيليا</string>
+    <string name="sports_competition_count">عدد البطولات في الدليل: %1$d</string>
+    <string name="sports_epg_confirmed">بث تم التعرف عليه في دليل البرامج</string>
+    <string name="sports_broadcasts">عمليات بث</string>
+    <string name="sports_empty_epg">لم يتم العثور على بث لهذه الفترة. قد يكون دليل البرامج غير متاح أو غير مكتمل.</string>
+    <string name="sports_f1_reference">فورمولا 1 · الترتيب والجدول</string>
+    <string name="sports_today">اليوم</string>
+    <string name="sports_tomorrow">غدًا</string>
+    <string name="sports_on_schedule">ضمن البرامج · البث المباشر غير مؤكد</string>
+    <string name="sports_ended">انتهت فترة البث</string>
+    <string name="sports_session_unknown">الجلسة غير محددة</string>
+    <string name="sports_replay_evidence">تم التعرف على إعادة في جدول القناة.</string>
+    <string name="sports_reference_only">معلومات إضافية · لا تؤكد توفر البث</string>
+    <string name="sports_back">رجوع</string>
+    <string name="sports_source_epgshare">دليل إضافي: EPGShare البرازيل</string>
+</resources>

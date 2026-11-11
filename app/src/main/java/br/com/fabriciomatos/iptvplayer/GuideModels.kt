@@ -29,17 +29,13 @@ data class FootballMatch(val id: String, val programme: Programme, val channels:
 /** Merge the same fixture across broadcasters, retaining EPG slots and every stream.
  * Generic football labels can borrow a known championship; two named leagues,
  * age groups, genders and explicitly marked replays remain separate. */
-fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.currentTimeMillis()): List<FootballMatch> {
-    val live=channels.filter { it.kind==MediaKind.LIVE && !it.adult }
-    val byId=live.filter { it.tvgId.isNotBlank() }.groupBy { guide.channelId(it) }
-    val byName=live.filter { it.tvgId.isBlank() }.mapNotNull { channel ->
-        guide.channelId(channel)?.let { it to channel }
-    }.groupBy({ it.first },{ it.second })
+fun footballMatches(guide: Guide, channels: List<Channel>, now: Long = System.currentTimeMillis(),
+    index: SportsChannelIndex = SportsChannelIndex(guide, channels)): List<FootballMatch> {
     val result=linkedMapOf<String,FootballMatch>()
     val nearby=mutableMapOf<String,MutableList<String>>()
     guide.matches.asSequence().sortedBy { it.programme.start }.forEach { entry ->
-        val available=(byId[entry.channelId].orEmpty()+byName[entry.channelId].orEmpty())
-            .distinctBy { it.url }.sortedByDescending { footballChannelQuality(it.name) }
+        if(!sportsWindowContains(entry.programme,now))return@forEach
+        val available=index[entry.channelId]
         if(available.isEmpty() || detectOtherSport(entry.programme)!=null) return@forEach
         val details=footballDetails(entry.programme.title,entry.programme.category,entry.programme.metadata,
             available.map { it.name },available.map { it.group }) ?: return@forEach
@@ -86,26 +82,27 @@ internal fun explicitFootballCompetition(p:Programme):String? {
 /** Extra EPG fields count only if they explicitly say replay; a final score alone is insufficient. */
 internal fun footballExplicitReplay(p:Programme):Boolean =
     p.broadcast==BroadcastHint.REPLAY ||
-        (p.broadcast!=BroadcastHint.LIVE && listOf(p.title,p.category,p.metadata.originalTitle,p.metadata.subtitle)
-            .any { programmeBroadcastHint(it,"")==BroadcastHint.REPLAY })
+    listOf(p.title,p.category,p.metadata.originalTitle,p.metadata.subtitle)
+            .any { programmeBroadcastHint(it,"")==BroadcastHint.REPLAY }
 
 /** Prefer HD/FHD variants of different broadcasters as the two main buttons.
  * Every underlying stream remains available through the overflow menu. */
+private val channel4k=Regex("(?i)\\b(?:4k|uhd|2160p)\\b")
+private val channelFhd=Regex("(?i)\\b(?:fhd|full\\s*hd|1080p)\\b")
+private val channelHd=Regex("(?i)\\b(?:hd|720p)\\b")
+private val channelQualityMarkers=Regex("(?i)\\b(?:full\\s*hd|fhd|uhd|hd|sd|4k|2160p|1080p|720p|480p|h265|h264|hevc|alt)\\b|[\\[\\]]")
 fun footballChannelQuality(name: String): Int = when {
-    Regex("(?i)\\b(?:4k|uhd|2160p)\\b").containsMatchIn(name) -> 4
-    Regex("(?i)\\b(?:fhd|full\\s*hd|1080p)\\b").containsMatchIn(name) -> 3
-    Regex("(?i)\\b(?:hd|720p)\\b").containsMatchIn(name) -> 2
+    channel4k.containsMatchIn(name) -> 4
+    channelFhd.containsMatchIn(name) -> 3
+    channelHd.containsMatchIn(name) -> 2
     else -> 1
 }
-private fun footballBroadcasterKey(name: String): String = normalized(
-    name.replace(Regex("(?i)\\b(?:full\\s*hd|fhd|uhd|hd|sd|4k|2160p|1080p|720p|480p|h265|h264|hevc|alt)\\b|[\\[\\]]"), " ")
-        .replace(Regex("\\s+"), " ").trim()
-)
+private fun footballBroadcasterKey(name: String): String = guideChannelName(name)
 fun footballFeaturedChannels(channels: List<Channel>): List<Channel> =
     channels.distinctBy { it.url }
         .sortedWith(compareByDescending<Channel> { footballChannelQuality(it.name) }.thenBy { it.name })
         .distinctBy { footballBroadcasterKey(it.name) }.take(2)
-fun guideChannelName(name: String) = normalized(name.replace(Regex("(?i)\\b(?:fhd|uhd|hd|sd|4k|h265|h264|alt)\\b|[\\[\\]]"), " "))
+fun guideChannelName(name: String) = normalized(name.replace(channelQualityMarkers, " "))
 data class Guide(val programmes: Map<String, List<Programme>> = emptyMap(), val names: Map<String, String> = emptyMap(), val matches: List<GuideMatch> = emptyList()) {
     // Blank IDs preserve ambiguous aliases in the existing guide cache format.
     private val aliases = names.entries.groupBy({ guideChannelName(it.key) }, { it.value }).mapValues { (_, ids) ->

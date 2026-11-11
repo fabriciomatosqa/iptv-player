@@ -24,9 +24,10 @@ import java.util.zip.GZIPInputStream
  * returns a partial XMLTV file. Never carry over a slot contradicted by fresh EPG. */
 internal fun mergeProviderGuide(previous: Guide, fresh: Guide, short: Guide, now: Long): Guide {
     val authoritative=fresh.matches+short.matches
+    val replacements=authoritative.groupBy {it.channelId}
     val validPrevious=previous.matches.filter {old ->
-        old.programme.end>now && old.programme.start<now+86400000L &&
-            authoritative.none {it.channelId==old.channelId && it.programme.start==old.programme.start} &&
+        sportsWindowContains(old.programme,now) &&
+            replacements[old.channelId].orEmpty().none {it.programme.start<old.programme.end && old.programme.start<it.programme.end} &&
             fresh.programmes[old.channelId].orEmpty().none {new ->
                 new.start<old.programme.end && old.programme.start<new.end
             }
@@ -58,6 +59,7 @@ internal object XtreamSportsGuide {
     private val streamNumber = Regex("""^[0-9]{1,12}$""")
     private val base64Text = Regex("""^[A-Za-z0-9+/]+={0,2}$""")
     private val coreBroadcaster=Regex("(?i)espn|sportv|premiere|tnt|band.?sports")
+    private fun guideIdentity(channel:Channel)=guideChannelName(channel.name)+":"+channel.tvgId.trim().lowercase(Locale.ROOT)
 
     internal fun streamId(source: String, channel: Channel): String? = runCatching {
         val playlist = URL(source);val stream = URL(channel.url)
@@ -94,7 +96,7 @@ internal object XtreamSportsGuide {
         val endpoint=ProviderApi.endpoint(source,"get_short_epg")
             ?: return@withContext GuideRead(attempt=GuideAttempt(GuideSource.PROVIDER_API,GuideStatus.NOT_CONFIGURED))
         val representatives=channels.filter(::eligible).sortedBy {if(coreBroadcaster.containsMatchIn(it.name))0 else 1}
-            .distinctBy {guideChannelName(it.name)}.take(48)
+            .distinctBy(::guideIdentity).take(48)
         val failures=java.util.Collections.synchronizedList(ArrayList<GuideStatus>())
         val apiRows=if(representatives.any {streamId(source,it)==null}) {
             try {readChannels(source)} catch(e:CancellationException) {throw e}
@@ -116,7 +118,7 @@ internal object XtreamSportsGuide {
                             parseRows(readJson("$address&stream_id=$id"),now)
                         } else null
                         val rows=if(table!=null && (table.counts.current>short.counts.current || short.counts.programmes==0))table else short
-                        results[guideChannelName(channel.name)]=rows
+                        results[guideIdentity(channel)]=rows
                     } catch(e:CancellationException) {throw e}
                     catch(e:GuideHttpException) {failures.add(if(e.code==401 || e.code==403)GuideStatus.AUTH else GuideStatus.HTTP)}
                     catch(_:org.json.JSONException) {failures.add(GuideStatus.INVALID)}
@@ -127,7 +129,7 @@ internal object XtreamSportsGuide {
         if(!finished)failures.add(GuideStatus.NETWORK)
         val programmes=LinkedHashMap<String,List<Programme>>();val names=LinkedHashMap<String,String>();val matches=ArrayList<GuideMatch>()
         for(channel in channels.filter(::eligible)) {
-            val rows=results[guideChannelName(channel.name)] ?: continue
+            val rows=results[guideIdentity(channel)] ?: continue
             // The API verified this broadcaster; HD/FHD variants share its exact identity.
             val id=channel.tvgId.ifBlank {"aurora-short:"+guideChannelName(channel.name)}
             names[normalized(channel.name)]=id;names[guideChannelName(channel.name)]=id
@@ -137,7 +139,7 @@ internal object XtreamSportsGuide {
         val guide=Guide(programmes,names,matches.distinctBy {it.channelId+":"+it.programme.start+":"+it.programme.title})
         val counts=GuideCounts(results.size,results.values.sumOf {it.counts.programmes},
             results.values.sumOf {it.counts.current},results.values.sumOf {it.counts.candidates},results.values.sumOf {it.counts.valid.coerceAtLeast(0)})
-        val linked=footballMatches(guide,channels,now).count {it.broadcastEnd>now}
+        val linked=linkedSportsCount(guide,channels,now)
         val status=if(counts.programmes==0 && failures.isNotEmpty())failures.first() else guideStatus(counts,linked)
         GuideRead(guide,GuideAttempt(GuideSource.PROVIDER_API,status,counts))
     }

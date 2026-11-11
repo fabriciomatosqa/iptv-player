@@ -73,7 +73,7 @@ internal object BrazilBroadcastGuide {
         if(!eligible(channels))return GuideRead(attempt=GuideAttempt(GuideSource.EPGSHARE_BR,GuideStatus.NOT_CONFIGURED))
         val read=readGuide(ADDRESS,emptySet(),now,GuideSource.EPGSHARE_BR)
         val linked=link(read.guide,channels)
-        val games=footballMatches(linked,channels,now).count {it.broadcastEnd>now}
+        val games=linkedSportsCount(linked,channels,now)
         val status=if(read.attempt.status in listOf(GuideStatus.NETWORK,GuideStatus.AUTH,GuideStatus.HTTP,GuideStatus.INVALID))read.attempt.status
             else guideStatus(read.attempt.counts,games)
         return GuideRead(linked,read.attempt.copy(status=status))

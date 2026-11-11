@@ -38,6 +38,8 @@ class AppSettings(context: Context) {
         if(source.isBlank())"epg_url" else "epg_"+PlaylistRepository.digest(source), value).commit()
     fun alternateGuide(source:String)=prefs.getBoolean("alternate_guide_"+PlaylistRepository.digest(source),true)
     fun saveAlternateGuide(source:String,value:Boolean)=prefs.edit().putBoolean("alternate_guide_"+PlaylistRepository.digest(source),value).commit()
+    fun sportsTimeZone()=prefs.getString("sports_time_zone","device").orEmpty()
+    fun saveSportsTimeZone(value:String)=prefs.edit().putString("sports_time_zone",value).commit()
     fun text(@StringRes id: Int, vararg args: Any): String {
         val config = Configuration(app.resources.configuration)
         config.setLocales(LocaleList.forLanguageTags(language()))

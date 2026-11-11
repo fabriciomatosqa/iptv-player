@@ -59,7 +59,8 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
             parser.setInput(it, null)
             val programmes = HashMap<String, MutableList<Programme>>()
             val names = HashMap<String, String>()
-            val acceptedIds=channelIds.toMutableSet()
+            val requestedIds=channelIds.map {it.trim().lowercase(Locale.ROOT)}.toSet()
+            val acceptedKeys=requestedIds.toMutableSet()
             val matches = ArrayList<GuideMatch>()
             var id = ""; var start = 0L; var end = 0L; var title = ""; var image = ""
             var metadata = FootballMetadata()
@@ -77,7 +78,9 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                             listOf(normalized(name),guideChannelName(name)).distinct().forEach { alias ->
                                 names[alias]=if(names.containsKey(alias) && names[alias]!=id) "" else id
                             }
-                            if(normalized(name) in channelIds || guideChannelName(name) in channelIds)acceptedIds.add(id)
+                            if(normalized(name) in requestedIds || guideChannelName(name) in requestedIds) {
+                                acceptedKeys.add(id.trim().lowercase(Locale.ROOT))
+                            }
                         }
                         "programme" -> {
                             entry = "programme";totalProgrammes++
@@ -116,8 +119,9 @@ fun parseGuide(stream: java.io.InputStream, source: String, channelIds: Set<Stri
                     if (parser.name == "programme" && accepted && title.isNotBlank() && end > start) {
                         val hint=programmeBroadcastHint(title,category)
                         val programme = Programme(title, start, end, image, category.trim(),if(hint==BroadcastHint.REPLAY || broadcast==BroadcastHint.UNKNOWN)hint else broadcast,metadata)
-                        if (footballProgrammeCandidate(programme) || sportsProgrammeCandidate(programme)) matches.add(GuideMatch(id, programme))
-                        if (end>now && (channelIds.isEmpty() || id in acceptedIds) && start < now + 86400000L) {
+                        val subscribed=channelIds.isEmpty() || id.trim().lowercase(Locale.ROOT) in acceptedKeys
+                        if (subscribed && (footballProgrammeCandidate(programme) || sportsProgrammeCandidate(programme))) matches.add(GuideMatch(id, programme))
+                        if (end>now && subscribed && start < now + 86400000L) {
                             val items = programmes.getOrPut(id) { ArrayList() }
                             items.add(programme)
                             items.sortBy { p -> p.start }

@@ -17,7 +17,7 @@ fun footballTime(value: Long, locale: Locale, zone: TimeZone = TimeZone.getDefau
 
 /** A match clock is evidence only inside this channel's original, compatible EPG interval. */
 fun transmissionIsLive(programme: Programme, score: FootballScore?, now: Long): Boolean {
-    if(now < programme.start || now >= programme.end || programme.broadcast==BroadcastHint.REPLAY)return false
+    if(now < programme.start || now >= programme.end || footballExplicitReplay(programme))return false
     if(score==null)return programme.broadcast==BroadcastHint.LIVE
     if(score.state !in listOf(MatchState.LIVE,MatchState.HALFTIME) || !scoreIsFresh(score,now))return false
     return score.kickoff in (programme.start-15*60000L)..minOf(programme.end-1,programme.start+90*60000L)

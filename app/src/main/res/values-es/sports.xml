@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Central Deportiva Aurora</string>
+    <string name="sports_choose_discipline">Elige un deporte con transmisiones en la guía</string>
+    <string name="sports_search">Buscar deporte, campeonato, equipo o evento</string>
+    <string name="sports_all_broadcasts">Todas</string>
+    <string name="sports_upcoming">Próximas</string>
+    <string name="sports_device_time">Hora del dispositivo</string>
+    <string name="sports_brasilia_time">Hora de Brasilia</string>
+    <string name="sports_competition_count">%1$d campeonatos en la guía</string>
+    <string name="sports_epg_confirmed">Transmisiones identificadas en la guía</string>
+    <string name="sports_broadcasts">transmisiones</string>
+    <string name="sports_empty_epg">No se identificaron transmisiones para este período. La guía puede estar incompleta o no disponible.</string>
+    <string name="sports_f1_reference">Fórmula 1 · Clasificación y calendario</string>
+    <string name="sports_today">Hoy</string>
+    <string name="sports_tomorrow">Mañana</string>
+    <string name="sports_on_schedule">En la programación · directo sin confirmar</string>
+    <string name="sports_ended">Franja de transmisión finalizada</string>
+    <string name="sports_session_unknown">Sesión no especificada</string>
+    <string name="sports_replay_evidence">Repetición identificada en la programación del canal.</string>
+    <string name="sports_reference_only">Información complementaria · no indica disponibilidad de transmisión</string>
+    <string name="sports_back">Volver</string>
+    <string name="sports_source_epgshare">Guía complementaria: EPGShare Brasil</string>
+</resources>

@@ -35,6 +35,10 @@ fun motorsportCardDetails(programme: Programme, competition: String): Motorsport
             "Corrida Sprint" to "sprint"
         Regex("""\b(?:qualifying|qualificacao|classificacao|quali|tomada de tempo)\b""").containsMatchIn(value) ->
             "Classificação" to "qualifying"
+        Regex("""\b(?:corrida|race|prova)\s*([12])\b""").find(value)!=null -> {
+            val number=Regex("""\b(?:corrida|race|prova)\s*([12])\b""").find(value)!!.groupValues[1]
+            "Corrida $number" to "race-$number"
+        }
         Regex("""\b(?:fp|tl|treino livre|free practice|practice)\s*([1234])\b""")
             .find(value)?.let { true } == true -> {
                 val number=Regex("""\b(?:fp|tl|treino livre|free practice|practice)\s*([1234])\b""")
@@ -74,6 +78,8 @@ fun motorsportCardDetails(programme: Programme, competition: String): Motorsport
 /** Match providers by championship + GP + session, never merge FP1 with FP2 or the race. */
 fun motorsportFixtureKey(programme: Programme, competitionId: String): String {
     val card=motorsportCardDetails(programme,competitionId)
-    return listOf("motorsport",competitionId,card.stageId,card.sessionId,
-        if(programme.broadcast==BroadcastHint.REPLAY)"replay" else "event").joinToString(":")
+    val stage=if(card.stage=="Etapa a confirmar" || card.sessionId=="unspecified")
+        card.stageId+":"+normalized(programme.metadata.originalTitle.ifBlank {programme.title}) else card.stageId
+    return listOf("motorsport",competitionId,stage,card.sessionId,
+        if(footballExplicitReplay(programme))"replay" else "event").joinToString(":")
 }

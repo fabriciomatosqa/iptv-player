@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora ক্রীড়া কেন্দ্র</string>
+    <string name="sports_choose_discipline">টিভি গাইডে সম্প্রচার আছে এমন খেলা বেছে নিন</string>
+    <string name="sports_search">খেলা, প্রতিযোগিতা, দল বা ইভেন্ট খুঁজুন</string>
+    <string name="sports_all_broadcasts">সব</string>
+    <string name="sports_upcoming">শীঘ্রই</string>
+    <string name="sports_device_time">ডিভাইসের সময়</string>
+    <string name="sports_brasilia_time">ব্রাসিলিয়ার সময়</string>
+    <string name="sports_competition_count">গাইডে প্রতিযোগিতা: %1$d</string>
+    <string name="sports_epg_confirmed">টিভি গাইডে শনাক্ত করা সম্প্রচার</string>
+    <string name="sports_broadcasts">সম্প্রচার</string>
+    <string name="sports_empty_epg">এই সময়ের জন্য কোনো সম্প্রচার পাওয়া যায়নি। টিভি গাইড অনুপলব্ধ বা অসম্পূর্ণ হতে পারে।</string>
+    <string name="sports_f1_reference">ফর্মুলা ১ · অবস্থান ও ক্যালেন্ডার</string>
+    <string name="sports_today">আজ</string>
+    <string name="sports_tomorrow">আগামীকাল</string>
+    <string name="sports_on_schedule">সূচিতে আছে · সরাসরি সম্প্রচার নিশ্চিত নয়</string>
+    <string name="sports_ended">সম্প্রচারের সময় শেষ</string>
+    <string name="sports_session_unknown">সেশনের তথ্য নেই</string>
+    <string name="sports_replay_evidence">চ্যানেলের সূচিতে পুনঃসম্প্রচার শনাক্ত করা হয়েছে।</string>
+    <string name="sports_reference_only">অতিরিক্ত তথ্য · সম্প্রচারের প্রাপ্যতা নিশ্চিত করে না</string>
+    <string name="sports_back">ফিরে যান</string>
+    <string name="sports_source_epgshare">অতিরিক্ত টিভি গাইড: EPGShare ব্রাজিল</string>
+</resources>

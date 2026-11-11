@@ -37,7 +37,9 @@ class SerieAFixturesUiTest {
             scenario.onActivity {model=ViewModelProvider(it)[AuroraViewModel::class.java]}
             compose.waitUntil(15000) {model.initialized && model.catalog.total==1}
             scenario.onActivity {model.page=Page.FOOTBALL;model.footballTab=FOOTBALL_BRAZIL}
-            compose.onNodeWithTag("football_tab_"+FOOTBALL_BRAZIL).assertExists()
+            compose.onNodeWithTag("sports_kind_football").assertDoesNotExist()
+            compose.onNodeWithTag("sports_competition_bra.1").assertDoesNotExist()
+            compose.onNodeWithTag("sports_empty").assertExists()
             assertTrue(footballListings(emptyList(),FootballFeed(listOf(fixture),now),
                 FOOTBALL_BRAZIL,"",now).isEmpty())
             compose.onAllNodesWithTag("football_fixture_only").assertCountEquals(0)

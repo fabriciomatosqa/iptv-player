@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora スポーツセンター</string>
+    <string name="sports_choose_discipline">番組表に放送がある競技を選択</string>
+    <string name="sports_search">競技、大会、チーム、イベントを検索</string>
+    <string name="sports_all_broadcasts">すべて</string>
+    <string name="sports_upcoming">まもなく開始</string>
+    <string name="sports_device_time">端末の時刻</string>
+    <string name="sports_brasilia_time">ブラジリア時間</string>
+    <string name="sports_competition_count">番組表の大会数：%1$d</string>
+    <string name="sports_epg_confirmed">番組表で確認できた放送</string>
+    <string name="sports_broadcasts">放送</string>
+    <string name="sports_empty_epg">この期間の放送は確認できません。番組表が利用できないか、不完全な可能性があります。</string>
+    <string name="sports_f1_reference">F1 · 順位とカレンダー</string>
+    <string name="sports_today">今日</string>
+    <string name="sports_tomorrow">明日</string>
+    <string name="sports_on_schedule">放送予定あり · 生中継は未確認</string>
+    <string name="sports_ended">放送時間が終了</string>
+    <string name="sports_session_unknown">セッション情報なし</string>
+    <string name="sports_replay_evidence">チャンネルの番組表で再放送と確認済み。</string>
+    <string name="sports_reference_only">補足情報 · 放送の視聴可否を示すものではありません</string>
+    <string name="sports_back">戻る</string>
+    <string name="sports_source_epgshare">補足番組表：EPGShare ブラジル</string>
+</resources>

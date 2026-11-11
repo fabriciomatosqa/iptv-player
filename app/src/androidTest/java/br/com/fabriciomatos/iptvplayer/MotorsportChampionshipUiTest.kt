@@ -48,8 +48,8 @@ class MotorsportChampionshipUiTest {
             scenario.onActivity { model=ViewModelProvider(it)[AuroraViewModel::class.java] }
             compose.waitUntil(15000) { model.initialized && model.sports.any { it.competitionId=="f1" } }
             compose.onNodeWithTag("home_football").performClick()
-            compose.onNodeWithTag("sports_kind_motorsport").performScrollTo().performClick()
-            compose.onNodeWithTag("football_tab_f1").performScrollTo().performClick()
+            compose.openSportsDiscipline("motorsport")
+            compose.openSportsCompetition("f1")
             compose.onNodeWithTag("motorsport_event").assertExists()
             val before=model.sports.toList()
             compose.onNodeWithTag("open_f1_championship").performClick()
@@ -59,7 +59,7 @@ class MotorsportChampionshipUiTest {
             device.executeShellCommand("mkdir -p /sdcard/Download/aurora-ui")
             val headings=listOf("FIA Formula One World Championship","Classificação dos pilotos",
                 "Classificação dos construtores","Próxima corrida",
-                "Calendário da temporada · horários do aparelho","Estatísticas e disputa pelo título")
+                "Calendário da temporada · Horário do aparelho","Estatísticas e disputa pelo título")
             headings.forEachIndexed { index,heading ->
                 compose.onNodeWithTag("championship_sections").performScrollToIndex(index)
                 compose.onNodeWithTag("championship_section_$index")

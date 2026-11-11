@@ -106,17 +106,22 @@ class AuroraUiTest {
             screenshot("portrait-home")
             compose.waitUntil(15000) { model.football.size == 2 }
             compose.onNodeWithTag("home_football").assertIsDisplayed().performClick()
-            compose.onNodeWithTag("football_list").performScrollToNode(hasText("Champions League"))
-            compose.onNodeWithText("Champions League").assertExists()
+            compose.openSportsDiscipline()
+            compose.openSportsCompetition("uefa.champions")
+            compose.onNodeWithText("UEFA Champions League").assertExists()
             compose.onNodeWithText("Leste").assertExists()
             compose.onNodeWithText("Oeste").assertExists()
             screenshot("football-agenda")
+            compose.onNodeWithTag("sports_back").performClick()
+            compose.openSportsCompetition("unknown")
             compose.onNodeWithTag("football_list").performScrollToNode(hasText("Aurora"))
             compose.onNodeWithText("Aurora").performClick()
             compose.waitUntil(20000) { model.isPlaying && model.current?.name == "TV Aurora" }
             compose.onNodeWithContentDescription("Voltar ao futebol").performClick()
             compose.waitUntil(10000) {model.page==Page.FOOTBALL && model.current==null}
-            compose.onNodeWithContentDescription("Voltar ao início").performClick()
+            compose.onNodeWithTag("sports_back").performClick()
+            compose.onNodeWithTag("sports_back").performClick()
+            compose.onNodeWithTag("sports_back").performClick()
 
             compose.onNode(hasText("Filmes") and hasText("1 filme")).performClick()
             compose.waitUntil(15000) { model.visibleCount == 1 && !model.filtering }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Central Esportiva Aurora</string>
+    <string name="sports_choose_discipline">Escolha uma modalidade com transmissões no EPG</string>
+    <string name="sports_search">Buscar modalidade, campeonato, equipe ou evento</string>
+    <string name="sports_all_broadcasts">Todas</string>
+    <string name="sports_upcoming">Em breve</string>
+    <string name="sports_device_time">Horário do aparelho</string>
+    <string name="sports_brasilia_time">Horário de Brasília</string>
+    <string name="sports_competition_count">%1$d campeonatos na programação</string>
+    <string name="sports_epg_confirmed">Transmissões identificadas na programação</string>
+    <string name="sports_broadcasts">transmissões</string>
+    <string name="sports_empty_epg">Nenhuma transmissão identificada neste período. A programação pode estar indisponível ou incompleta.</string>
+    <string name="sports_f1_reference">Fórmula 1 · Classificação e calendário</string>
+    <string name="sports_today">Hoje</string>
+    <string name="sports_tomorrow">Amanhã</string>
+    <string name="sports_on_schedule">Na programação · ao vivo não confirmado</string>
+    <string name="sports_ended">Faixa de transmissão encerrada</string>
+    <string name="sports_session_unknown">Sessão não informada</string>
+    <string name="sports_replay_evidence">Reexibição identificada na programação do canal.</string>
+    <string name="sports_reference_only">Informações complementares · não indicam disponibilidade de transmissão</string>
+    <string name="sports_back">Voltar</string>
+    <string name="sports_source_epgshare">Programação complementar: EPGShare Brasil</string>
+</resources>

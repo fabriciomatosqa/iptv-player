@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Trung tâm thể thao Aurora</string>
+    <string name="sports_choose_discipline">Chọn môn thể thao có chương trình phát trong lịch TV</string>
+    <string name="sports_search">Tìm môn thể thao, giải đấu, đội hoặc sự kiện</string>
+    <string name="sports_all_broadcasts">Tất cả</string>
+    <string name="sports_upcoming">Sắp diễn ra</string>
+    <string name="sports_device_time">Giờ thiết bị</string>
+    <string name="sports_brasilia_time">Giờ Brasília</string>
+    <string name="sports_competition_count">Số giải đấu trong lịch: %1$d</string>
+    <string name="sports_epg_confirmed">Các chương trình phát được xác định trong lịch TV</string>
+    <string name="sports_broadcasts">chương trình phát</string>
+    <string name="sports_empty_epg">Không tìm thấy chương trình phát trong khoảng thời gian này. Lịch TV có thể không khả dụng hoặc chưa đầy đủ.</string>
+    <string name="sports_f1_reference">Công thức 1 · Bảng xếp hạng và lịch</string>
+    <string name="sports_today">Hôm nay</string>
+    <string name="sports_tomorrow">Ngày mai</string>
+    <string name="sports_on_schedule">Có trong lịch · chưa xác nhận phát trực tiếp</string>
+    <string name="sports_ended">Khung giờ phát đã kết thúc</string>
+    <string name="sports_session_unknown">Chưa có thông tin phiên</string>
+    <string name="sports_replay_evidence">Đã xác định chương trình phát lại trong lịch của kênh.</string>
+    <string name="sports_reference_only">Thông tin bổ sung · không xác nhận có chương trình phát</string>
+    <string name="sports_back">Quay lại</string>
+    <string name="sports_source_epgshare">Lịch TV bổ sung: EPGShare Brazil</string>
+</resources>

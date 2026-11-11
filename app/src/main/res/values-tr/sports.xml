@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora Spor Merkezi</string>
+    <string name="sports_choose_discipline">TV rehberinde yayını olan bir spor seçin</string>
+    <string name="sports_search">Spor, turnuva, takım veya etkinlik arayın</string>
+    <string name="sports_all_broadcasts">Tümü</string>
+    <string name="sports_upcoming">Yakında</string>
+    <string name="sports_device_time">Cihaz saati</string>
+    <string name="sports_brasilia_time">Brasília saati</string>
+    <string name="sports_competition_count">Rehberdeki turnuva sayısı: %1$d</string>
+    <string name="sports_epg_confirmed">TV rehberinde belirlenen yayınlar</string>
+    <string name="sports_broadcasts">yayınlar</string>
+    <string name="sports_empty_epg">Bu dönem için yayın bulunamadı. TV rehberi eksik veya kullanılamıyor olabilir.</string>
+    <string name="sports_f1_reference">Formula 1 · Sıralamalar ve takvim</string>
+    <string name="sports_today">Bugün</string>
+    <string name="sports_tomorrow">Yarın</string>
+    <string name="sports_on_schedule">Programda · canlı yayın doğrulanmadı</string>
+    <string name="sports_ended">Yayın aralığı sona erdi</string>
+    <string name="sports_session_unknown">Oturum belirtilmedi</string>
+    <string name="sports_replay_evidence">Kanal programında tekrar yayını belirlendi.</string>
+    <string name="sports_reference_only">Ek bilgiler · yayın kullanılabilirliğini göstermez</string>
+    <string name="sports_back">Geri</string>
+    <string name="sports_source_epgshare">Ek TV rehberi: EPGShare Brezilya</string>
+</resources>

@@ -25,13 +25,11 @@ import kotlin.coroutines.coroutineContext
 class FootballScoreRepository(private val repository: PlaylistRepository, private val readJson: (String)->JSONObject = ::readFootballJson) {
     private val requests=Semaphore(3)
     suspend fun load(matches: List<FootballMatch>, force: Boolean = false, now: Long = System.currentTimeMillis()): FootballFeed = withContext(Dispatchers.IO) {
-        val available=matches.filter {it.broadcastEnd>now-FOOTBALL_RETENTION_MS ||
-            it.programme.broadcast==BroadcastHint.LIVE && it.programme.start in (now-6*3600000L)..now}
-        val leagues=available.flatMap {footballScoreLeagues(it.details)}.distinct()
+        val available=matches.filter {it.channels.isNotEmpty() && sportsWindowContains(it.programme,now)}.take(24)
+        val leagues=available.flatMap {footballScoreLeagues(it.details)}.distinct().take(4)
         // Fetch scores only for matches actually linked to the EPG.
         if(available.isEmpty()) return@withContext FootballFeed()
-        val days=(if(available.isEmpty())listOf(footballDateKey(now-86400000L),footballDateKey(now))
-            else footballRequestDays(available,now)).plus(footballDateKey(now+86400000L)).distinct()
+        val days=footballRequestDays(available,now).take(4)
         val current=setOf(footballDateKey(now),footballDateKey(now-86400000L))
         val results=ConcurrentHashMap<String,FootballFeed>()
         fun key(league: String, day: String)="$league:$day"
@@ -59,9 +57,8 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
         }
         val responses=results.values.toList()
         val events=responses.flatMap {it.events}.groupBy {it.league+":"+it.id}.values.map {it.maxBy(FootballScore::checked)}
-        val currentFailed=(listOf("fotmob")+leagues).flatMap {league->current.mapNotNull {day->results[key(league,day)]}}
-            .none {!it.failed && !footballRefreshDue(it.checked,now)}
-        FootballFeed(events,responses.maxOfOrNull {it.checked} ?: 0L,currentFailed)
+        val currentFailed=responses.isEmpty() || responses.all {it.failed}
+        FootballFeed(footballRelevantScores(available,events),responses.maxOfOrNull {it.checked} ?: 0L,currentFailed)
     }
     /** Fetch incidents only when a user expands a card, never while scrolling the match list. */
     suspend fun incidents(score: FootballScore): List<FootballIncident>? = withContext(Dispatchers.IO) {
@@ -96,10 +93,8 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
                 parseFootballScoreboard(json,league,now)
             }
             val feed=FootballFeed(events,now)
-            // Keep the full season safe through extended offline periods; stale
-            // responses are still actively revalidated after six hours.
-            repository.saveArtwork(key,encodeFootballFeed(feed).toString(),
-                if(dates.length==4)400*86400000L else 7*86400000L)
+            repository.saveArtwork(key,encodeFootballFeed(feed).toString(),7*86400000L)
+            repository.pruneArtwork("football-scores:",48)
             feed
         } catch(e: CancellationException) {throw e} catch(_: Exception) {
             (cached ?: FootballFeed()).copy(failed=true)
@@ -108,10 +103,9 @@ class FootballScoreRepository(private val repository: PlaylistRepository, privat
 }
 fun footballDateKey(value: Long) = SimpleDateFormat("yyyyMMdd",Locale.ROOT).apply {timeZone=TimeZone.getTimeZone("UTC")}.format(Date(value))
 fun footballRequestDays(matches: List<FootballMatch>, now: Long): List<String> =
-    ((-7..0).map {footballDateKey(now+it*86400000L)}+matches.flatMap {
-        listOf(footballDateKey(it.programme.start.coerceIn(now-7*86400000L,now+14*86400000L)),
-            footballDateKey((it.programme.start+86400000L).coerceIn(now,now+14*86400000L)))
-    }).distinct()
+    matches.asSequence().filter {it.channels.isNotEmpty() && sportsWindowContains(it.programme,now)}.take(24)
+        .flatMap { sequenceOf(footballDateKey(it.programme.start-15*60000L),
+            footballDateKey(it.programme.start+90*60000L)) }.distinct().take(4).toList()
 fun footballDates(start: Long, end: Long): String {
     val format=SimpleDateFormat("yyyyMMdd",Locale.ROOT).apply {timeZone=TimeZone.getTimeZone("UTC")}
     return format.format(Date(start))+"-"+format.format(Date(end))

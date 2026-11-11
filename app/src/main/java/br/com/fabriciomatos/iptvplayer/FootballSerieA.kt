@@ -76,11 +76,7 @@ private fun linkedSerieAFixture(broadcast: FootballMatch, fixture: FootballScore
     return matchFootballScore(broadcast,FootballFeed(listOf(fixture),fixture.checked))!=null
 }
 
-/**
- * Keep every original EPG match unchanged. Add any Serie A calendar fixture
- * that has no corresponding provider-linked card, without inventing streams.
- * Both "Jogos" and the dedicated Serie A tab can render these results.
- */
+/** Public scores only enrich existing channel-linked EPG broadcasts. */
 fun footballListings(
     broadcasts: List<FootballMatch>, feed: FootballFeed, tab: String,
     search: String, now: Long
@@ -93,9 +89,5 @@ fun footballListings(
 }
 
 fun footballVisibleTabs(broadcasts: List<FootballMatch>): List<FootballTab> {
-    val existing=footballTabs(broadcasts)
-    val league=FootballTab(FOOTBALL_BRAZIL,"Brasileirão — Série A")
-    return if(existing.any { it.key==FOOTBALL_BRAZIL })
-        existing.map { if(it.key==FOOTBALL_BRAZIL) league else it }
-    else existing.take(2)+league+existing.drop(2)
+    return footballTabs(broadcasts)
 }

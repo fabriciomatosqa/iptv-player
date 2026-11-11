@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sports_central">Aurora Sports Center</string>
+    <string name="sports_choose_discipline">Choose a sport with broadcasts in your TV guide</string>
+    <string name="sports_search">Search sport, competition, team or event</string>
+    <string name="sports_all_broadcasts">All</string>
+    <string name="sports_upcoming">Upcoming</string>
+    <string name="sports_device_time">Device time</string>
+    <string name="sports_brasilia_time">Brasília time</string>
+    <string name="sports_competition_count">%1$d competitions in the guide</string>
+    <string name="sports_epg_confirmed">Broadcasts identified in the TV guide</string>
+    <string name="sports_broadcasts">broadcasts</string>
+    <string name="sports_empty_epg">No broadcasts identified for this period. The TV guide may be unavailable or incomplete.</string>
+    <string name="sports_f1_reference">Formula 1 · Standings and calendar</string>
+    <string name="sports_today">Today</string>
+    <string name="sports_tomorrow">Tomorrow</string>
+    <string name="sports_on_schedule">On the schedule · live not confirmed</string>
+    <string name="sports_ended">Broadcast slot ended</string>
+    <string name="sports_session_unknown">Session not specified</string>
+    <string name="sports_replay_evidence">Replay identified in the channel schedule.</string>
+    <string name="sports_reference_only">Complementary information · does not indicate broadcast availability</string>
+    <string name="sports_back">Back</string>
+    <string name="sports_source_epgshare">Complementary TV guide: EPGShare Brazil</string>
+</resources>

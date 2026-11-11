@@ -33,7 +33,7 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         withContext(Dispatchers.IO) { repository.saveAnimeCover(source,title,image.orEmpty()) }
         image
     }
-    suspend fun football(details: FootballDetails): FootballArtwork = sportsLock.withLock {
+    suspend fun football(details: FootballDetails): FootballArtwork = withContext(Dispatchers.IO) { sportsLock.withLock {
         nationalMatch(details)?.let { (home,away) ->
             return@withLock FootballArtwork(FIFA_BADGE,federationBadge(home),federationBadge(away))
         }
@@ -72,7 +72,7 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
             if(away.isBlank())away=brazilianFootballBadge(details.away)
         }
         FootballArtwork(bundle.optString("badge"),home,away)
-    }
+    }}
 
     /** Fallback is restricted to unique Brazilian Soccer identities. Cache negatives briefly. */
     private suspend fun brazilianFootballBadge(name:String):String {
@@ -95,9 +95,12 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
     }
 
     /** One cached league/team catalog per sport, resolved only for cards currently on screen. */
-    suspend fun teamSport(event: SportsEvent): FootballArtwork = sportsLock.withLock {
+    suspend fun teamSport(event: SportsEvent): FootballArtwork = withContext(Dispatchers.IO) { sportsLock.withLock {
         if(event.home.isBlank() || event.away.isBlank() || sportsDatabaseCategory(event.sport)==null)
             return@withLock FootballArtwork()
+        val protectedCategory=footballGender(event.competition) in setOf(FootballGender.WOMEN,FootballGender.CONFLICT) ||
+            footballAgeGroup(event.competition).isNotBlank() || event.programme.metadata.division.isNotBlank()
+        if(protectedCategory && event.competitionId!="wnba")return@withLock FootballArtwork()
         var home = ""
         var away = ""
         for(endpoint in sportsBadgeEndpoints(event.sport,event.competitionId)) {
@@ -119,10 +122,12 @@ class ArtworkResolver(private val repository: PlaylistRepository, private val re
         }
         // Unknown regional leagues and college teams may not be in the ESPN league feed.
         // Search by public team name, but accept a logo only when the SPORT also matches.
-        if(home.isBlank())home=sportsDatabaseBadge(event.sport,event.home)
-        if(away.isBlank())away=sportsDatabaseBadge(event.sport,event.away)
+        if(!protectedCategory && event.competitionId!="wnba") {
+            if(home.isBlank())home=sportsDatabaseBadge(event.sport,event.home)
+            if(away.isBlank())away=sportsDatabaseBadge(event.sport,event.away)
+        }
         FootballArtwork(home=home,away=away)
-    }
+    }}
 
     private suspend fun sportsDatabaseBadge(sport: SportKind, name: String): String {
         val category=sportsDatabaseCategory(sport) ?: return ""
