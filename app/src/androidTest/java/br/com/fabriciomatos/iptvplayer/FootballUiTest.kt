@@ -132,6 +132,11 @@ class FootballUiTest {
             scenario.onActivity {model.openSportsCompetition("eng.1");it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
             compose.waitUntil(10000) {context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_PORTRAIT && compose.onAllNodesWithText("Wolverhampton Wanderers").fetchSemanticsNodes().isNotEmpty()}
             screenshot("football-aurora-long-name")
+            // Multiple orientation changes may leave a retained ViewModel
+            // awaiting Activity recreation when ActivityScenario.close() runs.
+            // Explicitly clear its store before closing the scenario so the
+            // async catalog writer and SQLite handle finish their shutdown.
+            scenario.onActivity { it.viewModelStore.clear() }
         }
     }
     @Test fun genericSportvGameBecomesBrasileiraoTabWithoutLosingTheWatchChannel() {
