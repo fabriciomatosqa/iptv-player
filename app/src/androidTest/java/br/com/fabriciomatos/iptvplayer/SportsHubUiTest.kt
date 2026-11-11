@@ -89,6 +89,9 @@ class SportsHubUiTest {
             compose.openSportsDiscipline("tennis");compose.openSportsCompetition("tennis.wta")
             compose.onNodeWithText("Alpha").assertDoesNotExist()
             compose.onNodeWithText("Aline").assertExists()
+            // Ensure the retained Activity ViewModel closes its SQLite handles
+            // before this test reopens the repository to check persistence.
+            scenario.onActivity { it.viewModelStore.clear() }
         }
         PlaylistRepository(context).also { repo ->
             assertEquals(channels.size,repo.overview(first).total)
