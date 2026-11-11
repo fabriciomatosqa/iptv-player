@@ -22,6 +22,7 @@ class XtreamSportsGuideTest {
         val now=System.currentTimeMillis()
         val channels=listOf(channel("ESPN 4 HD","12345","espn4hd"),channel("ESPN 4 FHD","12346","espn4fhd"))
         val calls=AtomicInteger()
+        val requested=java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
         val payload=JSONObject().put("epg_listings",JSONArray().put(JSONObject()
             .put("title",encoded("Vila Nova x Novorizontino - Campeonato Brasileiro Série B"))
             .put("description",encoded("Jogo ao vivo de futebol"))
@@ -31,10 +32,15 @@ class XtreamSportsGuideTest {
             calls.incrementAndGet()
             assertTrue(url.startsWith("https://iptv.example.test/player_api.php?"))
             assertTrue(url.contains("action=get_short_epg"))
-            assertTrue(url.contains("stream_id=12345"))
+            val id=android.net.Uri.parse(url).getQueryParameter("stream_id")!!
+            assertTrue(id in setOf("12345","12346"))
+            requested.add(id)
             payload
         }
-        assertEquals(1,calls.get())
+        // Different EPG IDs require independent provider confirmation, even when
+        // normalized broadcaster names differ only in HD/FHD quality.
+        assertEquals(2,calls.get())
+        assertEquals(setOf("12345","12346"),requested)
         assertEquals(2,guide.matches.size)
         val games=footballMatches(guide,channels,now)
         assertEquals(1,games.size)
@@ -43,6 +49,36 @@ class XtreamSportsGuideTest {
         assertEquals("Vila Nova",games.single().details.home)
         assertEquals("Novorizontino",games.single().details.away)
         assertEquals(FOOTBALL_GAMES,footballTabs(games).first {it.key==FOOTBALL_GAMES}.key)
+    }
+
+    @Test fun qualityVariantsWithTheSameExplicitEpgIdReuseOneVerifiedProviderRequest() = runBlocking {
+        val now=System.currentTimeMillis()
+        val channels=listOf(channel("ESPN 4 HD","12345","espn4"),channel("ESPN 4 FHD","12346","espn4"))
+        val calls=AtomicInteger()
+        val payload=JSONObject().put("epg_listings",JSONArray().put(JSONObject()
+            .put("title",encoded("Vila Nova x Novorizontino - Campeonato Brasileiro Série B"))
+            .put("start_timestamp",(now+3600000L)/1000).put("stop_timestamp",(now+10800000L)/1000)))
+        val guide=XtreamSportsGuide.load(source,channels,now) {url->
+            calls.incrementAndGet();assertTrue(url.contains("stream_id=12345"));payload
+        }
+        assertEquals(1,calls.get())
+        assertEquals(2,footballMatches(guide,channels,now).single().channels.size)
+    }
+
+    @Test fun differentEpgIdsWithTheSameBroadcasterNameNeverShareUnrelatedProgrammes() = runBlocking {
+        val now=System.currentTimeMillis()
+        val channels=listOf(channel("ESPN 4 HD","12345","espn4-main"),channel("ESPN 4 FHD","12346","espn4-regional"))
+        val titles=mapOf("12345" to "Vila Nova x Novorizontino - Campeonato Brasileiro Série B",
+            "12346" to "Flamengo x Palmeiras - Copa do Brasil")
+        val guide=XtreamSportsGuide.load(source,channels,now) {url->
+            val id=android.net.Uri.parse(url).getQueryParameter("stream_id")!!
+            JSONObject().put("epg_listings",JSONArray().put(JSONObject().put("title",encoded(titles.getValue(id)))
+                .put("start_timestamp",(now+3600000L)/1000).put("stop_timestamp",(now+10800000L)/1000)))
+        }
+        val games=footballMatches(guide,channels,now)
+        assertEquals(2,games.size)
+        assertEquals(listOf(channels[0]),games.single {it.details.home=="Vila Nova"}.channels)
+        assertEquals(listOf(channels[1]),games.single {it.details.home=="Flamengo"}.channels)
     }
 
     @Test fun partialGuideRefreshKeepsCurrentMatchesButRejectsContradictedOrExpiredSlots() {

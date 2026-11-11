@@ -6,6 +6,7 @@ AURORA IPTV Android 1.12.41 — Central Esportiva Aurora
 - Corrige associações por nomes com identificadores conflitantes, reprises inferidas apenas por resultados antigos e categorias vazias.
 - Automobilismo organizado por etapas e sessões, preservando classificações, pilotos, construtores e calendário complementar da Fórmula 1.
 - Consultas de placares restritas aos cards visíveis, cache limitado, processamento assíncrono e cancelamento ao sair da tela.
+- Sem EPG configurado ou salvo, a recuperação consulta somente os candidatos ao guia alternativo, evitando carregar todos os canais ao vivo de catálogos grandes. A leitura pode ser cancelada ao sair ou trocar de playlist.
 - Seleção de horário do aparelho ou de Brasília, layout compacto em paisagem e novos textos nos 20 idiomas suportados.
 - Preserva catálogo, playlists, favoritos, preferências, assinatura original e atualização online.
 

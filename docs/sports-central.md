@@ -184,6 +184,34 @@ Após integrar a base e atualizar a versão, a validação local foi repetida co
 em 1m28s: 153 testes unitários, lint e compilação das fontes Debug/testes Android.
 Os dois testes Python dos metadados de release também passaram.
 
+## Correções após o primeiro verify no CI
+
+O [primeiro envio da 1.12.41](https://github.com/fabriciomatosqa/iptv-player/actions/runs/42947050610)
+compilou e passou nos testes JVM/lint, mas revelou três falhas instrumentadas:
+
+- `FootballUiTest` consultava o placar da reprise antes da carga assíncrona dos cards visíveis.
+  O teste agora aguarda o resultado correspondente e o nó de placar antes de conferir os gols.
+- `SportsHubUiTest` encontrava o mesmo nome no botão do card e no seletor aberto. As asserções
+  agora verificam os canais dentro do seletor. Rotação/tema também aguardam o conteúdo visível.
+- `XtreamSportsGuideTest` esperava uma única consulta para variantes com IDs EPG diferentes.
+  A expectativa foi corrigida para confirmar os dois streams independentemente. Novos cenários
+  verificam o reaproveitamento quando o ID é o mesmo e a separação quando os programas diferem.
+
+Também foi investigado o `OutOfMemoryError` do benchmark na execução anterior da main
+([1.12.40](https://github.com/fabriciomatosqa/iptv-player/actions/runs/42939130355)). O stack trace
+mostrou `PlaylistRepository.liveChannels` chamado por `AuroraViewModel.refreshGuide`, durante
+o carregamento de todos os canais ao vivo de um catálogo local sem EPG configurado.
+Agora, quando não há endereço nem guia salvo, a consulta SQL seleciona candidatos ao guia
+alternativo e aplica a identificação conservadora já existente. Sem alternativa habilitada,
+não hidrata canais desnecessariamente. Não existe limite que corte variantes válidas.
+Leituras de canais propagam cancelamento e fecham o cursor ao interromper. A leitura de um
+guia configurado/salvo permanece disponível, sem alterar banco, dados ou assinatura.
+
+`GuideChannelSelectionTest` cobre seleção, IDs estrangeiros/ambíguos, conteúdo adulto,
+preservação de catálogo/favoritos e cancelamento da leitura. A matriz completa de benchmark
+e os requisitos de publicação do workflow permanecem inalterados. A versão continua 1.12.41
+(62), pois a tentativa anterior não publicou um release.
+
 ## Arquivos
 
 Os arquivos de produção ficam em `app/src/main/java/br/com/fabriciomatos/iptvplayer/`:

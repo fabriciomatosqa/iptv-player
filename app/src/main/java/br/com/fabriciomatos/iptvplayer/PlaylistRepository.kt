@@ -708,8 +708,29 @@ class PlaylistRepository(context: Context) {
     private fun legacyChannel(o: JSONObject): Channel? = o.optString("url").takeIf(String::isNotBlank)?.let {
         Channel(o.optString("name","Canal"),it,o.optString("group","Canais"),o.optString("imageUrl"),o.optString("tvgId"),o.optString("userAgent"),o.optString("referrer"),o.optString("mimeType"))
     }
-    fun liveChannels(source: String): List<Channel> = helper.readableDatabase.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND kind=0 AND adult=0 ORDER BY position",arrayOf(digest(source))).use {
-        buildList { while(it.moveToNext()) add(readChannel(it)) }
+    fun liveChannels(source: String,checkCancelled:()->Unit = {}): List<Channel> {
+        checkCancelled()
+        return helper.readableDatabase.rawQuery("SELECT " + RAW_COLUMNS + " FROM channels c WHERE source_key=? AND kind=0 AND adult=0 ORDER BY position",arrayOf(digest(source))).use {
+            buildList { while(it.moveToNext()) {if(it.position%64==0)checkCancelled();add(readChannel(it))} }
+        }
+    }
+    /** Without a configured/cached EPG there is no reason to hydrate every live
+     * stream. SQL prefilters broadcaster candidates; the existing strict authority
+     * check remains decisive. No limit drops legitimate matching variants. */
+    internal fun alternateGuideChannels(source:String,checkCancelled:()->Unit = {}):List<Channel> {
+        checkCancelled()
+        val candidate="(lower(c.tvg_id) LIKE '%.br' OR lower(c.name) LIKE '%espn%' OR "+
+            "lower(c.name) LIKE '%sportv%' OR lower(c.name) LIKE '%sport v%' OR "+
+            "lower(c.name) LIKE '%premiere%' OR lower(c.name) LIKE '%band%sports%' OR lower(c.name) LIKE '%tnt%sports%')"
+        return helper.readableDatabase.rawQuery("SELECT "+RAW_COLUMNS+
+            " FROM channels c WHERE source_key=? AND kind=0 AND adult=0 AND "+candidate+" ORDER BY position",
+            arrayOf(digest(source))).use {cursor ->
+            buildList {while(cursor.moveToNext()) {
+                if(cursor.position%64==0)checkCancelled()
+                val channel=readChannel(cursor)
+                if(BrazilBroadcastGuide.broadcaster(channel)!=null)add(channel)
+            }}
+        }
     }
     fun saveGuide(source: String, guide: Guide, now: Long = System.currentTimeMillis()) {
         val db=helper.writableDatabase;val key=digest(source)

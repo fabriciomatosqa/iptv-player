@@ -95,6 +95,12 @@ class FootballUiTest {
             compose.openSportsCompetition("afc.champions")
             compose.onNodeWithTag("football_list").performScrollToNode(hasText("Al Nassr", substring = true))
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).assertTextContains("Reprise",substring=true)
+            // Scores are loaded for visible cards, after a short fling debounce.
+            // The replay card can legitimately render before its cached result arrives.
+            compose.waitUntil(10000) {
+                model.sportsScores.values.any {it.event.id==final.id && it.homeGoals==3 && it.awayGoals==1} &&
+                    compose.onAllNodesWithTag("football_compact_score",useUnmergedTree=true).fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithTag("football_compact_score", useUnmergedTree = true).assertTextContains("3", substring = true)
             screenshot("football-replay-result")
             compose.onNode(hasTestTag("football_match") and hasText("Al Nassr", substring = true)).performClick()

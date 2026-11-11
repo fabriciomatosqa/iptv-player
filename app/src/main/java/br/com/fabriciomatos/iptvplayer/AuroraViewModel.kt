@@ -741,7 +741,13 @@ class AuroraViewModel(application: Application) : AndroidViewModel(application) 
                 if(playlistUrl!=playlist || request!=guideRequestNumber)return@launch
                 val saved=if(useAlternate)cached.first else cached.first.withoutAlternate()
                 guide=saved;guideDiagnostics=cached.second ?: GuideDiagnostics()
-                val channels=withContext(Dispatchers.IO) {repository.liveChannels(playlist)}
+                val channels=withContext(Dispatchers.IO) {
+                    val context=kotlin.coroutines.coroutineContext
+                    val noGuide=address.isBlank() && saved.programmes.isEmpty() && saved.matches.isEmpty()
+                    if(noGuide) {
+                        if(useAlternate)repository.alternateGuideChannels(playlist) {context.ensureActive()} else emptyList()
+                    } else repository.liveChannels(playlist) {context.ensureActive()}
+                }
                 val cachedEvents=withContext(Dispatchers.Default) {buildSportsSchedule(saved,channels,System.currentTimeMillis())}
                 if(playlistUrl!=playlist || request!=guideRequestNumber)return@launch
                 football=cachedEvents.football;sports=cachedEvents.other;rebuildSportsHub()

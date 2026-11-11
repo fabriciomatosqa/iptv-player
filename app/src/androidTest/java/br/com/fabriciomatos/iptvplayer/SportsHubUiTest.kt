@@ -59,8 +59,9 @@ class SportsHubUiTest {
             compose.onNodeWithTag("sports_day_header").assertExists()
             compose.onAllNodesWithTag("sports_event").assertCountEquals(1)
             compose.onNodeWithTag("football_all_channels").performScrollTo().performClick()
-            compose.onNodeWithText("Aurora HD").assertExists()
-            compose.onNodeWithText("Aurora FHD").assertExists()
+            val inPicker=hasAnyAncestor(hasTestTag("football_channel_picker"))
+            compose.onNode(inPicker and hasText("Aurora HD")).assertExists()
+            compose.onNode(inPicker and hasText("Aurora FHD")).assertExists()
             UiDevice.getInstance(instrumentation).pressBack()
             // Background preview must not disable the Android Back hierarchy.
             UiDevice.getInstance(instrumentation).pressBack()
@@ -76,7 +77,9 @@ class SportsHubUiTest {
             assertEquals("nba",model.sportsCompetitionId);assertEquals("Alpha",model.footballSearch)
             compose.onNodeWithTag("football_search").assertTextContains("Alpha")
             scenario.onActivity {it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;model.chooseAppearance(AppAppearance.LIGHT)}
-            compose.waitUntil(10000) {model.appearance==AppAppearance.LIGHT}
+            compose.waitUntil(10000) {model.appearance==AppAppearance.LIGHT &&
+                context.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+                compose.onAllNodesWithTag("sports_event").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithTag("sports_event").assertExists()
             scenario.onActivity {model.savePlaylist(second,"Esportes B")}
             compose.waitUntil(15000) {model.playlistUrl==second && !model.switchingPlaylist &&
